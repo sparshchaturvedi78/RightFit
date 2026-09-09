@@ -1,0 +1,70 @@
+# ==============================
+# Backend - Spring Boot
+# ==============================
+
+# Spring Boot configuration containing secrets
+backend/src/main/resources/application.properties
+backend/src/main/resources/application.yml
+backend/src/main/resources/application-*.properties
+backend/src/main/resources/application-*.yml
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Any env files inside backend/frontend
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+
+# ==============================
+# Java / Maven
+# ==============================
+
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ==============================
+# STS
+# ==============================
+
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# ==============================
+# IntelliJ IDEA
+# ==============================
+
+.idea
+*.iws
+*.iml
+*.ipr
+
+# ==============================
+# NetBeans
+# ==============================
+
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ==============================
+# VS Code
+# ==============================
+
+.vscode/
