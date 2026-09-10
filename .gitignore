@@ -1,0 +1,51 @@
+# ==============================
+# Backend - Spring Boot
+# ==============================
+
+# Spring Boot configuration containing secrets
+backend/src/main/resources/application.properties
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-dev.properties
+backend/src/main/resources/application-prod.properties
+
+# Environment files
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+
+# ==============================
+# Java / Maven
+# ==============================
+
+target/
+.mvn/wrapper/maven-wrapper.jar
+HELP.md
+
+# ==============================
+# IntelliJ IDEA
+# ==============================
+
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ==============================
+# Node / Frontend
+# ==============================
+
+node_modules/
+dist/
+build/
+*.log
+
+# ==============================
+# OS
+# ==============================
+
+.DS_Store
+Thumbs.db
