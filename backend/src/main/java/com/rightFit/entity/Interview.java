@@ -29,6 +29,10 @@ public class Interview {
     @JoinColumn(name = "requirement_id", nullable = false)
     private ProjectRequirement requirement;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invitation_id")
+    private Invitation invitation;
+
     @Column(name = "interview_type", nullable = false)
     private String interviewType;
 

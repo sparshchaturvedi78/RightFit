@@ -38,8 +38,31 @@ public class Employee {
     @Column(name = "grade")
     private String grade;
 
-    @Column(name = "department")
-    private String department;
+    @Column(name = "designation")
+    private String designation;
+
+    @Column(name = "domain")
+    private String domain;
+
+    @Column(name = "years_of_experience")
+    private Double yearsOfExperience;
+
+    @Column(name = "date_of_joining")
+    private LocalDate dateOfJoining;
+
+    @Column(name = "pool_status")
+    private String poolStatus;
+
+    @Column(name = "working_hours_per_day")
+    private Double workingHoursPerDay;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "location_id")
+    private Location location;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rmg_id")

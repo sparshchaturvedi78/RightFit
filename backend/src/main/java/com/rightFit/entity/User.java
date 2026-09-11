@@ -20,7 +20,7 @@ public class User {
     private Long id;
 
     @Column(name = "employee_id", nullable = false, unique = true)
-    private String employeeId;
+    private Long employeeId;
 
     @Column(name = "email", nullable = false, unique = true)
     private String email;
@@ -31,7 +31,7 @@ public class User {
     @Column(name = "status", nullable = false)
     private String status;
 
-    @Column(name = "last_login")
+    @Column(name = "last_login_at")
     private LocalDateTime lastLogin;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -49,7 +49,7 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserRole> userRoles;
 
-    @OneToOne(mappedBy = "user")
+    @OneToOne(mappedBy = "user", fetch = FetchType.EAGER)
     private Employee employee;
 
     @PrePersist

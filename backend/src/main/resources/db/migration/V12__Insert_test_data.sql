@@ -31,56 +31,68 @@ SELECT 1, 'Pune', 'Pune', 'Maharashtra', 'India', 'Asia/Kolkata', TRUE
 WHERE NOT EXISTS (SELECT 1 FROM locations WHERE name = 'Pune');
 
 -- ============================================================================
--- EMPLOYEES (Core team)
+-- EMPLOYEES FIRST (no FK dependencies yet - user_id will be set later)
 -- ============================================================================
-INSERT INTO employees (employee_id, first_name, last_name, email, phone, department_id, location_id,
+INSERT INTO employees (id, employee_id, first_name, last_name, email, phone, department_id, location_id,
                        designation, grade, domain, years_of_experience, date_of_joining,
                        employment_status, allocation_status, availability_status, pool_status, working_hours_per_day)
-SELECT 'EMP001', 'Rajesh', 'Kumar', 'rajesh.kumar@techcorp.com', '+91-9876543210', 1, 1,
+SELECT 1, 'EMP001', 'Rajesh', 'Kumar', 'rajesh.kumar@techcorp.com', '+91-9876543210', 1, 1,
        'CTO', 'L5', 'Technology Leadership', 15.00, '2015-01-15'::DATE, 'ACTIVE', 'UNALLOCATED', 'AVAILABLE', 'NOT_IN_RESOURCE_POOL', 9.00
 WHERE NOT EXISTS (SELECT 1 FROM employees WHERE employee_id = 'EMP001')
 UNION ALL
-SELECT 'EMP002', 'Priya', 'Sharma', 'priya.sharma@techcorp.com', '+91-9876543211', 1, 1,
+SELECT 2, 'EMP002', 'Priya', 'Sharma', 'priya.sharma@techcorp.com', '+91-9876543211', 1, 1,
        'Resource Manager', 'L4', 'Resource Management', 10.00, '2016-03-20'::DATE, 'ACTIVE', 'UNALLOCATED', 'AVAILABLE', 'NOT_IN_RESOURCE_POOL', 9.00
 WHERE NOT EXISTS (SELECT 1 FROM employees WHERE employee_id = 'EMP002')
 UNION ALL
-SELECT 'EMP003', 'Amit', 'Patel', 'amit.patel@techcorp.com', '+91-9876543212', 1, 1,
+SELECT 3, 'EMP003', 'Amit', 'Patel', 'amit.patel@techcorp.com', '+91-9876543212', 1, 1,
        'Project Manager', 'L4', 'Project Management', 8.00, '2017-06-10'::DATE, 'ACTIVE', 'ALLOCATED', 'AVAILABLE', 'NOT_IN_RESOURCE_POOL', 9.00
 WHERE NOT EXISTS (SELECT 1 FROM employees WHERE employee_id = 'EMP003')
 UNION ALL
-SELECT 'EMP004', 'Ananya', 'Singh', 'ananya.singh@techcorp.com', '+91-9876543213', 1, 1,
+SELECT 4, 'EMP004', 'Ananya', 'Singh', 'ananya.singh@techcorp.com', '+91-9876543213', 1, 1,
        'Senior Software Engineer', 'L3', 'Java/Spring', 7.00, '2018-02-01'::DATE, 'ACTIVE', 'ALLOCATED', 'AVAILABLE', 'NOT_IN_RESOURCE_POOL', 9.00
 WHERE NOT EXISTS (SELECT 1 FROM employees WHERE employee_id = 'EMP004')
 UNION ALL
-SELECT 'EMP005', 'Vikram', 'Desai', 'vikram.desai@techcorp.com', '+91-9876543214', 1, 1,
+SELECT 5, 'EMP005', 'Vikram', 'Desai', 'vikram.desai@techcorp.com', '+91-9876543214', 1, 1,
        'Software Engineer', 'L2', 'Python/Django', 3.00, '2021-07-15'::DATE, 'ACTIVE', 'UNALLOCATED', 'AVAILABLE', 'IN_RESOURCE_POOL', 9.00
 WHERE NOT EXISTS (SELECT 1 FROM employees WHERE employee_id = 'EMP005')
 UNION ALL
-SELECT 'EMP006', 'Sneha', 'Gupta', 'sneha.gupta@techcorp.com', '+91-9876543215', 1, 1,
+SELECT 6, 'EMP006', 'Sneha', 'Gupta', 'sneha.gupta@techcorp.com', '+91-9876543215', 1, 1,
        'Software Engineer', 'L2', 'React/JavaScript', 2.50, '2022-01-10'::DATE, 'ACTIVE', 'UNALLOCATED', 'AVAILABLE', 'IN_RESOURCE_POOL', 9.00
 WHERE NOT EXISTS (SELECT 1 FROM employees WHERE employee_id = 'EMP006');
 
 -- ============================================================================
--- USERS (for login)
+-- USERS (for login) - Now employees exist so employee_id FK is satisfied
+-- Password for all users: Test@123 (8+ chars with special character)
+-- BCrypt Hash (cost 10): $2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS
 -- ============================================================================
-INSERT INTO users (employee_id, email, password_hash, is_active, status)
-SELECT 1, 'rajesh.kumar@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', TRUE, 'ACTIVE'
+INSERT INTO users (employee_id, email, password_hash, status)
+SELECT 1, 'rajesh.kumar@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 1)
 UNION ALL
-SELECT 2, 'priya.sharma@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', TRUE, 'ACTIVE'
+SELECT 2, 'priya.sharma@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 2)
 UNION ALL
-SELECT 3, 'amit.patel@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', TRUE, 'ACTIVE'
+SELECT 3, 'amit.patel@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 3)
 UNION ALL
-SELECT 4, 'ananya.singh@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', TRUE, 'ACTIVE'
+SELECT 4, 'ananya.singh@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 4)
 UNION ALL
-SELECT 5, 'vikram.desai@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', TRUE, 'ACTIVE'
+SELECT 5, 'vikram.desai@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 5)
 UNION ALL
-SELECT 6, 'sneha.gupta@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', TRUE, 'ACTIVE'
+SELECT 6, 'sneha.gupta@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 6);
+
+-- ============================================================================
+-- UPDATE EMPLOYEES to set user_id (completes the bidirectional relationship)
+-- ============================================================================
+UPDATE employees SET user_id = 1 WHERE employee_id = 'EMP001';
+UPDATE employees SET user_id = 2 WHERE employee_id = 'EMP002';
+UPDATE employees SET user_id = 3 WHERE employee_id = 'EMP003';
+UPDATE employees SET user_id = 4 WHERE employee_id = 'EMP004';
+UPDATE employees SET user_id = 5 WHERE employee_id = 'EMP005';
+UPDATE employees SET user_id = 6 WHERE employee_id = 'EMP006';
 
 -- ============================================================================
 -- USER ROLES
