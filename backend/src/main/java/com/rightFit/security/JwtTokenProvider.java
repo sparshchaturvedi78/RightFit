@@ -7,10 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -86,9 +84,18 @@ public class JwtTokenProvider {
     /**
      * Get Roles from Token
      */
-    @SuppressWarnings("unchecked")
     public Set<String> getRolesFromToken(String token) {
-        return (Set<String>) getAllClaimsFromToken(token).get("roles");
+        Object rolesObj = getAllClaimsFromToken(token).get("roles");
+        if (rolesObj == null) {
+            return new HashSet<>();
+        }
+        if (rolesObj instanceof Set) {
+            return (Set<String>) rolesObj;
+        }
+        if (rolesObj instanceof List) {
+            return new HashSet<>((List<String>) rolesObj);
+        }
+        return new HashSet<>();
     }
 
     /**

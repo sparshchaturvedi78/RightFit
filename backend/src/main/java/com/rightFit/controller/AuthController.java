@@ -40,7 +40,19 @@ public class AuthController {
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(@RequestBody TokenRequest tokenRequest) {
         try {
-            TokenResponse response = authenticationService.refreshToken(tokenRequest.getRefreshToken());
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(ErrorResponse.builder()
+                        .status(401)
+                        .error("UNAUTHORIZED")
+                        .message("User must be authenticated to refresh token")
+                        .build());
+            }
+
+            String principal = (String) authentication.getPrincipal();
+            Long userId = extractUserIdFromAuth(authentication);
+            TokenResponse response = authenticationService.refreshToken(tokenRequest.getRefreshToken(), userId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Token refresh failed: {}", e.getMessage());
@@ -55,12 +67,23 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestBody TokenRequest tokenRequest) {
         try {
-            authenticationService.logout(tokenRequest.getRefreshToken());
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(ErrorResponse.builder()
+                        .status(401)
+                        .error("UNAUTHORIZED")
+                        .message("User must be authenticated to logout")
+                        .build());
+            }
+
+            Long userId = extractUserIdFromAuth(authentication);
+            authenticationService.logout(tokenRequest.getRefreshToken(), userId);
             return ResponseEntity.ok(new LogoutResponse("Logged out successfully"));
         } catch (Exception e) {
             log.error("Logout failed: {}", e.getMessage());
-            return ResponseEntity.status(400).body(ErrorResponse.builder()
-                    .status(400)
+            return ResponseEntity.status(401).body(ErrorResponse.builder()
+                    .status(401)
                     .error("LOGOUT_FAILED")
                     .message(e.getMessage())
                     .build());
@@ -80,9 +103,9 @@ public class AuthController {
         }
 
         try {
-            Long userId = (Long) authentication.getDetails();
-            // TODO: Fetch user details from database and return UserProfileDto
-            return ResponseEntity.ok(UserProfileDto.builder().build());
+            Long userId = extractUserIdFromAuth(authentication);
+            UserProfileDto profile = authenticationService.getUserProfile(userId);
+            return ResponseEntity.ok(profile);
         } catch (Exception e) {
             log.error("Failed to fetch user profile: {}", e.getMessage());
             return ResponseEntity.status(500).body(ErrorResponse.builder()
@@ -99,5 +122,20 @@ public class AuthController {
             return xForwardedFor.split(",")[0];
         }
         return request.getRemoteAddr();
+    }
+
+    private Long extractUserIdFromAuth(Authentication authentication) {
+        Object details = authentication.getDetails();
+        if (details instanceof Long) {
+            return (Long) details;
+        }
+        if (details instanceof String) {
+            try {
+                return Long.parseLong((String) details);
+            } catch (NumberFormatException e) {
+                log.error("Failed to parse userId from auth details: {}", details);
+            }
+        }
+        throw new RuntimeException("Unable to extract user ID from authentication");
     }
 }

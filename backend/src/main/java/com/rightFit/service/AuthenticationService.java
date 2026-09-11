@@ -3,6 +3,7 @@ package com.rightFit.service;
 import com.rightFit.dto.LoginRequest;
 import com.rightFit.dto.LoginResponse;
 import com.rightFit.dto.TokenResponse;
+import com.rightFit.dto.UserProfileDto;
 import com.rightFit.entity.*;
 import com.rightFit.repository.*;
 import com.rightFit.security.JwtTokenProvider;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -25,8 +27,12 @@ public class AuthenticationService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRoleRepository userRoleRepository;
+    private final FailedLoginAttemptRepository failedLoginAttemptRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
+
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int LOCK_DURATION_MINUTES = 15;
 
     public LoginResponse login(LoginRequest loginRequest, String ipAddress, String userAgent) {
         String employeeId = loginRequest.getEmployeeId();
@@ -42,16 +48,30 @@ public class AuthenticationService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         log.debug("User found: {}", user.getEmail());
-        log.debug("Password hash from DB: {}", user.getPasswordHash());
-        log.debug("Incoming password: {}", password);
+
+        // Check account lock status
+        checkAccountLock(user);
 
         // Check status
         if (!"ACTIVE".equals(user.getStatus())) {
             throw new RuntimeException("Account is inactive");
         }
 
-        // PASSWORD VALIDATION DISABLED - See AUTHENTICATION_SETUP.md for instructions
-        log.debug("Password validation disabled - follow AUTHENTICATION_SETUP.md to enable");
+        // Validate password with BCrypt
+        boolean passwordMatches = passwordEncoder.matches(password, user.getPasswordHash());
+        if (!passwordMatches) {
+            recordFailedLoginAttempt(user, ipAddress, userAgent);
+            // Re-check lock after recording failed attempt
+            checkAccountLock(user);
+            throw new RuntimeException("Invalid password");
+        }
+        log.info("Password validated successfully");
+
+        // Clear failed login attempts on successful login
+        FailedLoginAttempt successAttempt = failedLoginAttemptRepository.findByEmail(user.getEmail()).orElse(null);
+        if (successAttempt != null) {
+            failedLoginAttemptRepository.delete(successAttempt);
+        }
 
         // Get roles
         Set<String> roles = userRoleRepository.findByUserId(user.getId())
@@ -107,7 +127,7 @@ public class AuthenticationService {
                 .build();
     }
 
-    public TokenResponse refreshToken(String refreshToken) {
+    public TokenResponse refreshToken(String refreshToken, Long requestingUserId) {
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new RuntimeException("Invalid refresh token");
         }
@@ -120,6 +140,12 @@ public class AuthenticationService {
         }
 
         User user = rt.getUser();
+
+        // Validate that the requesting user owns this refresh token
+        if (!user.getId().equals(requestingUserId)) {
+            log.warn("Token refresh attempted by user {} for another user's token", requestingUserId);
+            throw new RuntimeException("Unauthorized: Cannot refresh another user's token");
+        }
         Set<String> roles = userRoleRepository.findByUserId(user.getId())
                 .stream()
                 .map(ur -> ur.getRole().getName())
@@ -140,11 +166,83 @@ public class AuthenticationService {
                 .build();
     }
 
-    public void logout(String refreshToken) {
-        refreshTokenRepository.findByTokenValue(refreshToken)
-                .ifPresent(rt -> {
-                    rt.setIsRevoked(true);
-                    refreshTokenRepository.save(rt);
-                });
+    public void logout(String refreshToken, Long requestingUserId) {
+        RefreshToken rt = refreshTokenRepository.findByTokenValue(refreshToken)
+                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+
+        // Validate that the requesting user owns this refresh token
+        if (!rt.getUser().getId().equals(requestingUserId)) {
+            log.warn("Logout attempted by user {} for another user's token", requestingUserId);
+            throw new RuntimeException("Unauthorized: Cannot logout another user's session");
+        }
+
+        rt.setIsRevoked(true);
+        refreshTokenRepository.save(rt);
+    }
+
+    public UserProfileDto getUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Set<String> roles = userRoleRepository.findByUserId(userId)
+                .stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toSet());
+
+        Employee employee = user.getEmployee();
+        String designation = employee != null ? employee.getDesignation() : "N/A";
+        String department = employee != null && employee.getDepartment() != null
+                ? employee.getDepartment().getName() : "N/A";
+        String grade = employee != null ? employee.getGrade() : "N/A";
+        String employmentStatus = employee != null ? employee.getEmploymentStatus() : "N/A";
+        String allocationStatus = employee != null ? employee.getAllocationStatus() : "N/A";
+
+        return UserProfileDto.builder()
+                .userId(user.getId())
+                .employeeId(user.getEmployeeId().toString())
+                .email(user.getEmail())
+                .firstName(employee != null ? employee.getFirstName() : "User")
+                .lastName(employee != null ? employee.getLastName() : user.getEmployeeId().toString())
+                .designation(designation)
+                .department(department)
+                .grade(grade)
+                .roles(roles)
+                .status(user.getStatus())
+                .employmentStatus(employmentStatus)
+                .allocationStatus(allocationStatus)
+                .build();
+    }
+
+    private void checkAccountLock(User user) {
+        FailedLoginAttempt failedAttempt = failedLoginAttemptRepository.findByEmail(user.getEmail()).orElse(null);
+        if (failedAttempt != null && failedAttempt.isLocked()) {
+            log.warn("Login attempt for locked account: {}", user.getEmail());
+            throw new RuntimeException("Account is locked. Please try again later or contact support.");
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFailedLoginAttempt(User user, String ipAddress, String userAgent) {
+        FailedLoginAttempt failedAttempt = failedLoginAttemptRepository.findByEmail(user.getEmail())
+                .orElse(FailedLoginAttempt.builder()
+                        .user(user)
+                        .email(user.getEmail())
+                        .attemptCount(0)
+                        .ipAddress(ipAddress)
+                        .userAgent(userAgent)
+                        .build());
+
+        failedAttempt.incrementAttempt();
+        failedAttempt.setIpAddress(ipAddress);
+        failedAttempt.setUserAgent(userAgent);
+
+        log.debug("Failed login attempt #{} for user: {}", failedAttempt.getAttemptCount(), user.getEmail());
+
+        if (failedAttempt.getAttemptCount() >= MAX_FAILED_ATTEMPTS) {
+            failedAttempt.lock(LOCK_DURATION_MINUTES);
+            log.warn("Account locked due to {} failed login attempts: {}", MAX_FAILED_ATTEMPTS, user.getEmail());
+        }
+
+        failedLoginAttemptRepository.save(failedAttempt);
     }
 }

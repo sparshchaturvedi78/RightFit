@@ -62,26 +62,26 @@ WHERE NOT EXISTS (SELECT 1 FROM employees WHERE employee_id = 'EMP006');
 
 -- ============================================================================
 -- USERS (for login) - Now employees exist so employee_id FK is satisfied
--- Password for all users: Test@123 (8+ chars with special character)
--- BCrypt Hash (cost 10): $2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS
+-- Password for all users: Admin@123 (8+ chars with special character)
+-- BCrypt Hash (cost 10): $2a$10$5GU6A97Xi9WbeV21O0qvMuUkERPAEtORejzNbzYNUGajMR3R53aKi
 -- ============================================================================
 INSERT INTO users (employee_id, email, password_hash, status)
-SELECT 1, 'rajesh.kumar@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
+SELECT 1, 'rajesh.kumar@techcorp.com', '$2a$10$5GU6A97Xi9WbeV21O0qvMuUkERPAEtORejzNbzYNUGajMR3R53aKi', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 1)
 UNION ALL
-SELECT 2, 'priya.sharma@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
+SELECT 2, 'priya.sharma@techcorp.com', '$2a$10$5GU6A97Xi9WbeV21O0qvMuUkERPAEtORejzNbzYNUGajMR3R53aKi', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 2)
 UNION ALL
-SELECT 3, 'amit.patel@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
+SELECT 3, 'amit.patel@techcorp.com', '$2a$10$5GU6A97Xi9WbeV21O0qvMuUkERPAEtORejzNbzYNUGajMR3R53aKi', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 3)
 UNION ALL
-SELECT 4, 'ananya.singh@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
+SELECT 4, 'ananya.singh@techcorp.com', '$2a$10$5GU6A97Xi9WbeV21O0qvMuUkERPAEtORejzNbzYNUGajMR3R53aKi', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 4)
 UNION ALL
-SELECT 5, 'vikram.desai@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
+SELECT 5, 'vikram.desai@techcorp.com', '$2a$10$5GU6A97Xi9WbeV21O0qvMuUkERPAEtORejzNbzYNUGajMR3R53aKi', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 5)
 UNION ALL
-SELECT 6, 'sneha.gupta@techcorp.com', '$2a$10$slYQmyNdGzSgNdrjPHIvHuC8qY0vPKzIFTm1yBLOLb2HQIoJ7Q5lS', 'ACTIVE'
+SELECT 6, 'sneha.gupta@techcorp.com', '$2a$10$5GU6A97Xi9WbeV21O0qvMuUkERPAEtORejzNbzYNUGajMR3R53aKi', 'ACTIVE'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE employee_id = 6);
 
 -- ============================================================================
