@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.security.MessageDigest;
@@ -26,6 +27,7 @@ public class AuthenticationService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final RevokedTokenRepository revokedTokenRepository;
+    private final PasswordHistoryRepository passwordHistoryRepository;
     private final UserRoleRepository userRoleRepository;
     private final FailedLoginAttemptRepository failedLoginAttemptRepository;
     private final JwtTokenProvider jwtTokenProvider;
@@ -35,6 +37,7 @@ public class AuthenticationService {
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_DURATION_MINUTES = 15;
+    private static final int PASSWORD_HISTORY_LIMIT = 5;
 
     public LoginOtpSentResponse login(LoginRequest loginRequest, String ipAddress, String userAgent) {
         String employeeId = loginRequest.getEmployeeId();
@@ -301,7 +304,18 @@ public class AuthenticationService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new RuntimeException("New password cannot be the same as current password");
+        }
+
+        checkPasswordHistory(user, newPassword);
+
+        String oldPasswordHash = user.getPasswordHash();
+        String encodedNewPassword = passwordEncoder.encode(newPassword);
+
+        savePasswordToHistory(user, oldPasswordHash);
+
+        user.setPasswordHash(encodedNewPassword);
         userRepository.save(user);
 
         log.info("Password reset successfully via forgot password for user: {}", email);
@@ -323,10 +337,40 @@ public class AuthenticationService {
             throw new RuntimeException("Old password is incorrect");
         }
 
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new RuntimeException("New password cannot be the same as current password");
+        }
+
+        checkPasswordHistory(user, newPassword);
+
+        String encodedNewPassword = passwordEncoder.encode(newPassword);
+
+        savePasswordToHistory(user, user.getPasswordHash());
+
+        user.setPasswordHash(encodedNewPassword);
         userRepository.save(user);
 
         log.info("Password reset successfully for user: {}", user.getEmail());
+    }
+
+    private void checkPasswordHistory(User user, String newPassword) {
+        List<PasswordHistory> recentPasswords = passwordHistoryRepository.findRecentPasswordsByUserId(user.getId(), PASSWORD_HISTORY_LIMIT);
+
+        for (PasswordHistory history : recentPasswords) {
+            if (passwordEncoder.matches(newPassword, history.getPasswordHash())) {
+                throw new RuntimeException("New password cannot match any of your last " + PASSWORD_HISTORY_LIMIT + " passwords");
+            }
+        }
+    }
+
+    private void savePasswordToHistory(User user, String passwordHash) {
+        PasswordHistory history = PasswordHistory.builder()
+                .user(user)
+                .passwordHash(passwordHash)
+                .changedAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .build();
+        passwordHistoryRepository.save(history);
     }
 
     public LoginResponse verifyLoginOtp(Long userId, String otp) {

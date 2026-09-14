@@ -205,6 +205,14 @@ public class AuthController {
                         .build());
             }
 
+            if (resetPasswordRequest.getOldPassword().equals(resetPasswordRequest.getNewPassword())) {
+                return ResponseEntity.status(400).body(ErrorResponse.builder()
+                        .status(400)
+                        .error("VALIDATION_ERROR")
+                        .message("New password cannot be the same as old password")
+                        .build());
+            }
+
             authenticationService.resetPasswordWithOldPassword(
                     userId,
                     resetPasswordRequest.getOldPassword(),
