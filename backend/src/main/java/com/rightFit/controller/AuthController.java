@@ -80,7 +80,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestBody TokenRequest tokenRequest) {
+    public ResponseEntity<?> logout(@RequestBody TokenRequest tokenRequest, HttpServletRequest request) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -93,7 +93,8 @@ public class AuthController {
             }
 
             Long userId = extractUserIdFromAuth(authentication);
-            authenticationService.logout(tokenRequest.getRefreshToken(), userId);
+            String accessToken = extractTokenFromRequest(request);
+            authenticationService.logout(tokenRequest.getRefreshToken(), userId, accessToken);
             return ResponseEntity.ok(new LogoutResponse("Logged out successfully"));
         } catch (Exception e) {
             log.error("Logout failed: {}", e.getMessage());
@@ -269,5 +270,13 @@ public class AuthController {
             }
         }
         throw new RuntimeException("Unable to extract user ID from authentication");
+    }
+
+    private String extractTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 }

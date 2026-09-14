@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Propagation;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @Slf4j
 @Service
@@ -23,6 +25,7 @@ public class AuthenticationService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final RevokedTokenRepository revokedTokenRepository;
     private final UserRoleRepository userRoleRepository;
     private final FailedLoginAttemptRepository failedLoginAttemptRepository;
     private final JwtTokenProvider jwtTokenProvider;
@@ -113,11 +116,10 @@ public class AuthenticationService {
                 .build();
     }
 
-    public void logout(String refreshToken, Long requestingUserId) {
+    public void logout(String refreshToken, Long requestingUserId, String accessToken) {
         RefreshToken rt = refreshTokenRepository.findByTokenValue(refreshToken)
                 .orElseThrow(() -> new RuntimeException("Refresh token not found"));
 
-        // Validate that the requesting user owns this refresh token
         if (!rt.getUser().getId().equals(requestingUserId)) {
             log.warn("Logout attempted by user {} for another user's token", requestingUserId);
             throw new RuntimeException("Unauthorized: Cannot logout another user's session");
@@ -125,6 +127,54 @@ public class AuthenticationService {
 
         rt.setIsRevoked(true);
         refreshTokenRepository.save(rt);
+
+        if (accessToken != null && !accessToken.isEmpty()) {
+            revokeAccessToken(accessToken, requestingUserId);
+        }
+    }
+
+    private void revokeAccessToken(String accessToken, Long userId) {
+        try {
+            String tokenHash = hashToken(accessToken);
+            Long expirationMs = jwtTokenProvider.getExpirationTimeMs();
+            LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expirationMs / 1000);
+
+            if (!revokedTokenRepository.existsByTokenHash(tokenHash)) {
+                RevokedToken revokedToken = RevokedToken.builder()
+                        .user(userRepository.findById(userId).orElseThrow())
+                        .tokenHash(tokenHash)
+                        .revokedAt(LocalDateTime.now())
+                        .expiresAt(expiresAt)
+                        .reason("USER_LOGOUT")
+                        .build();
+                revokedTokenRepository.save(revokedToken);
+                log.info("Access token revoked for user: {}", userId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to revoke access token: {}", e.getMessage());
+        }
+    }
+
+    private String hashToken(String token) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(token.getBytes());
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
+
+    public boolean isTokenRevoked(String token) {
+        try {
+            String tokenHash = hashToken(token);
+            return revokedTokenRepository.existsByTokenHash(tokenHash);
+        } catch (Exception e) {
+            log.error("Error checking token revocation: {}", e.getMessage());
+            return false;
+        }
     }
 
     public UserProfileDto getUserProfile(Long userId) {

@@ -14,15 +14,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ResetPasswordRequest {
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email must be valid")
-    private String email;
-
+    @NotBlank(message = "Old password is required")
     private String oldPassword;
-
-    @NotBlank(message = "OTP is required when old password is not provided")
-    @Size(min = 6, max = 6, message = "OTP must be 6 digits")
-    private String otp;
 
     @NotBlank(message = "New password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
