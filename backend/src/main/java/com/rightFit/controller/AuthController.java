@@ -25,10 +25,25 @@ public class AuthController {
         String userAgent = request.getHeader("User-Agent");
 
         try {
-            LoginResponse response = authenticationService.login(loginRequest, ipAddress, userAgent);
+            LoginOtpSentResponse response = authenticationService.login(loginRequest, ipAddress, userAgent);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Login failed: {}", e.getMessage());
+            return ResponseEntity.status(401).body(ErrorResponse.builder()
+                    .status(401)
+                    .error("AUTHENTICATION_FAILED")
+                    .message(e.getMessage())
+                    .build());
+        }
+    }
+
+    @PostMapping("/verify-login-otp")
+    public ResponseEntity<?> verifyLoginOtp(@Valid @RequestBody VerifyLoginOtpRequest verifyLoginOtpRequest) {
+        try {
+            LoginResponse response = authenticationService.verifyLoginOtp(verifyLoginOtpRequest.getSessionId(), verifyLoginOtpRequest.getOtp());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Login OTP verification failed: {}", e.getMessage());
             return ResponseEntity.status(401).body(ErrorResponse.builder()
                     .status(401)
                     .error("AUTHENTICATION_FAILED")
@@ -85,6 +100,123 @@ public class AuthController {
             return ResponseEntity.status(401).body(ErrorResponse.builder()
                     .status(401)
                     .error("LOGOUT_FAILED")
+                    .message(e.getMessage())
+                    .build());
+        }
+    }
+
+    @PostMapping("/verify-email-otp")
+    public ResponseEntity<?> verifyEmailOtp(@Valid @RequestBody VerifyEmailRequest verifyEmailRequest) {
+        try {
+            authenticationService.verifyEmail(verifyEmailRequest.getEmail(), verifyEmailRequest.getOtp());
+            return ResponseEntity.ok(new LogoutResponse("Email verified successfully"));
+        } catch (Exception e) {
+            log.error("Email verification failed: {}", e.getMessage());
+            return ResponseEntity.status(400).body(ErrorResponse.builder()
+                    .status(400)
+                    .error("VERIFICATION_FAILED")
+                    .message(e.getMessage())
+                    .build());
+        }
+    }
+
+    @PostMapping("/forgot-password/step1")
+    public ResponseEntity<?> forgotPasswordStep1(@Valid @RequestBody ForgotPasswordStep1Request request) {
+        try {
+            authenticationService.forgotPasswordStep1(request.getEmail());
+            return ResponseEntity.ok(new LogoutResponse("OTP sent to your registered email. Please check your inbox."));
+        } catch (Exception e) {
+            log.error("Forgot password step 1 failed: {}", e.getMessage());
+            return ResponseEntity.status(400).body(ErrorResponse.builder()
+                    .status(400)
+                    .error("FORGOT_PASSWORD_FAILED")
+                    .message(e.getMessage())
+                    .build());
+        }
+    }
+
+    @PostMapping("/forgot-password/step2")
+    public ResponseEntity<?> forgotPasswordStep2(@Valid @RequestBody ForgotPasswordStep2Request request) {
+        try {
+            authenticationService.forgotPasswordStep2(request.getEmail(), request.getOtp());
+            return ResponseEntity.ok(new LogoutResponse("OTP verified successfully. Proceed to reset password."));
+        } catch (Exception e) {
+            log.error("Forgot password step 2 failed: {}", e.getMessage());
+            return ResponseEntity.status(400).body(ErrorResponse.builder()
+                    .status(400)
+                    .error("OTP_VERIFICATION_FAILED")
+                    .message(e.getMessage())
+                    .build());
+        }
+    }
+
+    @PostMapping("/forgot-password/step3")
+    public ResponseEntity<?> forgotPasswordStep3(@Valid @RequestBody ForgotPasswordStep3Request request) {
+        try {
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                return ResponseEntity.status(400).body(ErrorResponse.builder()
+                        .status(400)
+                        .error("VALIDATION_ERROR")
+                        .message("Passwords do not match")
+                        .build());
+            }
+
+            authenticationService.forgotPasswordStep3(request.getEmail(), request.getNewPassword(), request.getConfirmPassword());
+            return ResponseEntity.ok(new LogoutResponse("Password reset successfully. You can now login with your new password."));
+        } catch (Exception e) {
+            log.error("Forgot password step 3 failed: {}", e.getMessage());
+            return ResponseEntity.status(400).body(ErrorResponse.builder()
+                    .status(400)
+                    .error("PASSWORD_RESET_FAILED")
+                    .message(e.getMessage())
+                    .build());
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest resetPasswordRequest) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(ErrorResponse.builder()
+                    .status(401)
+                    .error("UNAUTHORIZED")
+                    .message("You must be logged in to reset password")
+                    .build());
+        }
+
+        try {
+            Long userId = extractUserIdFromAuth(authentication);
+
+            if (!resetPasswordRequest.getNewPassword().equals(resetPasswordRequest.getConfirmPassword())) {
+                return ResponseEntity.status(400).body(ErrorResponse.builder()
+                        .status(400)
+                        .error("VALIDATION_ERROR")
+                        .message("Passwords do not match")
+                        .build());
+            }
+
+            if (resetPasswordRequest.getOldPassword() == null || resetPasswordRequest.getOldPassword().isEmpty()) {
+                return ResponseEntity.status(400).body(ErrorResponse.builder()
+                        .status(400)
+                        .error("VALIDATION_ERROR")
+                        .message("Old password is required")
+                        .build());
+            }
+
+            authenticationService.resetPasswordWithOldPassword(
+                    userId,
+                    resetPasswordRequest.getOldPassword(),
+                    resetPasswordRequest.getNewPassword(),
+                    resetPasswordRequest.getConfirmPassword()
+            );
+
+            return ResponseEntity.ok(new LogoutResponse("Password reset successfully"));
+        } catch (Exception e) {
+            log.error("Password reset failed: {}", e.getMessage());
+            return ResponseEntity.status(400).body(ErrorResponse.builder()
+                    .status(400)
+                    .error("PASSWORD_RESET_FAILED")
                     .message(e.getMessage())
                     .build());
         }

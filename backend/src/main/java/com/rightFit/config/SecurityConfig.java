@@ -30,7 +30,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/health").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/verify-login-otp", "/api/auth/verify-email-otp",
+                                "/api/auth/forgot-password/**", "/api/health").permitAll()
+                        .requestMatchers("/api/auth/reset-password").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

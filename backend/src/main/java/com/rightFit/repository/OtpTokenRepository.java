@@ -15,6 +15,8 @@ public interface OtpTokenRepository extends JpaRepository<OtpToken, Long> {
 
     Optional<OtpToken> findByOtpCodeAndEmail(String otpCode, String email);
 
+    Optional<OtpToken> findByEmailAndOtpCodeAndPurpose(String email, String otpCode, String purpose);
+
     List<OtpToken> findByUserAndPurposeAndIsUsedFalse(User user, String purpose);
 
     List<OtpToken> findByUserAndIsUsedFalseAndExpiresAtAfter(User user, LocalDateTime now);
@@ -22,4 +24,6 @@ public interface OtpTokenRepository extends JpaRepository<OtpToken, Long> {
     void deleteByExpiresAtBefore(LocalDateTime dateTime);
 
     void deleteByUserAndPurpose(User user, String purpose);
+
+    void deleteByEmailAndPurpose(String email, String purpose);
 }

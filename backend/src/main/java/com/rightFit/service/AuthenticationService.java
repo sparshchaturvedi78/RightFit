@@ -1,9 +1,6 @@
 package com.rightFit.service;
 
-import com.rightFit.dto.LoginRequest;
-import com.rightFit.dto.LoginResponse;
-import com.rightFit.dto.TokenResponse;
-import com.rightFit.dto.UserProfileDto;
+import com.rightFit.dto.*;
 import com.rightFit.entity.*;
 import com.rightFit.repository.*;
 import com.rightFit.security.JwtTokenProvider;
@@ -30,100 +27,50 @@ public class AuthenticationService {
     private final FailedLoginAttemptRepository failedLoginAttemptRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
+    private final OtpService otpService;
+    private final EmailService emailService;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_DURATION_MINUTES = 15;
 
-    public LoginResponse login(LoginRequest loginRequest, String ipAddress, String userAgent) {
+    public LoginOtpSentResponse login(LoginRequest loginRequest, String ipAddress, String userAgent) {
         String employeeId = loginRequest.getEmployeeId();
         String password = loginRequest.getPassword();
 
         log.info("Login attempt for employee ID: {}", employeeId);
 
-        // Parse employee ID as Long
         Long empId = Long.parseLong(employeeId);
 
-        // Find user
         User user = userRepository.findByEmployeeId(empId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         log.debug("User found: {}", user.getEmail());
 
-        // Check account lock status
         checkAccountLock(user);
 
-        // Check status
         if (!"ACTIVE".equals(user.getStatus())) {
             throw new RuntimeException("Account is inactive");
         }
 
-        // Validate password with BCrypt
         boolean passwordMatches = passwordEncoder.matches(password, user.getPasswordHash());
         if (!passwordMatches) {
             recordFailedLoginAttempt(user, ipAddress, userAgent);
-            // Re-check lock after recording failed attempt
             checkAccountLock(user);
             throw new RuntimeException("Invalid password");
         }
         log.info("Password validated successfully");
 
-        // Clear failed login attempts on successful login
-        FailedLoginAttempt successAttempt = failedLoginAttemptRepository.findByEmail(user.getEmail()).orElse(null);
-        if (successAttempt != null) {
-            failedLoginAttemptRepository.delete(successAttempt);
-        }
+        // Generate OTP for login verification
+        String otp = otpService.generateOtp(user, user.getEmail(), "LOGIN_VERIFICATION");
+        emailService.sendOtpEmail(user.getEmail(), otp, "LOGIN_VERIFICATION");
 
-        // Get roles
-        Set<String> roles = userRoleRepository.findByUserId(user.getId())
-                .stream()
-                .map(ur -> ur.getRole().getName())
-                .collect(Collectors.toSet());
+        log.info("Login OTP sent to: {}", user.getEmail());
 
-        // Generate tokens
-        String accessToken = jwtTokenProvider.generateAccessToken(
-                user.getId(),
-                empId.toString(),
-                user.getEmail(),
-                roles
-        );
-
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getEmail());
-
-        // Save refresh token
-        RefreshToken rt = RefreshToken.builder()
-                .user(user)
-                .tokenValue(refreshToken)
-                .isRevoked(false)
-                .expiresAt(LocalDateTime.now().plusDays(7))
-                .build();
-        refreshTokenRepository.save(rt);
-
-        // Update last login
-        user.setLastLogin(LocalDateTime.now());
-        userRepository.save(user);
-
-        log.info("Login successful for user: {}", user.getEmail());
-
-        // Get employee details if available, otherwise use defaults
-        String firstName = "User";
-        String lastName = empId.toString();
-        if (user.getEmployee() != null) {
-            firstName = user.getEmployee().getFirstName();
-            lastName = user.getEmployee().getLastName();
-        }
-
-        return LoginResponse.builder()
-                .userId(user.getId())
-                .employeeId(empId.toString())
+        return LoginOtpSentResponse.builder()
+                .message("OTP sent to registered email. Please provide OTP to complete login.")
                 .email(user.getEmail())
-                .firstName(firstName)
-                .lastName(lastName)
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(jwtTokenProvider.getExpirationTimeSecs())
-                .roles(roles)
-                .status(user.getStatus())
+                .sessionId(user.getId().toString())
+                .expiryMinutes(10L)
                 .build();
     }
 
@@ -244,5 +191,156 @@ public class AuthenticationService {
         }
 
         failedLoginAttemptRepository.save(failedAttempt);
+    }
+
+    public void requestEmailVerificationOtp(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+
+        if ("ACTIVE".equals(user.getStatus())) {
+            throw new RuntimeException("Email already verified");
+        }
+
+        String otp = otpService.generateOtp(user, email, "EMAIL_VERIFICATION");
+        emailService.sendOtpEmail(email, otp, "EMAIL_VERIFICATION");
+
+        log.info("Email verification OTP sent to: {}", email);
+    }
+
+    public void verifyEmail(String email, String otp) {
+        if (!otpService.validateOtp(email, otp, "EMAIL_VERIFICATION")) {
+            throw new RuntimeException("Invalid or expired OTP");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setStatus("ACTIVE");
+        userRepository.save(user);
+
+        log.info("Email verified for user: {}", email);
+    }
+
+    // ============================================================
+    // FORGOT PASSWORD - 3 STEP PROCESS (For Everyone)
+    // ============================================================
+
+    public void forgotPasswordStep1(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No account found with this email"));
+
+        String otp = otpService.generateOtp(user, email, "FORGOT_PASSWORD");
+        emailService.sendOtpEmail(email, otp, "FORGOT_PASSWORD");
+
+        log.info("Forgot password OTP sent to: {}", email);
+    }
+
+    public void forgotPasswordStep2(String email, String otp) {
+        if (!otpService.validateOtp(email, otp, "FORGOT_PASSWORD")) {
+            throw new RuntimeException("Invalid or expired OTP");
+        }
+
+        log.info("Forgot password OTP verified for email: {}", email);
+    }
+
+    public void forgotPasswordStep3(String email, String newPassword, String confirmPassword) {
+        if (!newPassword.equals(confirmPassword)) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        log.info("Password reset successfully via forgot password for user: {}", email);
+    }
+
+    // ============================================================
+    // RESET PASSWORD - For Logged-In Users Only
+    // ============================================================
+
+    public void resetPasswordWithOldPassword(Long userId, String oldPassword, String newPassword, String confirmPassword) {
+        if (!newPassword.equals(confirmPassword)) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new RuntimeException("Old password is incorrect");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        log.info("Password reset successfully for user: {}", user.getEmail());
+    }
+
+    public LoginResponse verifyLoginOtp(Long userId, String otp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!otpService.validateOtp(user.getEmail(), otp, "LOGIN_VERIFICATION")) {
+            throw new RuntimeException("Invalid or expired OTP");
+        }
+
+        log.info("Login OTP verified for user: {}", user.getEmail());
+
+        // Clear failed login attempts on successful OTP verification
+        FailedLoginAttempt successAttempt = failedLoginAttemptRepository.findByEmail(user.getEmail()).orElse(null);
+        if (successAttempt != null) {
+            failedLoginAttemptRepository.delete(successAttempt);
+        }
+
+        Set<String> roles = userRoleRepository.findByUserId(user.getId())
+                .stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toSet());
+
+        String accessToken = jwtTokenProvider.generateAccessToken(
+                user.getId(),
+                user.getEmployeeId().toString(),
+                user.getEmail(),
+                roles
+        );
+
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getEmail());
+
+        RefreshToken rt = RefreshToken.builder()
+                .user(user)
+                .tokenValue(refreshToken)
+                .isRevoked(false)
+                .expiresAt(LocalDateTime.now().plusDays(7))
+                .build();
+        refreshTokenRepository.save(rt);
+
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
+
+        log.info("Login successful for user: {}", user.getEmail());
+
+        String firstName = "User";
+        String lastName = user.getEmployeeId().toString();
+        if (user.getEmployee() != null) {
+            firstName = user.getEmployee().getFirstName();
+            lastName = user.getEmployee().getLastName();
+        }
+
+        return LoginResponse.builder()
+                .userId(user.getId())
+                .employeeId(user.getEmployeeId().toString())
+                .email(user.getEmail())
+                .firstName(firstName)
+                .lastName(lastName)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtTokenProvider.getExpirationTimeSecs())
+                .roles(roles)
+                .status(user.getStatus())
+                .build();
     }
 }
