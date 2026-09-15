@@ -11,11 +11,14 @@ import com.rightFit.entity.Department;
 import com.rightFit.entity.Location;
 import com.rightFit.repository.EmployeeRepository;
 import com.rightFit.repository.UserRepository;
+import com.rightFit.repository.DepartmentRepository;
+import com.rightFit.repository.LocationRepository;
 import com.rightFit.audit.Auditable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,9 @@ public class EmployeeManagementService {
 
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
+    private final DepartmentRepository departmentRepository;
+    private final LocationRepository locationRepository;
+    private final PasswordEncoder passwordEncoder;
     private final UserRoleService userRoleService;
     private final AuditLogService auditLogService;
 
@@ -57,16 +63,28 @@ public class EmployeeManagementService {
                 .workingHoursPerDay(request.getWorkingHoursPerDay() != null ? request.getWorkingHoursPerDay() : 8.0)
                 .rmgManager(rmg)
                 .employmentStatus(request.getEmploymentStatus() != null ? request.getEmploymentStatus() : "ACTIVE")
-                .allocationStatus(request.getAllocationStatus() != null ? request.getAllocationStatus() : "AVAILABLE")
+                .allocationStatus(request.getAllocationStatus() != null ? request.getAllocationStatus() : "UNALLOCATED")
                 .availabilityStatus(request.getAvailabilityStatus() != null ? request.getAvailabilityStatus() : "AVAILABLE")
                 .build();
 
         Employee savedEmployee = employeeRepository.save(employee);
         log.info("Employee created successfully: {} (ID: {})", savedEmployee.getEmployeeId(), savedEmployee.getId());
 
-        if (request.getOptionalRoleId() != null && savedEmployee.getUser() != null) {
+        // Create User account with hashed password
+        User user = User.builder()
+                .email(request.getEmail())
+                .employeeId(savedEmployee.getEmployeeId())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .status("ACTIVE")
+                .build();
+        User savedUser = userRepository.save(user);
+        savedEmployee.setUser(savedUser);
+        employeeRepository.save(savedEmployee);
+        log.info("User account created for employee: {}", request.getEmployeeId());
+
+        if (request.getOptionalRoleId() != null) {
             try {
-                userRoleService.assignRoleToUser(savedEmployee.getUser().getId(), request.getOptionalRoleId(),
+                userRoleService.assignRoleToUser(savedUser.getId(), request.getOptionalRoleId(),
                         getCurrentUserId());
                 log.info("Role assigned to new employee: {}", request.getOptionalRoleId());
             } catch (Exception e) {
@@ -108,8 +126,21 @@ public class EmployeeManagementService {
         if (request.getYearsOfExperience() != null) {
             employee.setYearsOfExperience(request.getYearsOfExperience());
         }
+        if (request.getDateOfJoining() != null) {
+            employee.setDateOfJoining(request.getDateOfJoining());
+        }
         if (request.getWorkingHoursPerDay() != null) {
             employee.setWorkingHoursPerDay(request.getWorkingHoursPerDay());
+        }
+        if (request.getDepartmentId() != null) {
+            Department department = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
+            employee.setDepartment(department);
+        }
+        if (request.getLocationId() != null) {
+            Location location = locationRepository.findById(request.getLocationId())
+                    .orElseThrow(() -> new RuntimeException("Location not found: " + request.getLocationId()));
+            employee.setLocation(location);
         }
         if (request.getPoolStatus() != null) {
             employee.setPoolStatus(request.getPoolStatus());
@@ -200,6 +231,145 @@ public class EmployeeManagementService {
         if (employeeRepository.findByEmail(email).isPresent()) {
             throw new RuntimeException("Email already exists: " + email);
         }
+    }
+
+    public EmployeeDTO getEmployeeByEmployeeId(String employeeId) {
+        log.debug("Fetching employee by employeeId: {}", employeeId);
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+        return mapToDTO(employee);
+    }
+
+    public EmployeeDTO updateEmployeeByEmployeeId(String employeeId, UpdateEmployeeRequest request) {
+        log.info("Updating employee by employeeId: {}", employeeId);
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+
+        if (request.getFirstName() != null) {
+            employee.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            employee.setLastName(request.getLastName());
+        }
+        if (request.getEmail() != null) {
+            validateEmailUniquenessForEmployeeId(request.getEmail(), employeeId);
+            employee.setEmail(request.getEmail());
+        }
+        if (request.getDesignation() != null) {
+            employee.setDesignation(request.getDesignation());
+        }
+        if (request.getGrade() != null) {
+            employee.setGrade(request.getGrade());
+        }
+        if (request.getDomain() != null) {
+            employee.setDomain(request.getDomain());
+        }
+        if (request.getPhone() != null) {
+            employee.setPhone(request.getPhone());
+        }
+        if (request.getYearsOfExperience() != null) {
+            employee.setYearsOfExperience(request.getYearsOfExperience());
+        }
+        if (request.getDateOfJoining() != null) {
+            employee.setDateOfJoining(request.getDateOfJoining());
+        }
+        if (request.getWorkingHoursPerDay() != null) {
+            employee.setWorkingHoursPerDay(request.getWorkingHoursPerDay());
+        }
+        if (request.getDepartmentId() != null) {
+            Department department = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
+            employee.setDepartment(department);
+        }
+        if (request.getLocationId() != null) {
+            Location location = locationRepository.findById(request.getLocationId())
+                    .orElseThrow(() -> new RuntimeException("Location not found: " + request.getLocationId()));
+            employee.setLocation(location);
+        }
+        if (request.getPoolStatus() != null) {
+            employee.setPoolStatus(request.getPoolStatus());
+        }
+        if (request.getEmploymentStatus() != null) {
+            employee.setEmploymentStatus(request.getEmploymentStatus());
+        }
+        if (request.getAllocationStatus() != null) {
+            employee.setAllocationStatus(request.getAllocationStatus());
+        }
+        if (request.getAvailabilityStatus() != null) {
+            employee.setAvailabilityStatus(request.getAvailabilityStatus());
+        }
+        if (request.getAvailableFromDate() != null) {
+            employee.setAvailableFromDate(request.getAvailableFromDate());
+        }
+
+        employee.setUpdatedAt(LocalDateTime.now());
+        Employee updated = employeeRepository.save(employee);
+        log.info("Employee updated successfully by employeeId: {}", employeeId);
+
+        return mapToDTO(updated);
+    }
+
+    public void changeRmgByEmployeeId(String employeeId, ChangeRmgRequest request) {
+        log.info("Changing RMG for employee by employeeId: {}", employeeId);
+
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+
+        Employee newRmg = employeeRepository.findById(request.getNewRmgId())
+                .orElseThrow(() -> new RuntimeException("New RMG not found: " + request.getNewRmgId()));
+
+        employee.setRmgManager(newRmg);
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeRepository.save(employee);
+
+        log.info("RMG changed for employee {} to {}", employeeId, request.getNewRmgId());
+        auditLogService.logAction(getCurrentUserId(), "RMG_CHANGED", "EMPLOYEE", employee.getId(),
+                employee.getRmgManager() != null ? employee.getRmgManager().getId() : null,
+                request.getNewRmgId(), request.getReason());
+    }
+
+    public void deactivateEmployeeByEmployeeId(String employeeId, DeactivateEmployeeRequest request) {
+        log.info("Deactivating employee by employeeId: {}", employeeId);
+
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+
+        if (employee.getUser() != null) {
+            employee.getUser().setStatus("INACTIVE");
+        }
+        employee.setEmploymentStatus("INACTIVE");
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeRepository.save(employee);
+
+        log.info("Employee deactivated successfully by employeeId: {}", employeeId);
+        auditLogService.logAction(getCurrentUserId(), "EMPLOYEE_DEACTIVATED", "EMPLOYEE", employee.getId(),
+                "ACTIVE", "INACTIVE", request.getReason());
+    }
+
+    public void reactivateEmployeeByEmployeeId(String employeeId, DeactivateEmployeeRequest request) {
+        log.info("Reactivating employee by employeeId: {}", employeeId);
+
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+
+        if (employee.getUser() != null) {
+            employee.getUser().setStatus("ACTIVE");
+        }
+        employee.setEmploymentStatus("ACTIVE");
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeRepository.save(employee);
+
+        log.info("Employee reactivated successfully by employeeId: {}", employeeId);
+        auditLogService.logAction(getCurrentUserId(), "EMPLOYEE_REACTIVATED", "EMPLOYEE", employee.getId(),
+                "INACTIVE", "ACTIVE", request.getReason());
+    }
+
+    private void validateEmailUniquenessForEmployeeId(String email, String employeeId) {
+        employeeRepository.findByEmail(email).ifPresent(emp -> {
+            if (!emp.getEmployeeId().equals(employeeId)) {
+                throw new RuntimeException("Email already exists: " + email);
+            }
+        });
     }
 
     private void validateEmailUniqueness(String email, Long excludeEmployeeId) {

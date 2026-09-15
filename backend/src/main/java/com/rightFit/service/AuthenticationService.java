@@ -45,9 +45,7 @@ public class AuthenticationService {
 
         log.info("Login attempt for employee ID: {}", employeeId);
 
-        Long empId = Long.parseLong(employeeId);
-
-        User user = userRepository.findByEmployeeId(empId)
+        User user = userRepository.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         log.debug("User found: {}", user.getEmail());
@@ -199,10 +197,10 @@ public class AuthenticationService {
 
         return UserProfileDto.builder()
                 .userId(user.getId())
-                .employeeId(user.getEmployeeId().toString())
+                .employeeId(user.getEmployeeId())
                 .email(user.getEmail())
                 .firstName(employee != null ? employee.getFirstName() : "User")
-                .lastName(employee != null ? employee.getLastName() : user.getEmployeeId().toString())
+                .lastName(employee != null ? employee.getLastName() : user.getEmployeeId())
                 .designation(designation)
                 .department(department)
                 .grade(grade)
@@ -425,7 +423,7 @@ public class AuthenticationService {
 
         return LoginResponse.builder()
                 .userId(user.getId())
-                .employeeId(user.getEmployeeId().toString())
+                .employeeId(user.getEmployeeId())
                 .email(user.getEmail())
                 .firstName(firstName)
                 .lastName(lastName)

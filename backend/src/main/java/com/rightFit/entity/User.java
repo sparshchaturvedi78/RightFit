@@ -1,5 +1,6 @@
 package com.rightFit.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,11 +21,12 @@ public class User {
     private Long id;
 
     @Column(name = "employee_id", nullable = false, unique = true)
-    private Long employeeId;
+    private String employeeId;
 
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
@@ -46,9 +48,11 @@ public class User {
     @Column(name = "updated_by")
     private String updatedBy;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserRole> userRoles;
 
+    @JsonIgnore
     @OneToOne(mappedBy = "user", fetch = FetchType.EAGER)
     private Employee employee;
 
