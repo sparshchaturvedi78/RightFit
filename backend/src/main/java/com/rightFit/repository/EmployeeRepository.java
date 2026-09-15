@@ -1,0 +1,56 @@
+package com.rightFit.repository;
+
+import com.rightFit.entity.Employee;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.List;
+
+@Repository
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+
+    Optional<Employee> findByEmployeeId(String employeeId);
+
+    Optional<Employee> findByEmail(String email);
+
+    Optional<Employee> findByUserId(Long userId);
+
+    Page<Employee> findByEmploymentStatus(String status, Pageable pageable);
+
+    Page<Employee> findByDepartmentId(Long departmentId, Pageable pageable);
+
+    Page<Employee> findByRmgManagerId(Long rmgId, Pageable pageable);
+
+    Page<Employee> findByDesignation(String designation, Pageable pageable);
+
+    List<Employee> findByRmgManagerId(Long rmgId);
+
+    List<Employee> findByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
+
+    @Query("SELECT e FROM Employee e WHERE " +
+            "(:employeeId IS NULL OR e.employeeId LIKE CONCAT('%', :employeeId, '%')) AND " +
+            "(:firstName IS NULL OR e.firstName LIKE CONCAT('%', :firstName, '%')) AND " +
+            "(:lastName IS NULL OR e.lastName LIKE CONCAT('%', :lastName, '%')) AND " +
+            "(:email IS NULL OR e.email LIKE CONCAT('%', :email, '%')) AND " +
+            "(:status IS NULL OR e.employmentStatus = :status) AND " +
+            "(:designation IS NULL OR e.designation = :designation) AND " +
+            "(:departmentId IS NULL OR e.department.id = :departmentId) AND " +
+            "(:rmgId IS NULL OR e.rmgManager.id = :rmgId)")
+    Page<Employee> searchEmployees(
+            @Param("employeeId") String employeeId,
+            @Param("firstName") String firstName,
+            @Param("lastName") String lastName,
+            @Param("email") String email,
+            @Param("status") String status,
+            @Param("designation") String designation,
+            @Param("departmentId") Long departmentId,
+            @Param("rmgId") Long rmgId,
+            Pageable pageable);
+
+    long countByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
+}
