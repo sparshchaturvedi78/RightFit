@@ -29,6 +29,12 @@ public class UserRole {
     @Column(name = "assigned_at", nullable = false)
     private LocalDateTime assignedAt;
 
+    @Column(name = "assigned_by")
+    private Long assignedBy;
+
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+
     @PrePersist
     protected void onCreate() {
         assignedAt = LocalDateTime.now();

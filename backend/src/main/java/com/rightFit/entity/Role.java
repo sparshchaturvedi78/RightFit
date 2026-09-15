@@ -25,6 +25,12 @@ public class Role {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "role_type", nullable = false)
+    private String roleType; // SYSTEM or CUSTOM
+
+    @Column(name = "is_modifiable", nullable = false)
+    private Boolean isModifiable = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -33,6 +39,9 @@ public class Role {
 
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserRole> userRoles;
+
+    @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<RolePermission> rolePermissions;
 
     @PrePersist
     protected void onCreate() {
