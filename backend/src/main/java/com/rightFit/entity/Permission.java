@@ -40,6 +40,9 @@ public class Permission {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @Column(name = "is_system")
+    private Boolean isSystem = false;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

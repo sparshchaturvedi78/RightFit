@@ -1,8 +1,11 @@
 package com.rightFit.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rightFit.security.JwtAuthenticationFilter;
 import com.rightFit.security.RbacPermissionEvaluator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
@@ -24,6 +27,16 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RbacPermissionEvaluator rbacPermissionEvaluator;
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
+    @Bean
+    public CacheManager cacheManager() {
+        return new ConcurrentMapCacheManager("permissions", "systemPermissions", "permissionsByRole", "permissionsByUser");
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

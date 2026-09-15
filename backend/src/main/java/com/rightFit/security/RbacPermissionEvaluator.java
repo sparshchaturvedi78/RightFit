@@ -65,17 +65,15 @@ public class RbacPermissionEvaluator implements PermissionEvaluator {
 
     private Long extractUserId(Authentication authentication) {
         try {
-            if (authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
-                // This is a basic extraction; adjust based on your UserDetails implementation
-                // For now, we'll try to get it from the principal name or from SecurityContextUtil
-                return null;
+            if (authentication.getDetails() instanceof Long) {
+                return (Long) authentication.getDetails();
             }
-            if (authentication.getPrincipal() instanceof String) {
-                String principal = (String) authentication.getPrincipal();
+            if (authentication.getDetails() != null) {
+                String detailsStr = authentication.getDetails().toString();
                 try {
-                    return Long.parseLong(principal);
+                    return Long.parseLong(detailsStr);
                 } catch (NumberFormatException e) {
-                    log.debug("Could not parse user ID from principal: {}", principal);
+                    log.debug("Could not parse user ID from details: {}", detailsStr);
                 }
             }
         } catch (Exception e) {

@@ -8,6 +8,7 @@ import com.rightFit.exception.LastAdminException;
 import com.rightFit.repository.UserRepository;
 import com.rightFit.repository.RoleRepository;
 import com.rightFit.repository.UserRoleRepository;
+import com.rightFit.repository.RolePermissionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class UserRoleService {
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final RolePermissionRepository rolePermissionRepository;
     private final PermissionService permissionService;
 
     @Transactional(readOnly = true)
@@ -37,9 +39,9 @@ public class UserRoleService {
     public List<Long> getUserPermissionIds(Long userId) {
         List<UserRole> userRoles = getUserRoles(userId);
         return userRoles.stream()
-                .flatMap(ur -> userRoleRepository.findByRoleId(ur.getRole().getId())
+                .flatMap(ur -> rolePermissionRepository.findByRoleId(ur.getRole().getId())
                         .stream()
-                        .map(rp -> rp.getRole().getId()))
+                        .map(rp -> rp.getPermission().getId()))
                 .distinct()
                 .collect(Collectors.toList());
     }
