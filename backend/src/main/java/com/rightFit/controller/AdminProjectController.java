@@ -38,7 +38,7 @@ public class AdminProjectController {
     }
 
     @GetMapping
-    @PreAuthorize("hasPermission(null, 'PROJECT_VIEW')")
+    @PreAuthorize("hasPermission(null, 'PROJECT_READ')")
     public ResponseEntity<Page<ProjectDTO>> getProjects(
             @RequestParam(required = false) String projectId,
             @RequestParam(required = false) String projectName,
@@ -62,7 +62,7 @@ public class AdminProjectController {
     }
 
     @GetMapping("/{projectId}")
-    @PreAuthorize("hasPermission(null, 'PROJECT_VIEW')")
+    @PreAuthorize("hasPermission(null, 'PROJECT_READ')")
     public ResponseEntity<ProjectDTO> getProject(@PathVariable Long projectId) {
         log.info("Fetching project: {}", projectId);
         ProjectDTO project = projectManagementService.getProject(projectId);
@@ -96,6 +96,16 @@ public class AdminProjectController {
             @Valid @RequestBody CloseProjectRequest request) {
         log.info("Closing project: {}", projectId);
         projectManagementService.closeProject(projectId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{projectId}/reopen")
+    @PreAuthorize("hasPermission(null, 'PROJECT_UPDATE')")
+    public ResponseEntity<Void> reopenProject(
+            @PathVariable Long projectId,
+            @Valid @RequestBody CloseProjectRequest request) {
+        log.info("Reopening project: {}", projectId);
+        projectManagementService.reopenProject(projectId, request);
         return ResponseEntity.noContent().build();
     }
 }

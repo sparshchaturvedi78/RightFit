@@ -33,10 +33,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     List<Employee> findByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
 
     @Query("SELECT e FROM Employee e WHERE " +
-            "(:employeeId IS NULL OR e.employeeId LIKE CONCAT('%', :employeeId, '%')) AND " +
-            "(:firstName IS NULL OR e.firstName LIKE CONCAT('%', :firstName, '%')) AND " +
-            "(:lastName IS NULL OR e.lastName LIKE CONCAT('%', :lastName, '%')) AND " +
-            "(:email IS NULL OR e.email LIKE CONCAT('%', :email, '%')) AND " +
+            "(:employeeId IS NULL OR e.employeeId LIKE CONCAT('%', CAST(:employeeId AS string), '%')) AND " +
+            "(:firstName IS NULL OR e.firstName LIKE CONCAT('%', CAST(:firstName AS string), '%')) AND " +
+            "(:lastName IS NULL OR e.lastName LIKE CONCAT('%', CAST(:lastName AS string), '%')) AND " +
+            "(:email IS NULL OR e.email LIKE CONCAT('%', CAST(:email AS string), '%')) AND " +
             "(:status IS NULL OR e.employmentStatus = :status) AND " +
             "(:designation IS NULL OR e.designation = :designation) AND " +
             "(:departmentId IS NULL OR e.department.id = :departmentId) AND " +

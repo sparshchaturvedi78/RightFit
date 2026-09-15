@@ -31,6 +31,8 @@ public class UpdateEmployeeRequest {
 
     private Double yearsOfExperience;
 
+    private LocalDate dateOfJoining;
+
     private Double workingHoursPerDay;
 
     private String poolStatus;
@@ -46,4 +48,6 @@ public class UpdateEmployeeRequest {
     private Long departmentId;
 
     private Long locationId;
+
+    private Long rmgId;
 }

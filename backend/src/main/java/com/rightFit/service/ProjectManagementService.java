@@ -122,6 +122,22 @@ public class ProjectManagementService {
                 "ACTIVE", "CLOSED", request.getReason());
     }
 
+    @Auditable(action = "REOPEN", entityType = "PROJECT", entityIdParamName = "projectId")
+    public void reopenProject(Long projectId, CloseProjectRequest request) {
+        log.info("Reopening project: {}", projectId);
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+
+        project.setStatus("ACTIVE");
+        project.setUpdatedAt(LocalDateTime.now());
+        projectRepository.save(project);
+
+        log.info("Project reopened successfully: {}", projectId);
+        auditLogService.logAction(getCurrentUserId(), "PROJECT_REOPENED", "PROJECT", projectId,
+                "CLOSED", "ACTIVE", request.getReason());
+    }
+
     @Transactional(readOnly = true)
     public ProjectDTO getProject(Long projectId) {
         log.debug("Fetching project: {}", projectId);
@@ -141,7 +157,7 @@ public class ProjectManagementService {
 
     private void validateProjectUniqueness(String projectId) {
         if (projectRepository.findByProjectId(projectId).isPresent()) {
-            throw new RuntimeException("Project ID already exists: " + projectId);
+            throw new com.rightFit.exception.DuplicateEntityException("Project", "projectId", projectId);
         }
     }
 

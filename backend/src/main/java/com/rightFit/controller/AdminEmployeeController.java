@@ -38,7 +38,7 @@ public class AdminEmployeeController {
     }
 
     @GetMapping
-    @PreAuthorize("hasPermission(null, 'EMPLOYEE_VIEW')")
+    @PreAuthorize("hasPermission(null, 'EMPLOYEE_READ')")
     public ResponseEntity<Page<EmployeeDTO>> getEmployees(
             @RequestParam(required = false) String employeeId,
             @RequestParam(required = false) String firstName,
@@ -65,8 +65,8 @@ public class AdminEmployeeController {
     }
 
     @GetMapping("/{employeeId}")
-    @PreAuthorize("hasPermission(null, 'EMPLOYEE_VIEW')")
-    public ResponseEntity<EmployeeDTO> getEmployee(@PathVariable Long employeeId) {
+    @PreAuthorize("hasPermission(null, 'EMPLOYEE_READ')")
+    public ResponseEntity<EmployeeDTO> getEmployee(@PathVariable String employeeId) {
         log.info("Fetching employee: {}", employeeId);
         EmployeeDTO employee = employeeManagementService.getEmployee(employeeId);
         return ResponseEntity.ok(employee);
@@ -75,7 +75,7 @@ public class AdminEmployeeController {
     @PutMapping("/{employeeId}")
     @PreAuthorize("hasPermission(null, 'EMPLOYEE_UPDATE')")
     public ResponseEntity<EmployeeDTO> updateEmployee(
-            @PathVariable Long employeeId,
+            @PathVariable String employeeId,
             @Valid @RequestBody UpdateEmployeeRequest request) {
         log.info("Updating employee: {}", employeeId);
         EmployeeDTO employee = employeeManagementService.updateEmployee(employeeId, request);
@@ -84,21 +84,31 @@ public class AdminEmployeeController {
 
     @PutMapping("/{employeeId}/rmg")
     @PreAuthorize("hasPermission(null, 'EMPLOYEE_UPDATE')")
-    public ResponseEntity<Void> changeRmg(
-            @PathVariable Long employeeId,
+    public ResponseEntity<EmployeeDTO> changeRmg(
+            @PathVariable String employeeId,
             @Valid @RequestBody ChangeRmgRequest request) {
         log.info("Changing RMG for employee: {}", employeeId);
-        employeeManagementService.changeRmg(employeeId, request);
-        return ResponseEntity.noContent().build();
+        EmployeeDTO employee = employeeManagementService.changeRmg(employeeId, request);
+        return ResponseEntity.ok(employee);
     }
 
     @PutMapping("/{employeeId}/deactivate")
     @PreAuthorize("hasPermission(null, 'EMPLOYEE_DEACTIVATE')")
-    public ResponseEntity<Void> deactivateEmployee(
-            @PathVariable Long employeeId,
+    public ResponseEntity<EmployeeDTO> deactivateEmployee(
+            @PathVariable String employeeId,
             @Valid @RequestBody DeactivateEmployeeRequest request) {
         log.info("Deactivating employee: {}", employeeId);
-        employeeManagementService.deactivateEmployee(employeeId, request);
-        return ResponseEntity.noContent().build();
+        EmployeeDTO employee = employeeManagementService.deactivateEmployee(employeeId, request);
+        return ResponseEntity.ok(employee);
+    }
+
+    @PutMapping("/{employeeId}/reactivate")
+    @PreAuthorize("hasPermission(null, 'EMPLOYEE_UPDATE')")
+    public ResponseEntity<EmployeeDTO> reactivateEmployee(
+            @PathVariable String employeeId,
+            @Valid @RequestBody DeactivateEmployeeRequest request) {
+        log.info("Reactivating employee: {}", employeeId);
+        EmployeeDTO employee = employeeManagementService.reactivateEmployee(employeeId, request);
+        return ResponseEntity.ok(employee);
     }
 }

@@ -25,11 +25,11 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByStatusAndManagerId(String status, Long managerId);
 
     @Query("SELECT p FROM Project p WHERE " +
-            "(:projectId IS NULL OR p.projectId LIKE CONCAT('%', :projectId, '%')) AND " +
-            "(:projectName IS NULL OR p.projectName LIKE CONCAT('%', :projectName, '%')) AND " +
+            "(:projectId IS NULL OR p.projectId LIKE CONCAT('%', CAST(:projectId AS string), '%')) AND " +
+            "(:projectName IS NULL OR p.projectName LIKE CONCAT('%', CAST(:projectName AS string), '%')) AND " +
             "(:status IS NULL OR p.status = :status) AND " +
             "(:managerId IS NULL OR p.manager.id = :managerId) AND " +
-            "(:clientName IS NULL OR p.clientName LIKE CONCAT('%', :clientName, '%'))")
+            "(:clientName IS NULL OR p.clientName LIKE CONCAT('%', CAST(:clientName AS string), '%'))")
     Page<Project> searchProjects(
             @Param("projectId") String projectId,
             @Param("projectName") String projectName,

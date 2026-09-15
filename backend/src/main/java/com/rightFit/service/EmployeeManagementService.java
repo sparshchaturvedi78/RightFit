@@ -95,153 +95,9 @@ public class EmployeeManagementService {
         return mapToDTO(savedEmployee);
     }
 
-    public EmployeeDTO updateEmployee(Long employeeId, UpdateEmployeeRequest request) {
+    public EmployeeDTO updateEmployee(String employeeId, UpdateEmployeeRequest request) {
         log.info("Updating employee: {}", employeeId);
 
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
-
-        if (request.getFirstName() != null) {
-            employee.setFirstName(request.getFirstName());
-        }
-        if (request.getLastName() != null) {
-            employee.setLastName(request.getLastName());
-        }
-        if (request.getEmail() != null) {
-            validateEmailUniqueness(request.getEmail(), employeeId);
-            employee.setEmail(request.getEmail());
-        }
-        if (request.getDesignation() != null) {
-            employee.setDesignation(request.getDesignation());
-        }
-        if (request.getGrade() != null) {
-            employee.setGrade(request.getGrade());
-        }
-        if (request.getDomain() != null) {
-            employee.setDomain(request.getDomain());
-        }
-        if (request.getPhone() != null) {
-            employee.setPhone(request.getPhone());
-        }
-        if (request.getYearsOfExperience() != null) {
-            employee.setYearsOfExperience(request.getYearsOfExperience());
-        }
-        if (request.getDateOfJoining() != null) {
-            employee.setDateOfJoining(request.getDateOfJoining());
-        }
-        if (request.getWorkingHoursPerDay() != null) {
-            employee.setWorkingHoursPerDay(request.getWorkingHoursPerDay());
-        }
-        if (request.getDepartmentId() != null) {
-            Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
-            employee.setDepartment(department);
-        }
-        if (request.getLocationId() != null) {
-            Location location = locationRepository.findById(request.getLocationId())
-                    .orElseThrow(() -> new RuntimeException("Location not found: " + request.getLocationId()));
-            employee.setLocation(location);
-        }
-        if (request.getPoolStatus() != null) {
-            employee.setPoolStatus(request.getPoolStatus());
-        }
-        if (request.getEmploymentStatus() != null) {
-            employee.setEmploymentStatus(request.getEmploymentStatus());
-        }
-        if (request.getAllocationStatus() != null) {
-            employee.setAllocationStatus(request.getAllocationStatus());
-        }
-        if (request.getAvailabilityStatus() != null) {
-            employee.setAvailabilityStatus(request.getAvailabilityStatus());
-        }
-        if (request.getAvailableFromDate() != null) {
-            employee.setAvailableFromDate(request.getAvailableFromDate());
-        }
-
-        employee.setUpdatedAt(LocalDateTime.now());
-        Employee updated = employeeRepository.save(employee);
-        log.info("Employee updated successfully: {}", employeeId);
-
-        return mapToDTO(updated);
-    }
-
-    @Auditable(action = "UPDATE", entityType = "EMPLOYEE_RMG", entityIdParamName = "employeeId")
-    public void changeRmg(Long employeeId, ChangeRmgRequest request) {
-        log.info("Changing RMG for employee: {}", employeeId);
-
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
-
-        Employee newRmg = employeeRepository.findById(request.getNewRmgId())
-                .orElseThrow(() -> new RuntimeException("New RMG not found: " + request.getNewRmgId()));
-
-        employee.setRmgManager(newRmg);
-        employee.setUpdatedAt(LocalDateTime.now());
-        employeeRepository.save(employee);
-
-        log.info("RMG changed for employee {} to {}", employeeId, request.getNewRmgId());
-        auditLogService.logAction(getCurrentUserId(), "RMG_CHANGED", "EMPLOYEE", employeeId,
-                request.getNewRmgId(), null, request.getReason());
-    }
-
-    @Auditable(action = "DEACTIVATE", entityType = "EMPLOYEE", entityIdParamName = "employeeId")
-    public void deactivateEmployee(Long employeeId, DeactivateEmployeeRequest request) {
-        log.info("Deactivating employee: {}", employeeId);
-
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
-
-        employee.setEmploymentStatus("INACTIVE");
-        employee.setAvailabilityStatus("UNAVAILABLE");
-        employee.setUpdatedAt(LocalDateTime.now());
-        employeeRepository.save(employee);
-
-        if (employee.getUser() != null) {
-            userRoleService.deactivateUserRoles(employee.getUser().getId());
-            log.info("User roles deactivated for employee: {}", employeeId);
-        }
-
-        log.info("Employee deactivated successfully: {}", employeeId);
-        auditLogService.logAction(getCurrentUserId(), "EMPLOYEE_DEACTIVATED", "EMPLOYEE", employeeId,
-                null, "INACTIVE", request.getReason());
-    }
-
-    @Transactional(readOnly = true)
-    public EmployeeDTO getEmployee(Long employeeId) {
-        log.debug("Fetching employee: {}", employeeId);
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
-        return mapToDTO(employee);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<EmployeeDTO> getEmployees(String employeeId, String firstName, String lastName,
-                                           String email, String status, String designation,
-                                           Long departmentId, Long rmgId, Pageable pageable) {
-        log.debug("Searching employees with filters");
-        Page<Employee> employees = employeeRepository.searchEmployees(
-                employeeId, firstName, lastName, email, status, designation, departmentId, rmgId, pageable);
-        return employees.map(this::mapToDTO);
-    }
-
-    private void validateEmployeeUniqueness(String employeeId, String email) {
-        if (employeeRepository.findByEmployeeId(employeeId).isPresent()) {
-            throw new RuntimeException("Employee ID already exists: " + employeeId);
-        }
-        if (employeeRepository.findByEmail(email).isPresent()) {
-            throw new RuntimeException("Email already exists: " + email);
-        }
-    }
-
-    public EmployeeDTO getEmployeeByEmployeeId(String employeeId) {
-        log.debug("Fetching employee by employeeId: {}", employeeId);
-        Employee employee = employeeRepository.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
-        return mapToDTO(employee);
-    }
-
-    public EmployeeDTO updateEmployeeByEmployeeId(String employeeId, UpdateEmployeeRequest request) {
-        log.info("Updating employee by employeeId: {}", employeeId);
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
 
@@ -286,6 +142,16 @@ public class EmployeeManagementService {
                     .orElseThrow(() -> new RuntimeException("Location not found: " + request.getLocationId()));
             employee.setLocation(location);
         }
+        if (request.getRmgId() != null) {
+            Long previousRmgId = employee.getRmgManager() != null ? employee.getRmgManager().getId() : null;
+            if (!request.getRmgId().equals(previousRmgId)) {
+                Employee newRmg = employeeRepository.findById(request.getRmgId())
+                        .orElseThrow(() -> new RuntimeException("RMG not found: " + request.getRmgId()));
+                employee.setRmgManager(newRmg);
+                auditLogService.logAction(getCurrentUserId(), "RMG_CHANGED", "EMPLOYEE", employee.getId(),
+                        previousRmgId, request.getRmgId(), "Updated via employee edit");
+            }
+        }
         if (request.getPoolStatus() != null) {
             employee.setPoolStatus(request.getPoolStatus());
         }
@@ -304,13 +170,13 @@ public class EmployeeManagementService {
 
         employee.setUpdatedAt(LocalDateTime.now());
         Employee updated = employeeRepository.save(employee);
-        log.info("Employee updated successfully by employeeId: {}", employeeId);
+        log.info("Employee updated successfully: {}", employeeId);
 
         return mapToDTO(updated);
     }
 
-    public void changeRmgByEmployeeId(String employeeId, ChangeRmgRequest request) {
-        log.info("Changing RMG for employee by employeeId: {}", employeeId);
+    public EmployeeDTO changeRmg(String employeeId, ChangeRmgRequest request) {
+        log.info("Changing RMG for employee: {}", employeeId);
 
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
@@ -318,64 +184,95 @@ public class EmployeeManagementService {
         Employee newRmg = employeeRepository.findById(request.getNewRmgId())
                 .orElseThrow(() -> new RuntimeException("New RMG not found: " + request.getNewRmgId()));
 
+        Long previousRmgId = employee.getRmgManager() != null ? employee.getRmgManager().getId() : null;
         employee.setRmgManager(newRmg);
         employee.setUpdatedAt(LocalDateTime.now());
-        employeeRepository.save(employee);
+        Employee updated = employeeRepository.save(employee);
 
         log.info("RMG changed for employee {} to {}", employeeId, request.getNewRmgId());
         auditLogService.logAction(getCurrentUserId(), "RMG_CHANGED", "EMPLOYEE", employee.getId(),
-                employee.getRmgManager() != null ? employee.getRmgManager().getId() : null,
-                request.getNewRmgId(), request.getReason());
+                previousRmgId, request.getNewRmgId(), request.getReason());
+
+        return mapToDTO(updated);
     }
 
-    public void deactivateEmployeeByEmployeeId(String employeeId, DeactivateEmployeeRequest request) {
-        log.info("Deactivating employee by employeeId: {}", employeeId);
+    public EmployeeDTO deactivateEmployee(String employeeId, DeactivateEmployeeRequest request) {
+        log.info("Deactivating employee: {}", employeeId);
 
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
 
-        if (employee.getUser() != null) {
-            employee.getUser().setStatus("INACTIVE");
-        }
         employee.setEmploymentStatus("INACTIVE");
+        employee.setAvailabilityStatus("UNAVAILABLE");
         employee.setUpdatedAt(LocalDateTime.now());
-        employeeRepository.save(employee);
+        Employee updated = employeeRepository.save(employee);
 
-        log.info("Employee deactivated successfully by employeeId: {}", employeeId);
+        if (employee.getUser() != null) {
+            userRoleService.deactivateUserRoles(employee.getUser().getId());
+            log.info("User roles deactivated for employee: {}", employeeId);
+        }
+
+        log.info("Employee deactivated successfully: {}", employeeId);
         auditLogService.logAction(getCurrentUserId(), "EMPLOYEE_DEACTIVATED", "EMPLOYEE", employee.getId(),
-                "ACTIVE", "INACTIVE", request.getReason());
+                null, "INACTIVE", request.getReason());
+
+        return mapToDTO(updated);
     }
 
-    public void reactivateEmployeeByEmployeeId(String employeeId, DeactivateEmployeeRequest request) {
-        log.info("Reactivating employee by employeeId: {}", employeeId);
+    public EmployeeDTO reactivateEmployee(String employeeId, DeactivateEmployeeRequest request) {
+        log.info("Reactivating employee: {}", employeeId);
 
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
 
-        if (employee.getUser() != null) {
-            employee.getUser().setStatus("ACTIVE");
-        }
         employee.setEmploymentStatus("ACTIVE");
+        employee.setAvailabilityStatus("AVAILABLE");
         employee.setUpdatedAt(LocalDateTime.now());
-        employeeRepository.save(employee);
+        Employee updated = employeeRepository.save(employee);
 
-        log.info("Employee reactivated successfully by employeeId: {}", employeeId);
+        if (employee.getUser() != null) {
+            userRoleService.reactivateUserRoles(employee.getUser().getId());
+            log.info("User roles reactivated for employee: {}", employeeId);
+        }
+
+        log.info("Employee reactivated successfully: {}", employeeId);
         auditLogService.logAction(getCurrentUserId(), "EMPLOYEE_REACTIVATED", "EMPLOYEE", employee.getId(),
-                "INACTIVE", "ACTIVE", request.getReason());
+                null, "ACTIVE", request.getReason());
+
+        return mapToDTO(updated);
+    }
+
+    @Transactional(readOnly = true)
+    public EmployeeDTO getEmployee(String employeeId) {
+        log.debug("Fetching employee: {}", employeeId);
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+        return mapToDTO(employee);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EmployeeDTO> getEmployees(String employeeId, String firstName, String lastName,
+                                           String email, String status, String designation,
+                                           Long departmentId, Long rmgId, Pageable pageable) {
+        log.debug("Searching employees with filters");
+        Page<Employee> employees = employeeRepository.searchEmployees(
+                employeeId, firstName, lastName, email, status, designation, departmentId, rmgId, pageable);
+        return employees.map(this::mapToDTO);
+    }
+
+    private void validateEmployeeUniqueness(String employeeId, String email) {
+        if (employeeRepository.findByEmployeeId(employeeId).isPresent()) {
+            throw new com.rightFit.exception.DuplicateEntityException("Employee", "employeeId", employeeId);
+        }
+        if (employeeRepository.findByEmail(email).isPresent()) {
+            throw new com.rightFit.exception.DuplicateEntityException("Employee", "email", email);
+        }
     }
 
     private void validateEmailUniquenessForEmployeeId(String email, String employeeId) {
         employeeRepository.findByEmail(email).ifPresent(emp -> {
             if (!emp.getEmployeeId().equals(employeeId)) {
-                throw new RuntimeException("Email already exists: " + email);
-            }
-        });
-    }
-
-    private void validateEmailUniqueness(String email, Long excludeEmployeeId) {
-        employeeRepository.findByEmail(email).ifPresent(emp -> {
-            if (!emp.getId().equals(excludeEmployeeId)) {
-                throw new RuntimeException("Email already exists: " + email);
+                throw new com.rightFit.exception.DuplicateEntityException("Employee", "email", email);
             }
         });
     }
