@@ -33,38 +33,48 @@ public class RmgDashboardService {
                 .collect(Collectors.toList());
     }
 
-    public RmgDetailDTO getRmgDetail(Long rmgId) {
-        log.debug("Fetching RMG detail: {}", rmgId);
+    public RmgDetailDTO getRmgDetail(String employeeId) {
+        log.debug("Fetching RMG detail: {}", employeeId);
 
-        Employee rmg = employeeRepository.findById(rmgId)
-                .orElseThrow(() -> new RuntimeException("RMG not found: " + rmgId));
+        Employee rmg = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("RMG not found: " + employeeId));
 
         return mapToRmgDetail(rmg);
     }
 
-    public Page<Employee> getAssociatesForRmg(Long rmgId, Pageable pageable) {
-        log.debug("Fetching associates for RMG: {}", rmgId);
+    public Page<Employee> getAssociatesForRmg(String employeeId, Pageable pageable) {
+        log.debug("Fetching associates for RMG: {}", employeeId);
 
-        return employeeRepository.findByRmgManagerId(rmgId, pageable);
+        Employee rmg = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("RMG not found: " + employeeId));
+
+        return employeeRepository.findByRmgManagerId(rmg.getId(), pageable);
     }
 
-    public List<Employee> getAssociatesForRmgActive(Long rmgId) {
-        log.debug("Fetching active associates for RMG: {}", rmgId);
+    public List<Employee> getAssociatesForRmgActive(String employeeId) {
+        log.debug("Fetching active associates for RMG: {}", employeeId);
 
-        return employeeRepository.findByEmploymentStatusAndRmgManagerId("ACTIVE", rmgId);
+        Employee rmg = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("RMG not found: " + employeeId));
+
+        return employeeRepository.findByEmploymentStatusAndRmgManagerId("ACTIVE", rmg.getId());
     }
 
-    public long getAssociateCountForRmg(Long rmgId) {
-        log.debug("Counting active associates for RMG: {}", rmgId);
+    public long getAssociateCountForRmg(String employeeId) {
+        log.debug("Counting active associates for RMG: {}", employeeId);
 
-        return employeeRepository.countByEmploymentStatusAndRmgManagerId("ACTIVE", rmgId);
+        Employee rmg = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("RMG not found: " + employeeId));
+
+        return employeeRepository.countByEmploymentStatusAndRmgManagerId("ACTIVE", rmg.getId());
     }
 
     private RmgDetailDTO mapToRmgDetail(Employee rmg) {
-        long associateCount = getAssociateCountForRmg(rmg.getId());
+        long associateCount = employeeRepository.countByEmploymentStatusAndRmgManagerId("ACTIVE", rmg.getId());
 
         return RmgDetailDTO.builder()
                 .rmgId(rmg.getId())
+                .employeeId(rmg.getEmployeeId())
                 .rmgName(rmg.getFirstName() + " " + rmg.getLastName())
                 .email(rmg.getEmail())
                 .department(rmg.getDepartment() != null ? rmg.getDepartment().getName() : null)

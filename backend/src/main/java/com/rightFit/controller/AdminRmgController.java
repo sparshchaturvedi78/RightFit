@@ -35,7 +35,7 @@ public class AdminRmgController {
 
     @GetMapping("/{rmgId}")
     @PreAuthorize("hasPermission(null, 'RMG_VIEW')")
-    public ResponseEntity<RmgDetailDTO> getRmgDetail(@PathVariable Long rmgId) {
+    public ResponseEntity<RmgDetailDTO> getRmgDetail(@PathVariable String rmgId) {
         log.info("Fetching RMG detail: {}", rmgId);
         RmgDetailDTO rmg = rmgDashboardService.getRmgDetail(rmgId);
         return ResponseEntity.ok(rmg);
@@ -44,7 +44,7 @@ public class AdminRmgController {
     @GetMapping("/{rmgId}/associates")
     @PreAuthorize("hasPermission(null, 'RMG_VIEW')")
     public ResponseEntity<Page<EmployeeDTO>> getRmgAssociates(
-            @PathVariable Long rmgId,
+            @PathVariable String rmgId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         log.info("Fetching associates for RMG: {}", rmgId);
@@ -69,7 +69,7 @@ public class AdminRmgController {
 
     @GetMapping("/{rmgId}/associate-count")
     @PreAuthorize("hasPermission(null, 'RMG_VIEW')")
-    public ResponseEntity<Long> getRmgAssociateCount(@PathVariable Long rmgId) {
+    public ResponseEntity<Long> getRmgAssociateCount(@PathVariable String rmgId) {
         log.info("Counting associates for RMG: {}", rmgId);
         long count = rmgDashboardService.getAssociateCountForRmg(rmgId);
         return ResponseEntity.ok(count);

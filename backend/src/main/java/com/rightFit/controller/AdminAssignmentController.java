@@ -25,7 +25,7 @@ public class AdminAssignmentController {
 
     @GetMapping("/departing/manager/{managerId}")
     @PreAuthorize("hasPermission(null, 'ASSIGNMENT_VIEW')")
-    public ResponseEntity<AssignmentPreviewDTO> getManagerAssignments(@PathVariable Long managerId) {
+    public ResponseEntity<AssignmentPreviewDTO> getManagerAssignments(@PathVariable String managerId) {
         log.info("Fetching manager assignments preview: {}", managerId);
         AssignmentPreviewDTO preview = assignmentReplacementService.getManagerAssignments(managerId);
         return ResponseEntity.ok(preview);
@@ -33,7 +33,7 @@ public class AdminAssignmentController {
 
     @GetMapping("/departing/rmg/{rmgId}")
     @PreAuthorize("hasPermission(null, 'ASSIGNMENT_VIEW')")
-    public ResponseEntity<AssignmentPreviewDTO> getRmgAssignments(@PathVariable Long rmgId) {
+    public ResponseEntity<AssignmentPreviewDTO> getRmgAssignments(@PathVariable String rmgId) {
         log.info("Fetching RMG assignments preview: {}", rmgId);
         AssignmentPreviewDTO preview = assignmentReplacementService.getRmgAssignments(rmgId);
         return ResponseEntity.ok(preview);
@@ -42,7 +42,7 @@ public class AdminAssignmentController {
     @PostMapping("/replace-manager/{departingManagerId}")
     @PreAuthorize("hasPermission(null, 'ASSIGNMENT_REPLACE_MANAGER')")
     public ResponseEntity<ReplacementResultDTO> replaceManager(
-            @PathVariable Long departingManagerId,
+            @PathVariable String departingManagerId,
             @Valid @RequestBody ReplaceManagerRequest request) {
         log.info("Executing manager replacement - Departing: {}, New: {}", departingManagerId, request.getNewManagerId());
         ReplacementResultDTO result = assignmentReplacementService.replaceManager(departingManagerId, request);
@@ -52,7 +52,7 @@ public class AdminAssignmentController {
     @PostMapping("/replace-rmg/{departingRmgId}")
     @PreAuthorize("hasPermission(null, 'ASSIGNMENT_REPLACE_RMG')")
     public ResponseEntity<ReplacementResultDTO> replaceRmg(
-            @PathVariable Long departingRmgId,
+            @PathVariable String departingRmgId,
             @Valid @RequestBody ReplaceRmgRequest request) {
         log.info("Executing RMG replacement - Departing: {}, New: {}", departingRmgId, request.getNewRmgId());
         ReplacementResultDTO result = assignmentReplacementService.replaceRmg(departingRmgId, request);

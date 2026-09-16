@@ -17,6 +17,8 @@ public class AssignmentPreviewDTO {
 
     private Long departingId;
 
+    private String departingEmployeeId;
+
     private String departingName;
 
     private String departingRole;

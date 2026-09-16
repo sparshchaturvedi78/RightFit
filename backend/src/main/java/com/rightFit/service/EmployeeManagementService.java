@@ -308,6 +308,11 @@ public class EmployeeManagementService {
                 .updatedAt(employee.getUpdatedAt())
                 .createdBy(employee.getCreatedBy())
                 .updatedBy(employee.getUpdatedBy())
+                .roles(employee.getUser() != null
+                        ? userRoleService.getUserRoles(employee.getUser().getId()).stream()
+                            .map(ur -> ur.getRole().getName())
+                            .collect(java.util.stream.Collectors.toSet())
+                        : java.util.Set.of())
                 .build();
     }
 
