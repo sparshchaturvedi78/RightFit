@@ -53,4 +53,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             Pageable pageable);
 
     long countByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
+
+    @Query("SELECT e FROM Employee e WHERE " +
+            "LOWER(e.employeeId) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "LOWER(e.firstName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "LOWER(e.lastName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "LOWER(CONCAT(e.firstName, ' ', e.lastName)) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))")
+    Page<Employee> quickSearch(@Param("query") String query, Pageable pageable);
 }

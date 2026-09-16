@@ -37,4 +37,9 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             @Param("managerId") Long managerId,
             @Param("clientName") String clientName,
             Pageable pageable);
+
+    @Query("SELECT p FROM Project p WHERE " +
+            "LOWER(p.projectId) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "LOWER(p.projectName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))")
+    Page<Project> quickSearch(@Param("query") String query, Pageable pageable);
 }

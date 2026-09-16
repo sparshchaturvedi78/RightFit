@@ -1,5 +1,6 @@
 package com.rightFit.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,31 +12,10 @@ import lombok.NoArgsConstructor;
 @Builder
 public class EmployeeSearchRequest {
 
-    private String employeeId;
+    @NotBlank(message = "Search query is required")
+    private String query;
 
-    private String firstName;
+    private Integer page;
 
-    private String lastName;
-
-    private String email;
-
-    private String designation;
-
-    private Long departmentId;
-
-    private Long rmgId;
-
-    private String status;
-
-    private String skills;
-
-    private Long locationId;
-
-    private int page;
-
-    private int size;
-
-    private String sortBy;
-
-    private String sortDirection;
+    private Integer size;
 }

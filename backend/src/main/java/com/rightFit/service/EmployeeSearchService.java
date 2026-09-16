@@ -22,25 +22,13 @@ public class EmployeeSearchService {
     private final EmployeeRepository employeeRepository;
 
     public Page<EmployeeDTO> searchEmployees(EmployeeSearchRequest request) {
-        log.debug("Searching employees with filters: {}", request);
+        log.debug("Quick-searching employees with query: {}", request.getQuery());
 
-        Sort.Direction direction = "DESC".equalsIgnoreCase(request.getSortDirection())
-                ? Sort.Direction.DESC
-                : Sort.Direction.ASC;
+        int page = request.getPage() != null && request.getPage() > 0 ? request.getPage() : 0;
+        int size = request.getSize() != null && request.getSize() > 0 ? request.getSize() : 20;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "firstName"));
 
-        String sortBy = request.getSortBy() != null ? request.getSortBy() : "firstName";
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by(direction, sortBy));
-
-        Page<Employee> employees = employeeRepository.searchEmployees(
-                request.getEmployeeId(),
-                request.getFirstName(),
-                request.getLastName(),
-                request.getEmail(),
-                request.getStatus(),
-                request.getDesignation(),
-                request.getDepartmentId(),
-                request.getRmgId(),
-                pageable);
+        Page<Employee> employees = employeeRepository.quickSearch(request.getQuery(), pageable);
 
         return employees.map(this::mapToDTO);
     }

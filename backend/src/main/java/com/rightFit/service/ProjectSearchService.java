@@ -22,22 +22,13 @@ public class ProjectSearchService {
     private final ProjectRepository projectRepository;
 
     public Page<ProjectDTO> searchProjects(ProjectSearchRequest request) {
-        log.debug("Searching projects with filters: {}", request);
+        log.debug("Quick-searching projects with query: {}", request.getQuery());
 
-        Sort.Direction direction = "DESC".equalsIgnoreCase(request.getSortDirection())
-                ? Sort.Direction.DESC
-                : Sort.Direction.ASC;
+        int page = request.getPage() != null && request.getPage() > 0 ? request.getPage() : 0;
+        int size = request.getSize() != null && request.getSize() > 0 ? request.getSize() : 20;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "projectName"));
 
-        String sortBy = request.getSortBy() != null ? request.getSortBy() : "projectName";
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by(direction, sortBy));
-
-        Page<Project> projects = projectRepository.searchProjects(
-                request.getProjectId(),
-                request.getProjectName(),
-                request.getStatus(),
-                request.getManagerId(),
-                request.getClientName(),
-                pageable);
+        Page<Project> projects = projectRepository.quickSearch(request.getQuery(), pageable);
 
         return projects.map(this::mapToDTO);
     }
