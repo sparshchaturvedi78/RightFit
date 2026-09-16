@@ -139,8 +139,11 @@ public class AuthController {
     @PostMapping("/forgot-password/step2")
     public ResponseEntity<?> forgotPasswordStep2(@Valid @RequestBody ForgotPasswordStep2Request request) {
         try {
-            authenticationService.forgotPasswordStep2(request.getEmail(), request.getOtp());
-            return ResponseEntity.ok(new LogoutResponse("OTP verified successfully. Proceed to reset password."));
+            String resetToken = authenticationService.forgotPasswordStep2(request.getEmail(), request.getOtp());
+            return ResponseEntity.ok(ForgotPasswordStep2Response.builder()
+                    .message("OTP verified successfully. Proceed to reset password.")
+                    .resetToken(resetToken)
+                    .build());
         } catch (Exception e) {
             log.error("Forgot password step 2 failed: {}", e.getMessage());
             return ResponseEntity.status(400).body(ErrorResponse.builder()
@@ -162,7 +165,7 @@ public class AuthController {
                         .build());
             }
 
-            authenticationService.forgotPasswordStep3(request.getEmail(), request.getNewPassword(), request.getConfirmPassword());
+            authenticationService.forgotPasswordStep3(request.getEmail(), request.getResetToken(), request.getNewPassword(), request.getConfirmPassword());
             return ResponseEntity.ok(new LogoutResponse("Password reset successfully. You can now login with your new password."));
         } catch (Exception e) {
             log.error("Forgot password step 3 failed: {}", e.getMessage());

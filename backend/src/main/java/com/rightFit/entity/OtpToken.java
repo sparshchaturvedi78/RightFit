@@ -33,10 +33,21 @@ public class OtpToken {
     private String purpose; // PASSWORD_RESET, EMAIL_VERIFICATION, ACCOUNT_RECOVERY
 
     @Column(name = "is_used", nullable = false)
+    @Builder.Default
     private Boolean isUsed = false;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
+
+    @Column(name = "reset_token")
+    private String resetToken;
+
+    @Column(name = "reset_token_expires_at")
+    private LocalDateTime resetTokenExpiresAt;
+
+    @Column(name = "reset_token_used", nullable = false)
+    @Builder.Default
+    private Boolean resetTokenUsed = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

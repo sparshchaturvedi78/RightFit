@@ -18,6 +18,9 @@ public class ForgotPasswordStep3Request {
     @Email(message = "Email must be valid")
     private String email;
 
+    @NotBlank(message = "Reset token is required")
+    private String resetToken;
+
     @NotBlank(message = "New password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String newPassword;
