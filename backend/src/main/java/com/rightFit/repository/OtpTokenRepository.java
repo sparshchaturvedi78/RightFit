@@ -17,6 +17,8 @@ public interface OtpTokenRepository extends JpaRepository<OtpToken, Long> {
 
     Optional<OtpToken> findByEmailAndOtpCodeAndPurpose(String email, String otpCode, String purpose);
 
+    Optional<OtpToken> findByEmailAndResetTokenAndPurpose(String email, String resetToken, String purpose);
+
     List<OtpToken> findByUserAndPurposeAndIsUsedFalse(User user, String purpose);
 
     List<OtpToken> findByUserAndIsUsedFalseAndExpiresAtAfter(User user, LocalDateTime now);

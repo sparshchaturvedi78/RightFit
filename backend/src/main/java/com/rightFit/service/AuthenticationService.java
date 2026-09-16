@@ -288,18 +288,19 @@ public class AuthenticationService {
         log.info("Forgot password OTP sent to: {}", email);
     }
 
-    public void forgotPasswordStep2(String email, String otp) {
-        if (!otpService.validateOtp(email, otp, "FORGOT_PASSWORD")) {
-            throw new RuntimeException("Invalid or expired OTP");
-        }
+    public String forgotPasswordStep2(String email, String otp) {
+        String resetToken = otpService.validateOtpAndIssueResetToken(email, otp, "FORGOT_PASSWORD");
 
         log.info("Forgot password OTP verified for email: {}", email);
+        return resetToken;
     }
 
-    public void forgotPasswordStep3(String email, String newPassword, String confirmPassword) {
+    public void forgotPasswordStep3(String email, String resetToken, String newPassword, String confirmPassword) {
         if (!newPassword.equals(confirmPassword)) {
             throw new RuntimeException("Passwords do not match");
         }
+
+        otpService.validateAndConsumeResetToken(email, resetToken, "FORGOT_PASSWORD");
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
