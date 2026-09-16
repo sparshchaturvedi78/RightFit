@@ -55,10 +55,10 @@ public class ProjectManagementService {
         return mapToDTO(savedProject);
     }
 
-    public ProjectDTO updateProject(Long projectId, UpdateProjectRequest request) {
+    public ProjectDTO updateProject(String projectId, UpdateProjectRequest request) {
         log.info("Updating project: {}", projectId);
 
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectId(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
 
         if (request.getProjectName() != null) {
@@ -66,6 +66,16 @@ public class ProjectManagementService {
         }
         if (request.getDescription() != null) {
             project.setDescription(request.getDescription());
+        }
+        if (request.getManagerId() != null) {
+            Long previousManagerId = project.getManager() != null ? project.getManager().getId() : null;
+            if (!request.getManagerId().equals(previousManagerId)) {
+                Employee newManager = employeeRepository.findById(request.getManagerId())
+                        .orElseThrow(() -> new RuntimeException("Manager not found: " + request.getManagerId()));
+                project.setManager(newManager);
+                auditLogService.logAction(getCurrentUserId(), "MANAGER_CHANGED", "PROJECT", project.getId(),
+                        previousManagerId, request.getManagerId(), "Updated via project edit");
+            }
         }
         if (request.getClientName() != null) {
             project.setClientName(request.getClientName());
@@ -87,61 +97,65 @@ public class ProjectManagementService {
         return mapToDTO(updated);
     }
 
-    @Auditable(action = "UPDATE", entityType = "PROJECT_MANAGER", entityIdParamName = "projectId")
-    public void changeManager(Long projectId, ChangeManagerRequest request) {
+    public ProjectDTO changeManager(String projectId, ChangeManagerRequest request) {
         log.info("Changing manager for project: {}", projectId);
 
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectId(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
 
         Employee newManager = employeeRepository.findById(request.getNewManagerId())
                 .orElseThrow(() -> new RuntimeException("New manager not found: " + request.getNewManagerId()));
 
+        Long previousManagerId = project.getManager() != null ? project.getManager().getId() : null;
         project.setManager(newManager);
         project.setUpdatedAt(LocalDateTime.now());
-        projectRepository.save(project);
+        Project updated = projectRepository.save(project);
 
         log.info("Manager changed for project {} to {}", projectId, request.getNewManagerId());
-        auditLogService.logAction(getCurrentUserId(), "MANAGER_CHANGED", "PROJECT", projectId,
-                request.getNewManagerId(), null, request.getReason());
+        auditLogService.logAction(getCurrentUserId(), "MANAGER_CHANGED", "PROJECT", project.getId(),
+                previousManagerId, request.getNewManagerId(), request.getReason());
+
+        return mapToDTO(updated);
     }
 
-    @Auditable(action = "CLOSE", entityType = "PROJECT", entityIdParamName = "projectId")
-    public void closeProject(Long projectId, CloseProjectRequest request) {
+    public ProjectDTO closeProject(String projectId, CloseProjectRequest request) {
         log.info("Closing project: {}", projectId);
 
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectId(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
 
         project.setStatus("CLOSED");
         project.setUpdatedAt(LocalDateTime.now());
-        projectRepository.save(project);
+        Project updated = projectRepository.save(project);
 
         log.info("Project closed successfully: {}", projectId);
-        auditLogService.logAction(getCurrentUserId(), "PROJECT_CLOSED", "PROJECT", projectId,
+        auditLogService.logAction(getCurrentUserId(), "PROJECT_CLOSED", "PROJECT", project.getId(),
                 "ACTIVE", "CLOSED", request.getReason());
+
+        return mapToDTO(updated);
     }
 
-    @Auditable(action = "REOPEN", entityType = "PROJECT", entityIdParamName = "projectId")
-    public void reopenProject(Long projectId, CloseProjectRequest request) {
+    public ProjectDTO reopenProject(String projectId, CloseProjectRequest request) {
         log.info("Reopening project: {}", projectId);
 
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectId(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
 
         project.setStatus("ACTIVE");
         project.setUpdatedAt(LocalDateTime.now());
-        projectRepository.save(project);
+        Project updated = projectRepository.save(project);
 
         log.info("Project reopened successfully: {}", projectId);
-        auditLogService.logAction(getCurrentUserId(), "PROJECT_REOPENED", "PROJECT", projectId,
+        auditLogService.logAction(getCurrentUserId(), "PROJECT_REOPENED", "PROJECT", project.getId(),
                 "CLOSED", "ACTIVE", request.getReason());
+
+        return mapToDTO(updated);
     }
 
     @Transactional(readOnly = true)
-    public ProjectDTO getProject(Long projectId) {
+    public ProjectDTO getProject(String projectId) {
         log.debug("Fetching project: {}", projectId);
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByProjectId(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
         return mapToDTO(project);
     }

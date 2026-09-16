@@ -63,7 +63,7 @@ public class AdminProjectController {
 
     @GetMapping("/{projectId}")
     @PreAuthorize("hasPermission(null, 'PROJECT_READ')")
-    public ResponseEntity<ProjectDTO> getProject(@PathVariable Long projectId) {
+    public ResponseEntity<ProjectDTO> getProject(@PathVariable String projectId) {
         log.info("Fetching project: {}", projectId);
         ProjectDTO project = projectManagementService.getProject(projectId);
         return ResponseEntity.ok(project);
@@ -72,7 +72,7 @@ public class AdminProjectController {
     @PutMapping("/{projectId}")
     @PreAuthorize("hasPermission(null, 'PROJECT_UPDATE')")
     public ResponseEntity<ProjectDTO> updateProject(
-            @PathVariable Long projectId,
+            @PathVariable String projectId,
             @Valid @RequestBody UpdateProjectRequest request) {
         log.info("Updating project: {}", projectId);
         ProjectDTO project = projectManagementService.updateProject(projectId, request);
@@ -81,31 +81,31 @@ public class AdminProjectController {
 
     @PutMapping("/{projectId}/manager")
     @PreAuthorize("hasPermission(null, 'PROJECT_UPDATE')")
-    public ResponseEntity<Void> changeManager(
-            @PathVariable Long projectId,
+    public ResponseEntity<ProjectDTO> changeManager(
+            @PathVariable String projectId,
             @Valid @RequestBody ChangeManagerRequest request) {
         log.info("Changing manager for project: {}", projectId);
-        projectManagementService.changeManager(projectId, request);
-        return ResponseEntity.noContent().build();
+        ProjectDTO project = projectManagementService.changeManager(projectId, request);
+        return ResponseEntity.ok(project);
     }
 
     @PutMapping("/{projectId}/close")
     @PreAuthorize("hasPermission(null, 'PROJECT_CLOSE')")
-    public ResponseEntity<Void> closeProject(
-            @PathVariable Long projectId,
+    public ResponseEntity<ProjectDTO> closeProject(
+            @PathVariable String projectId,
             @Valid @RequestBody CloseProjectRequest request) {
         log.info("Closing project: {}", projectId);
-        projectManagementService.closeProject(projectId, request);
-        return ResponseEntity.noContent().build();
+        ProjectDTO project = projectManagementService.closeProject(projectId, request);
+        return ResponseEntity.ok(project);
     }
 
     @PutMapping("/{projectId}/reopen")
     @PreAuthorize("hasPermission(null, 'PROJECT_UPDATE')")
-    public ResponseEntity<Void> reopenProject(
-            @PathVariable Long projectId,
+    public ResponseEntity<ProjectDTO> reopenProject(
+            @PathVariable String projectId,
             @Valid @RequestBody CloseProjectRequest request) {
         log.info("Reopening project: {}", projectId);
-        projectManagementService.reopenProject(projectId, request);
-        return ResponseEntity.noContent().build();
+        ProjectDTO project = projectManagementService.reopenProject(projectId, request);
+        return ResponseEntity.ok(project);
     }
 }

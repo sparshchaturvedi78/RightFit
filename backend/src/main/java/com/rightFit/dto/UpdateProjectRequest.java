@@ -17,6 +17,8 @@ public class UpdateProjectRequest {
 
     private String description;
 
+    private Long managerId;
+
     private String clientName;
 
     private String status;
