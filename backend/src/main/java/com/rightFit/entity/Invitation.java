@@ -3,15 +3,17 @@ package com.rightFit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Entity
 @Table(name = "invitations")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -24,35 +26,45 @@ public class Invitation {
     private String invitationId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id", nullable = false)
-    private Employee employee;
+    @JoinColumn(name = "candidate_application_id", nullable = false)
+    private CandidateApplication candidateApplication;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requirement_id", nullable = false)
     private ProjectRequirement requirement;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "application_id")
-    private CandidateApplication application;
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
 
-    @Column(name = "invitation_status", nullable = false)
-    private String invitationStatus;
+    @Column(name = "status", nullable = false)
+    private String status;
 
-    @Column(name = "invited_at", nullable = false)
-    private LocalDateTime invitedAt;
+    @Column(name = "message", columnDefinition = "TEXT")
+    private String message;
+
+    @Builder.Default
+    @Column(name = "requires_interview", nullable = false)
+    private Boolean requiresInterview = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invited_by")
     private Employee invitedBy;
 
+    @Column(name = "invited_at", nullable = false)
+    private LocalDateTime invitedAt;
+
     @Column(name = "response_deadline")
     private LocalDate responseDeadline;
 
-    @Column(name = "response_received_at")
-    private LocalDateTime responseReceivedAt;
+    @Column(name = "viewed_at")
+    private LocalDateTime viewedAt;
 
-    @Column(name = "response_status")
-    private String responseStatus;
+    @Column(name = "responded_at")
+    private LocalDateTime respondedAt;
+
+    @Column(name = "response_comment", columnDefinition = "TEXT")
+    private String responseComment;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -60,13 +72,13 @@ public class Invitation {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "invitation")
-    private Set<Interview> interviews;
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (invitedAt == null) {
+            invitedAt = LocalDateTime.now();
+        }
     }
 
     @PreUpdate

@@ -21,6 +21,9 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "code", insertable = false, updatable = false)
+    private String code; // ADMIN / MANAGER / RMG / ASSOCIATE for system roles; read-only mapping
+
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 

@@ -36,6 +36,10 @@ public class ProjectDTO {
 
     private String clientName;
 
+    private Boolean managerClaimed;
+
+    private LocalDateTime claimedAt;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

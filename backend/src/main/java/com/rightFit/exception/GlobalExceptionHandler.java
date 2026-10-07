@@ -37,6 +37,38 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
     }
 
+    @ExceptionHandler(ProjectAccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDto> handleProjectAccessDenied(
+            ProjectAccessDeniedException ex, WebRequest request) {
+        log.warn("Project access denied: {}", ex.getMessage());
+        return buildError(ex, request, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleResourceNotFound(
+            ResourceNotFoundException ex, WebRequest request) {
+        log.warn("Resource not found: {}", ex.getMessage());
+        return buildError(ex, request, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler({InvalidStateTransitionException.class, BusinessRuleException.class})
+    public ResponseEntity<ErrorResponseDto> handleBadRequestRbacExceptions(
+            RbacException ex, WebRequest request) {
+        log.warn("Rejected request: {}", ex.getMessage());
+        return buildError(ex, request, HttpStatus.BAD_REQUEST);
+    }
+
+    private ResponseEntity<ErrorResponseDto> buildError(RbacException ex, WebRequest request, HttpStatus status) {
+        ErrorResponseDto errorResponse = ErrorResponseDto.builder()
+                .errorCode(ex.getErrorCode())
+                .message(ex.getMessage())
+                .path(request.getDescription(false).replace("uri=", ""))
+                .timestamp(LocalDateTime.now())
+                .status(status.value())
+                .build();
+        return new ResponseEntity<>(errorResponse, status);
+    }
+
     @ExceptionHandler(SystemRoleModificationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ErrorResponseDto> handleSystemRoleModificationException(

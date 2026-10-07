@@ -179,19 +179,27 @@ public class EmployeeManagementService {
         log.info("Changing RMG for employee: {}", employeeId);
 
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+                .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Employee", employeeId));
 
-        Employee newRmg = employeeRepository.findById(request.getNewRmgId())
-                .orElseThrow(() -> new RuntimeException("New RMG not found: " + request.getNewRmgId()));
+        Employee newRmg;
+        if (request.getNewRmgEmployeeId() != null && !request.getNewRmgEmployeeId().isBlank()) {
+            newRmg = employeeRepository.findByEmployeeId(request.getNewRmgEmployeeId())
+                    .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Employee", request.getNewRmgEmployeeId()));
+        } else if (request.getNewRmgId() != null) {
+            newRmg = employeeRepository.findById(request.getNewRmgId())
+                    .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Employee", String.valueOf(request.getNewRmgId())));
+        } else {
+            throw new com.rightFit.exception.BusinessRuleException("Either newRmgEmployeeId or newRmgId is required");
+        }
 
         Long previousRmgId = employee.getRmgManager() != null ? employee.getRmgManager().getId() : null;
         employee.setRmgManager(newRmg);
         employee.setUpdatedAt(LocalDateTime.now());
         Employee updated = employeeRepository.save(employee);
 
-        log.info("RMG changed for employee {} to {}", employeeId, request.getNewRmgId());
+        log.info("RMG changed for employee {} to {}", employeeId, newRmg.getEmployeeId());
         auditLogService.logAction(getCurrentUserId(), "RMG_CHANGED", "EMPLOYEE", employee.getId(),
-                previousRmgId, request.getNewRmgId(), request.getReason());
+                previousRmgId, newRmg.getId(), request.getReason());
 
         return mapToDTO(updated);
     }
