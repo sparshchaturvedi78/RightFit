@@ -21,7 +21,7 @@ public class AdminPermissionController {
     private final PermissionService permissionService;
 
     @GetMapping
-    @PreAuthorize("hasPermission(null, 'PERMISSION_VIEW')")
+    @PreAuthorize("hasPermission(null, 'PERMISSION_READ')")
     public ResponseEntity<List<Permission>> getAllPermissions() {
         log.info("Fetching all active permissions");
         List<Permission> permissions = permissionService.getAllActivePermissions();
@@ -29,7 +29,7 @@ public class AdminPermissionController {
     }
 
     @GetMapping("/system")
-    @PreAuthorize("hasPermission(null, 'PERMISSION_VIEW')")
+    @PreAuthorize("hasPermission(null, 'PERMISSION_READ')")
     public ResponseEntity<List<Permission>> getSystemPermissions() {
         log.info("Fetching all system permissions");
         List<Permission> permissions = permissionService.getAllSystemPermissions();
@@ -37,7 +37,7 @@ public class AdminPermissionController {
     }
 
     @GetMapping("/custom")
-    @PreAuthorize("hasPermission(null, 'PERMISSION_VIEW')")
+    @PreAuthorize("hasPermission(null, 'PERMISSION_READ')")
     public ResponseEntity<List<Permission>> getCustomPermissions() {
         log.info("Fetching all custom permissions");
         List<Permission> permissions = permissionService.getAllCustomPermissions();
@@ -45,7 +45,7 @@ public class AdminPermissionController {
     }
 
     @GetMapping("/{permissionId}")
-    @PreAuthorize("hasPermission(null, 'PERMISSION_VIEW')")
+    @PreAuthorize("hasPermission(null, 'PERMISSION_READ')")
     public ResponseEntity<Permission> getPermissionById(@PathVariable Long permissionId) {
         log.info("Fetching permission with ID: {}", permissionId);
         Permission permission = permissionService.getPermissionById(permissionId);
@@ -53,7 +53,7 @@ public class AdminPermissionController {
     }
 
     @GetMapping("/name/{permissionName}")
-    @PreAuthorize("hasPermission(null, 'PERMISSION_VIEW')")
+    @PreAuthorize("hasPermission(null, 'PERMISSION_READ')")
     public ResponseEntity<Permission> getPermissionByName(@PathVariable String permissionName) {
         log.info("Fetching permission by name: {}", permissionName);
         Permission permission = permissionService.getPermissionByName(permissionName)
@@ -62,7 +62,7 @@ public class AdminPermissionController {
     }
 
     @GetMapping("/resource/{resource}")
-    @PreAuthorize("hasPermission(null, 'PERMISSION_VIEW')")
+    @PreAuthorize("hasPermission(null, 'PERMISSION_READ')")
     public ResponseEntity<List<Permission>> getPermissionsByResource(@PathVariable String resource) {
         log.info("Fetching permissions for resource: {}", resource);
         List<Permission> permissions = permissionService.getPermissionsByResource(resource);

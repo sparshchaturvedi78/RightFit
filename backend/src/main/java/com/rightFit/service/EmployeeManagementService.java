@@ -38,6 +38,8 @@ public class EmployeeManagementService {
     private final PasswordEncoder passwordEncoder;
     private final UserRoleService userRoleService;
     private final AuditLogService auditLogService;
+    private final EmployeeExitService employeeExitService;
+    private final RequirementAccessGuard accessGuard;
 
     @Auditable(action = "CREATE", entityType = "EMPLOYEE", entityIdParamName = "result.id")
     public EmployeeDTO createEmployee(CreateEmployeeRequest request) {
@@ -223,6 +225,8 @@ public class EmployeeManagementService {
         log.info("Employee deactivated successfully: {}", employeeId);
         auditLogService.logAction(getCurrentUserId(), "EMPLOYEE_DEACTIVATED", "EMPLOYEE", employee.getId(),
                 null, "INACTIVE", request.getReason());
+
+        employeeExitService.processExit(updated, accessGuard.currentEmployeeOrNull(), request.getReason());
 
         return mapToDTO(updated);
     }

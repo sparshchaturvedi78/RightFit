@@ -57,6 +57,79 @@ public class AuditQueryService {
         return auditLogs.map(this::mapToDTO);
     }
 
+    /** Same filters, plus the year/month convenience FR-055 asks for (date, month or year). */
+    public Page<AuditLogDTO> getAuditLogsWithFilters(Long userId, String entityType, String action,
+                                                     Integer year, Integer month,
+                                                     LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        LocalDateTime[] range = resolveRange(year, month, startDate, endDate);
+        if (range[0] == null) {
+            // findByFilters requires a non-null range; default to "all time" when no filter was given at all.
+            range[0] = LocalDateTime.of(1970, 1, 1, 0, 0);
+            range[1] = LocalDateTime.now().plusYears(1);
+        }
+        Page<AuditLog> auditLogs = auditLogRepository.findByFilters(userId, entityType, action, range[0], range[1], pageable);
+        return auditLogs.map(this::mapToDTO);
+    }
+
+    /**
+     * Builds the complete, downloadable audit-history CSV for the selected period (BR-050 / FR-056).
+     * Filter by an exact range (startDate/endDate), or the coarser year/month BR-049 asks for -
+     * year alone exports the whole year, year+month exports just that month. All filters are optional;
+     * passing none exports the complete history.
+     */
+    public String exportCsv(Long userId, String entityType, String action,
+                            Integer year, Integer month, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime[] range = resolveRange(year, month, startDate, endDate);
+        if (range[0] == null) {
+            // Postgres can't infer a bare "?" parameter's type when it's only ever compared to NULL;
+            // defaulting to an all-time bound (rather than a true null) avoids that and keeps "export everything".
+            range[0] = LocalDateTime.of(1970, 1, 1, 0, 0);
+            range[1] = LocalDateTime.now().plusYears(1);
+        }
+        java.util.List<AuditLog> rows = auditLogRepository.findForExport(userId, entityType, action, range[0], range[1]);
+
+        StringBuilder csv = new StringBuilder("auditId,action,entityType,entityId,performedByEmail,status,timestamp,oldValue,newValue,changeSummary\n");
+        for (AuditLog row : rows) {
+            csv.append(csvField(row.getAuditId())).append(',')
+                    .append(csvField(row.getAction())).append(',')
+                    .append(csvField(row.getEntityType())).append(',')
+                    .append(row.getEntityId() != null ? row.getEntityId() : "").append(',')
+                    .append(csvField(row.getPerformedByEmail())).append(',')
+                    .append(csvField(row.getStatus())).append(',')
+                    .append(row.getCreatedAt()).append(',')
+                    .append(csvField(row.getOldValue())).append(',')
+                    .append(csvField(row.getNewValue())).append(',')
+                    .append(csvField(row.getChangeSummary())).append('\n');
+        }
+        return csv.toString();
+    }
+
+    /** [start, end], both possibly null: explicit dates win; else year (+ optional month); else no bound. */
+    private LocalDateTime[] resolveRange(Integer year, Integer month, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startTime = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime endTime = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
+
+        if (startTime == null && year != null) {
+            if (month != null) {
+                java.time.YearMonth ym = java.time.YearMonth.of(year, month);
+                startTime = ym.atDay(1).atStartOfDay();
+                endTime = ym.atEndOfMonth().atTime(LocalTime.MAX);
+            } else {
+                startTime = LocalDate.of(year, 1, 1).atStartOfDay();
+                endTime = LocalDate.of(year, 12, 31).atTime(LocalTime.MAX);
+            }
+        }
+        return new LocalDateTime[] {startTime, endTime};
+    }
+
+    private String csvField(String value) {
+        if (value == null) {
+            return "";
+        }
+        String escaped = value.replace("\"", "\"\"");
+        return "\"" + escaped + "\"";
+    }
+
     private AuditLogDTO mapToDTO(AuditLog auditLog) {
         Long performedById = auditLog.getPerformedBy() != null ? auditLog.getPerformedBy().getId() : null;
         return AuditLogDTO.builder()
