@@ -13,6 +13,8 @@ public class RmgDetailDTO {
 
     private Long rmgId;
 
+    private String employeeId;
+
     private String rmgName;
 
     private String email;

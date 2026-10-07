@@ -60,4 +60,43 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             "LOWER(e.lastName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
             "LOWER(CONCAT(e.firstName, ' ', e.lastName)) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))")
     Page<Employee> quickSearch(@Param("query") String query, Pageable pageable);
+
+    @Query("SELECT DISTINCT e FROM Employee e " +
+            "LEFT JOIN e.user u " +
+            "LEFT JOIN u.userRoles ur " +
+            "LEFT JOIN ur.role r " +
+            "WHERE (:query IS NULL OR " +
+            "   LOWER(e.employeeId) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "   LOWER(e.firstName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "   LOWER(e.lastName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "   LOWER(e.email) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))) " +
+            "AND (:role IS NULL OR (UPPER(r.name) = UPPER(CAST(:role AS string)) AND ur.isActive = true)) " +
+            "AND (:minExperience IS NULL OR e.yearsOfExperience >= :minExperience) " +
+            "AND (:maxExperience IS NULL OR e.yearsOfExperience <= :maxExperience) " +
+            "AND (:employmentStatus IS NULL OR e.employmentStatus = :employmentStatus) " +
+            "AND (:allocationStatus IS NULL OR e.allocationStatus = :allocationStatus) " +
+            "AND (:availabilityStatus IS NULL OR e.availabilityStatus = :availabilityStatus) " +
+            "AND (:poolStatus IS NULL OR e.poolStatus = :poolStatus) " +
+            "AND (:departmentId IS NULL OR e.department.id = :departmentId) " +
+            "AND (:locationId IS NULL OR e.location.id = :locationId) " +
+            "AND (:designation IS NULL OR e.designation = :designation) " +
+            "AND (:domain IS NULL OR e.domain = :domain) " +
+            "AND (:grade IS NULL OR e.grade = :grade) " +
+            "AND (:rmgId IS NULL OR e.rmgManager.id = :rmgId)")
+    Page<Employee> searchUsers(
+            @Param("query") String query,
+            @Param("role") String role,
+            @Param("minExperience") Double minExperience,
+            @Param("maxExperience") Double maxExperience,
+            @Param("employmentStatus") String employmentStatus,
+            @Param("allocationStatus") String allocationStatus,
+            @Param("availabilityStatus") String availabilityStatus,
+            @Param("poolStatus") String poolStatus,
+            @Param("departmentId") Long departmentId,
+            @Param("locationId") Long locationId,
+            @Param("designation") String designation,
+            @Param("domain") String domain,
+            @Param("grade") String grade,
+            @Param("rmgId") Long rmgId,
+            Pageable pageable);
 }

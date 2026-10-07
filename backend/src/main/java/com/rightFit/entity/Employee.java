@@ -16,7 +16,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(exclude = {"user", "subordinates"})
+@EqualsAndHashCode(exclude = {"user", "subordinates", "skills", "certifications", "preferences", "allocations"})
 public class Employee {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

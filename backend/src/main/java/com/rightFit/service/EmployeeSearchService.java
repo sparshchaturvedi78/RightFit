@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class EmployeeSearchService {
 
     private final EmployeeRepository employeeRepository;
+    private final UserRoleService userRoleService;
 
     public Page<EmployeeDTO> searchEmployees(EmployeeSearchRequest request) {
         log.debug("Quick-searching employees with query: {}", request.getQuery());
@@ -50,6 +51,11 @@ public class EmployeeSearchService {
                         employee.getRmgManager().getFirstName() + " " + employee.getRmgManager().getLastName() : null)
                 .departmentId(employee.getDepartment() != null ? employee.getDepartment().getId() : null)
                 .departmentName(employee.getDepartment() != null ? employee.getDepartment().getName() : null)
+                .roles(employee.getUser() != null
+                        ? userRoleService.getUserRoles(employee.getUser().getId()).stream()
+                            .map(ur -> ur.getRole().getName())
+                            .collect(java.util.stream.Collectors.toSet())
+                        : java.util.Set.of())
                 .build();
     }
 }

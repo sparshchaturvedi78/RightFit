@@ -6,6 +6,7 @@ import com.rightFit.dto.ReplaceRmgRequest;
 import com.rightFit.dto.ReplacementResultDTO;
 import com.rightFit.entity.Employee;
 import com.rightFit.entity.Project;
+import com.rightFit.entity.UserRole;
 import com.rightFit.repository.EmployeeRepository;
 import com.rightFit.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,19 +29,21 @@ public class AssignmentReplacementService {
     private final EmployeeRepository employeeRepository;
     private final ProjectRepository projectRepository;
     private final AuditLogService auditLogService;
+    private final UserRoleService userRoleService;
 
-    public AssignmentPreviewDTO getManagerAssignments(Long departingManagerId) {
+    public AssignmentPreviewDTO getManagerAssignments(String departingManagerId) {
         log.info("Fetching manager assignments for preview: {}", departingManagerId);
 
-        Employee manager = employeeRepository.findById(departingManagerId)
+        Employee manager = employeeRepository.findByEmployeeId(departingManagerId)
                 .orElseThrow(() -> new RuntimeException("Manager not found: " + departingManagerId));
 
-        List<Project> managedProjects = projectRepository.findByManagerId(departingManagerId);
+        List<Project> managedProjects = projectRepository.findByManagerId(manager.getId());
 
         return AssignmentPreviewDTO.builder()
                 .departingId(manager.getId())
+                .departingEmployeeId(manager.getEmployeeId())
                 .departingName(manager.getFirstName() + " " + manager.getLastName())
-                .departingRole("MANAGER")
+                .departingRole(resolveActualRole(manager))
                 .projects(new ArrayList<>())
                 .projectCount(managedProjects.size())
                 .ownedRequirementIds(new ArrayList<>())
@@ -50,33 +54,45 @@ public class AssignmentReplacementService {
                 .build();
     }
 
-    public AssignmentPreviewDTO getRmgAssignments(Long departingRmgId) {
+    public AssignmentPreviewDTO getRmgAssignments(String departingRmgId) {
         log.info("Fetching RMG assignments for preview: {}", departingRmgId);
 
-        Employee rmg = employeeRepository.findById(departingRmgId)
+        Employee rmg = employeeRepository.findByEmployeeId(departingRmgId)
                 .orElseThrow(() -> new RuntimeException("RMG not found: " + departingRmgId));
 
-        List<Employee> subordinates = employeeRepository.findByRmgManagerId(departingRmgId);
+        List<Employee> subordinates = employeeRepository.findByRmgManagerId(rmg.getId());
 
         List<Long> employeeIds = new ArrayList<>();
         subordinates.forEach(emp -> employeeIds.add(emp.getId()));
 
         return AssignmentPreviewDTO.builder()
                 .departingId(rmg.getId())
+                .departingEmployeeId(rmg.getEmployeeId())
                 .departingName(rmg.getFirstName() + " " + rmg.getLastName())
-                .departingRole("RMG")
+                .departingRole(resolveActualRole(rmg))
                 .employeeIds(employeeIds)
                 .employeeCount(employeeIds.size())
                 .message("RMG has " + employeeIds.size() + " employees assigned")
                 .build();
     }
 
+    private String resolveActualRole(Employee employee) {
+        if (employee.getUser() == null) {
+            return null;
+        }
+        List<UserRole> roles = userRoleService.getUserRoles(employee.getUser().getId());
+        if (roles.isEmpty()) {
+            return null;
+        }
+        return roles.stream().map(ur -> ur.getRole().getName()).collect(Collectors.joining(", "));
+    }
+
     @Transactional
-    public ReplacementResultDTO replaceManager(Long departingManagerId, ReplaceManagerRequest request) {
+    public ReplacementResultDTO replaceManager(String departingManagerId, ReplaceManagerRequest request) {
         log.info("Executing manager replacement - Departing: {}, New: {}", departingManagerId, request.getNewManagerId());
 
         try {
-            Employee departingManager = employeeRepository.findById(departingManagerId)
+            Employee departingManager = employeeRepository.findByEmployeeId(departingManagerId)
                     .orElseThrow(() -> new RuntimeException("Departing manager not found: " + departingManagerId));
 
             Employee newManager = employeeRepository.findById(request.getNewManagerId())
@@ -96,7 +112,7 @@ public class AssignmentReplacementService {
                     projectsTransferred++;
 
                     auditLogService.logAction(getCurrentUserId(), "MANAGER_REPLACED_PROJECT", "PROJECT", projectId,
-                            departingManagerId, request.getNewManagerId(), "Manager replacement");
+                            departingManager.getId(), request.getNewManagerId(), "Manager replacement");
                 }
             }
 
@@ -120,11 +136,11 @@ public class AssignmentReplacementService {
     }
 
     @Transactional
-    public ReplacementResultDTO replaceRmg(Long departingRmgId, ReplaceRmgRequest request) {
+    public ReplacementResultDTO replaceRmg(String departingRmgId, ReplaceRmgRequest request) {
         log.info("Executing RMG replacement - Departing: {}, New: {}", departingRmgId, request.getNewRmgId());
 
         try {
-            Employee departingRmg = employeeRepository.findById(departingRmgId)
+            Employee departingRmg = employeeRepository.findByEmployeeId(departingRmgId)
                     .orElseThrow(() -> new RuntimeException("Departing RMG not found: " + departingRmgId));
 
             Employee newRmg = employeeRepository.findById(request.getNewRmgId())
@@ -142,7 +158,7 @@ public class AssignmentReplacementService {
                     employeesTransferred++;
 
                     auditLogService.logAction(getCurrentUserId(), "RMG_REPLACED_EMPLOYEE", "EMPLOYEE", employeeId,
-                            departingRmgId, request.getNewRmgId(), "RMG replacement");
+                            departingRmg.getId(), request.getNewRmgId(), "RMG replacement");
                 }
             }
 

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -71,4 +72,6 @@ public class EmployeeDTO {
     private String createdBy;
 
     private String updatedBy;
+
+    private Set<String> roles;
 }
