@@ -13,6 +13,8 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
     Optional<Role> findByName(String name);
 
+    Optional<Role> findByCode(String code);
+
     @Query("SELECT r FROM Role r WHERE r.roleType = 'SYSTEM'")
     List<Role> findAllSystemRoles();
 

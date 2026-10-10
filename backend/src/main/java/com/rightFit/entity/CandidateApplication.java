@@ -3,14 +3,16 @@ package com.rightFit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Entity
 @Table(name = "candidate_applications")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -30,27 +32,67 @@ public class CandidateApplication {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
-    @Column(name = "application_status", nullable = false)
-    private String applicationStatus;
+    @Column(name = "status", nullable = false)
+    private String status;
 
-    @Column(name = "cover_letter", columnDefinition = "TEXT")
-    private String coverLetter;
+    @Column(name = "previous_status")
+    private String previousStatus;
 
-    @Column(name = "applied_at", nullable = false)
-    private LocalDateTime appliedAt;
+    @Column(name = "source", nullable = false)
+    private String source;
+
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewed_by")
-    private Employee reviewedBy;
+    @JoinColumn(name = "identified_by")
+    private Employee identifiedBy;
 
-    @Column(name = "reviewed_at")
-    private LocalDateTime reviewedAt;
+    @Column(name = "identified_at", nullable = false)
+    private LocalDateTime identifiedAt;
 
-    @Column(name = "rejection_reason", columnDefinition = "TEXT")
-    private String rejectionReason;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shortlisted_by")
+    private Employee shortlistedBy;
+
+    @Column(name = "shortlisted_at")
+    private LocalDateTime shortlistedAt;
+
+    @Builder.Default
+    @Column(name = "requires_interview", nullable = false)
+    private Boolean requiresInterview = true;
+
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    @Column(name = "decision")
+    private String decision;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "decision_by")
+    private Employee decisionBy;
+
+    @Column(name = "decision_at")
+    private LocalDateTime decisionAt;
+
+    @Column(name = "decision_reason", columnDefinition = "TEXT")
+    private String decisionReason;
+
+    @Column(name = "rejection_reason_code")
+    private String rejectionReasonCode;
+
+    @Column(name = "rejection_comment", columnDefinition = "TEXT")
+    private String rejectionComment;
 
     @Column(name = "rejected_at")
     private LocalDateTime rejectedAt;
+
+    @Builder.Default
+    @Column(name = "archived", nullable = false)
+    private Boolean archived = false;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -58,13 +100,13 @@ public class CandidateApplication {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "application")
-    private Set<Invitation> invitations;
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (identifiedAt == null) {
+            identifiedAt = LocalDateTime.now();
+        }
     }
 
     @PreUpdate

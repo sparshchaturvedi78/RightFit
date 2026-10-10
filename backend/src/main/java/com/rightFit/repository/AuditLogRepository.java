@@ -64,6 +64,27 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
             @Param("endTime") LocalDateTime endTime,
             Pageable pageable);
 
+    /**
+     * Unpaged, for the audit-history file export (BR-050 / FR-056). userId/entityType/action are optional;
+     * startTime/endTime are not - a bare "? IS NULL" with no other context trips Postgres's parameter type
+     * inference for timestamp params (unlike Long/String above), so the caller always resolves a concrete
+     * range first (see AuditQueryService.exportCsv).
+     */
+    @Query("""
+        SELECT al FROM AuditLog al
+        WHERE (:userId IS NULL OR al.userId = :userId)
+        AND (:entityType IS NULL OR al.entityType = :entityType)
+        AND (:action IS NULL OR al.action = :action)
+        AND al.timestamp BETWEEN :startTime AND :endTime
+        ORDER BY al.timestamp DESC
+        """)
+    java.util.List<AuditLog> findForExport(
+            @Param("userId") Long userId,
+            @Param("entityType") String entityType,
+            @Param("action") String action,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
     @Query("SELECT COUNT(al) FROM AuditLog al WHERE al.userId = :userId")
     long countByUserId(@Param("userId") Long userId);
 

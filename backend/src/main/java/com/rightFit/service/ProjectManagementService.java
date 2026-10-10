@@ -4,7 +4,11 @@ import com.rightFit.dto.CreateProjectRequest;
 import com.rightFit.dto.UpdateProjectRequest;
 import com.rightFit.dto.ChangeManagerRequest;
 import com.rightFit.dto.CloseProjectRequest;
+import com.rightFit.dto.MyProjectsResponse;
 import com.rightFit.dto.ProjectDTO;
+import com.rightFit.exception.BusinessRuleException;
+import com.rightFit.exception.ProjectAccessDeniedException;
+import com.rightFit.exception.ResourceNotFoundException;
 import com.rightFit.entity.Project;
 import com.rightFit.entity.Employee;
 import com.rightFit.repository.ProjectRepository;
@@ -18,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -28,6 +33,8 @@ public class ProjectManagementService {
     private final ProjectRepository projectRepository;
     private final EmployeeRepository employeeRepository;
     private final AuditLogService auditLogService;
+    private final RequirementAccessGuard accessGuard;
+    private final ClosureService closureService;
 
     @Auditable(action = "CREATE", entityType = "PROJECT", entityIdParamName = "result.id")
     public ProjectDTO createProject(CreateProjectRequest request) {
@@ -71,8 +78,8 @@ public class ProjectManagementService {
             Long previousManagerId = project.getManager() != null ? project.getManager().getId() : null;
             if (!request.getManagerId().equals(previousManagerId)) {
                 Employee newManager = employeeRepository.findById(request.getManagerId())
-                        .orElseThrow(() -> new RuntimeException("Manager not found: " + request.getManagerId()));
-                project.setManager(newManager);
+                        .orElseThrow(() -> new ResourceNotFoundException("Employee", String.valueOf(request.getManagerId())));
+                project.assignManager(newManager);
                 auditLogService.logAction(getCurrentUserId(), "MANAGER_CHANGED", "PROJECT", project.getId(),
                         previousManagerId, request.getManagerId(), "Updated via project edit");
             }
@@ -101,19 +108,18 @@ public class ProjectManagementService {
         log.info("Changing manager for project: {}", projectId);
 
         Project project = projectRepository.findByProjectId(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
 
-        Employee newManager = employeeRepository.findById(request.getNewManagerId())
-                .orElseThrow(() -> new RuntimeException("New manager not found: " + request.getNewManagerId()));
+        Employee newManager = resolveEmployee(request.getNewManagerId(), request.getNewManagerEmployeeId());
 
         Long previousManagerId = project.getManager() != null ? project.getManager().getId() : null;
-        project.setManager(newManager);
+        project.assignManager(newManager);
         project.setUpdatedAt(LocalDateTime.now());
         Project updated = projectRepository.save(project);
 
-        log.info("Manager changed for project {} to {}", projectId, request.getNewManagerId());
+        log.info("Manager changed for project {} to {}", projectId, newManager.getEmployeeId());
         auditLogService.logAction(getCurrentUserId(), "MANAGER_CHANGED", "PROJECT", project.getId(),
-                previousManagerId, request.getNewManagerId(), request.getReason());
+                previousManagerId, newManager.getId(), request.getReason());
 
         return mapToDTO(updated);
     }
@@ -131,6 +137,7 @@ public class ProjectManagementService {
         log.info("Project closed successfully: {}", projectId);
         auditLogService.logAction(getCurrentUserId(), "PROJECT_CLOSED", "PROJECT", project.getId(),
                 "ACTIVE", "CLOSED", request.getReason());
+        closureService.closeProject(project, request.getReason());
 
         return mapToDTO(updated);
     }
@@ -169,13 +176,67 @@ public class ProjectManagementService {
         return projects.map(this::mapToDTO);
     }
 
+    @Transactional(readOnly = true)
+    public MyProjectsResponse getMyProjects() {
+        Employee caller = accessGuard.currentEmployee();
+        List<Project> managed = projectRepository.findByManagerId(caller.getId());
+
+        List<ProjectDTO> claimed = managed.stream()
+                .filter(p -> Boolean.TRUE.equals(p.getManagerClaimed()))
+                .map(this::mapToDTO)
+                .toList();
+        List<ProjectDTO> pending = managed.stream()
+                .filter(p -> !Boolean.TRUE.equals(p.getManagerClaimed()))
+                .map(this::mapToDTO)
+                .toList();
+
+        return MyProjectsResponse.builder().claimed(claimed).pendingClaim(pending).build();
+    }
+
+    public ProjectDTO claimProject(String projectId) {
+        Project project = projectRepository.findByProjectId(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+
+        Employee caller = accessGuard.currentEmployee();
+        if (project.getManager() == null || !project.getManager().getId().equals(caller.getId())) {
+            throw ProjectAccessDeniedException.notOwned(projectId);
+        }
+        if (Boolean.TRUE.equals(project.getManagerClaimed())) {
+            return mapToDTO(project);
+        }
+
+        project.setManagerClaimed(true);
+        project.setClaimedAt(LocalDateTime.now());
+        project.setUpdatedAt(LocalDateTime.now());
+        Project saved = projectRepository.save(project);
+
+        auditLogService.logAction(getCurrentUserId(), "PROJECT_CLAIMED", "PROJECT", saved.getId(),
+                false, true, "Manager " + caller.getEmployeeId() + " claimed project " + projectId);
+        log.info("Project {} claimed by {}", projectId, caller.getEmployeeId());
+
+        return mapToDTO(saved);
+    }
+
+    /** Accepts either the legacy numeric id or the business Employee ID; at least one must resolve. */
+    private Employee resolveEmployee(Long numericId, String employeeId) {
+        if (employeeId != null && !employeeId.isBlank()) {
+            return employeeRepository.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee", employeeId));
+        }
+        if (numericId != null) {
+            return employeeRepository.findById(numericId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee", String.valueOf(numericId)));
+        }
+        throw new BusinessRuleException("Either newManagerEmployeeId or newManagerId is required");
+    }
+
     private void validateProjectUniqueness(String projectId) {
         if (projectRepository.findByProjectId(projectId).isPresent()) {
             throw new com.rightFit.exception.DuplicateEntityException("Project", "projectId", projectId);
         }
     }
 
-    private ProjectDTO mapToDTO(Project project) {
+    public ProjectDTO mapToDTO(Project project) {
         return ProjectDTO.builder()
                 .id(project.getId())
                 .projectId(project.getProjectId())
@@ -188,6 +249,8 @@ public class ProjectManagementService {
                 .startDate(project.getStartDate())
                 .endDate(project.getEndDate())
                 .clientName(project.getClientName())
+                .managerClaimed(project.getManagerClaimed())
+                .claimedAt(project.getClaimedAt())
                 .createdAt(project.getCreatedAt())
                 .updatedAt(project.getUpdatedAt())
                 .createdBy(project.getCreatedBy())

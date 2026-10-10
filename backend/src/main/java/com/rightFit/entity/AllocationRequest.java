@@ -3,15 +3,18 @@ package com.rightFit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Entity
 @Table(name = "allocation_requests")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -24,44 +27,52 @@ public class AllocationRequest {
     private String requestId;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "candidate_application_id", nullable = false)
+    private CandidateApplication candidateApplication;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requirement_id", nullable = false)
     private ProjectRequirement requirement;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "requested_by", nullable = false)
-    private Employee requestedBy;
+    @JoinColumn(name = "submitted_by", nullable = false)
+    private Employee submittedBy;
 
-    @Column(name = "allocation_start_date", nullable = false)
-    private LocalDate allocationStartDate;
+    @Column(name = "requested_start_date", nullable = false)
+    private LocalDate requestedStartDate;
 
-    @Column(name = "allocation_end_date")
-    private LocalDate allocationEndDate;
+    @Column(name = "requested_end_date")
+    private LocalDate requestedEndDate;
 
-    @Column(name = "allocation_percentage", nullable = false)
-    private Integer allocationPercentage;
+    @Column(name = "requested_hours_per_day", nullable = false)
+    private BigDecimal requestedHoursPerDay;
 
-    @Column(name = "priority", nullable = false)
-    private String priority;
+    @Column(name = "status", nullable = false)
+    private String status;
 
-    @Column(name = "request_status", nullable = false)
-    private String requestStatus;
+    @Column(name = "submitted_at", nullable = false)
+    private LocalDateTime submittedAt;
 
-    @Column(name = "rejection_reason")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewed_by")
+    private Employee reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    @Column(name = "review_comments", columnDefinition = "TEXT")
+    private String reviewComments;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "rejected_by")
-    private Employee rejectedBy;
-
-    @Column(name = "rejected_at")
-    private LocalDateTime rejectedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approved_by")
-    private Employee approvedBy;
-
-    @Column(name = "approved_at")
-    private LocalDateTime approvedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -69,13 +80,13 @@ public class AllocationRequest {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "allocationRequest")
-    private Set<Allocation> allocations;
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (submittedAt == null) {
+            submittedAt = LocalDateTime.now();
+        }
     }
 
     @PreUpdate

@@ -45,6 +45,13 @@ public class Project {
     @Column(name = "client_name")
     private String clientName;
 
+    @Builder.Default
+    @Column(name = "manager_claimed", nullable = false)
+    private Boolean managerClaimed = false;
+
+    @Column(name = "claimed_at")
+    private LocalDateTime claimedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -65,6 +72,13 @@ public class Project {
 
     @OneToMany(mappedBy = "project")
     private Set<Allocation> allocations;
+
+    /** A newly assigned Manager must claim the project again (BRD 6.2). */
+    public void assignManager(Employee newManager) {
+        this.manager = newManager;
+        this.managerClaimed = false;
+        this.claimedAt = null;
+    }
 
     @PrePersist
     protected void onCreate() {

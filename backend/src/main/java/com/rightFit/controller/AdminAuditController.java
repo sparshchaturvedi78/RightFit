@@ -82,20 +82,45 @@ public class AdminAuditController {
         return ResponseEntity.ok(auditLogs);
     }
 
+    /** Downloads the complete audit-history file for the selected period (BR-050 / FR-056). */
+    @GetMapping("/export")
+    @PreAuthorize("hasPermission(null, 'AUDIT_EXPORT')")
+    public ResponseEntity<String> exportAuditHistory(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        log.info("Exporting audit history: year={}, month={}, startDate={}, endDate={}", year, month, startDate, endDate);
+
+        String csv = auditQueryService.exportCsv(userId, entityType, action, year, month, startDate, endDate);
+        String filename = "audit-history" + (year != null ? "-" + year + (month != null ? "-" + month : "") : "") + ".csv";
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header("Content-Type", "text/csv")
+                .body(csv);
+    }
+
     @GetMapping("/filter")
-    @PreAuthorize("hasPermission(null, 'AUDIT_READ')")
+    @PreAuthorize("hasPermission(null, 'AUDIT_FILTER')")
     public ResponseEntity<Page<AuditLogDTO>> getAuditLogsWithFilters(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) String action,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        log.info("Fetching audit logs with filters");
+        log.info("Fetching audit logs with filters: year={}, month={}, startDate={}, endDate={}", year, month, startDate, endDate);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<AuditLogDTO> auditLogs = auditQueryService.getAuditLogsWithFilters(userId, entityType, action, startDate, endDate, pageable);
+        Page<AuditLogDTO> auditLogs = auditQueryService.getAuditLogsWithFilters(
+                userId, entityType, action, year, month, startDate, endDate, pageable);
         return ResponseEntity.ok(auditLogs);
     }
 }
