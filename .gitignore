@@ -3,7 +3,6 @@
 # ==============================
 
 # Spring Boot configuration containing secrets
-backend/src/main/resources/application.properties
 backend/src/main/resources/application-local.properties
 backend/src/main/resources/application-dev.properties
 backend/src/main/resources/application-prod.properties
