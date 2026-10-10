@@ -35,14 +35,9 @@ public class BenchHistory {
     @Column(name = "bench_status", nullable = false)
     private String benchStatus;
 
-    @Column(name = "bench_paused")
-    private Boolean benchPaused;
-
-    @Column(name = "pause_start_date")
-    private LocalDateTime pauseStartDate;
-
-    @Column(name = "pause_end_date")
-    private LocalDateTime pauseEndDate;
+    /** Days excluded from aging (e.g. verified temporary unavailability) - subtracted before classifying. */
+    @Column(name = "paused_days")
+    private Integer pausedDays;
 
     @Column(name = "is_current", nullable = false)
     private Boolean isCurrent;

@@ -55,6 +55,25 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     long countByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
 
+    /**
+     * Resource Pool listing (RMG phase): unlike searchUsers' rmgId filter (exact match only, used
+     * for Admin's "find this RMG's roster"), pool visibility also includes employees with no RMG
+     * assigned yet - same "unassigned -> visible to any RMG" rule used for allocation review.
+     */
+    @Query("SELECT e FROM Employee e WHERE e.employmentStatus = 'ACTIVE' AND e.poolStatus = 'IN_RESOURCE_POOL' AND " +
+            "(:rmgId IS NULL OR e.rmgManager.id = :rmgId OR e.rmgManager IS NULL) AND " +
+            "(:query IS NULL OR LOWER(e.employeeId) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "   LOWER(e.firstName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
+            "   LOWER(e.lastName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))) AND " +
+            "(:grade IS NULL OR e.grade = :grade) AND " +
+            "(:departmentId IS NULL OR e.department.id = :departmentId)")
+    Page<Employee> findResourcePool(
+            @Param("rmgId") Long rmgId,
+            @Param("query") String query,
+            @Param("grade") String grade,
+            @Param("departmentId") Long departmentId,
+            Pageable pageable);
+
     @Query("SELECT e FROM Employee e WHERE " +
             "LOWER(e.employeeId) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
             "LOWER(e.firstName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
