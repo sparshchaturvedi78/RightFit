@@ -88,6 +88,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     @Query("SELECT COUNT(al) FROM AuditLog al WHERE al.userId = :userId")
     long countByUserId(@Param("userId") Long userId);
 
+    long countByTimestampAfter(LocalDateTime timestamp);
+
     @Query("SELECT COUNT(al) FROM AuditLog al WHERE al.entityType = :entityType")
     long countByEntityType(@Param("entityType") String entityType);
 }

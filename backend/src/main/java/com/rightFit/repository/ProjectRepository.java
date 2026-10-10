@@ -42,4 +42,13 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             "LOWER(p.projectId) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +
             "LOWER(p.projectName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))")
     Page<Project> quickSearch(@Param("query") String query, Pageable pageable);
+
+    long countByStatus(String status);
+
+    @Query("SELECT COUNT(DISTINCT p.manager.id) FROM Project p WHERE p.manager IS NOT NULL")
+    long countDistinctManagers();
+
+    /** Admin Dashboard: a project whose assigned Manager has since gone INACTIVE needs a replacement. */
+    @Query("SELECT COUNT(p) FROM Project p WHERE p.manager.employmentStatus = 'INACTIVE'")
+    long countPendingManagerReplacements();
 }

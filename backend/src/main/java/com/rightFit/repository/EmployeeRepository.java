@@ -69,6 +69,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
      */
     long countByEmploymentStatusAndPoolStatus(String employmentStatus, String poolStatus);
 
+    long countByEmploymentStatus(String employmentStatus);
+
+    @Query("SELECT COUNT(DISTINCT e.rmgManager.id) FROM Employee e WHERE e.rmgManager IS NOT NULL")
+    long countDistinctRmgs();
+
+    /** Admin Dashboard: an active employee still assigned to an RMG who has since gone INACTIVE. */
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.employmentStatus = 'ACTIVE' AND e.rmgManager.employmentStatus = 'INACTIVE'")
+    long countPendingRmgReplacements();
+
     @Query("SELECT e FROM Employee e WHERE e.employmentStatus = 'ACTIVE' AND e.poolStatus = 'IN_RESOURCE_POOL' AND " +
             "(:rmgId IS NULL OR e.rmgManager.id = :rmgId OR e.rmgManager IS NULL) AND " +
             "(:query IS NULL OR LOWER(e.employeeId) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +

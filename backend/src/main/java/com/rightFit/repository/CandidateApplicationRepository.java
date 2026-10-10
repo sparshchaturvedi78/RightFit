@@ -35,4 +35,10 @@ public interface CandidateApplicationRepository extends JpaRepository<CandidateA
 
     @Query("SELECT c FROM CandidateApplication c WHERE c.requirement.project.id = :projectId")
     List<CandidateApplication> findByProjectId(@Param("projectId") Long projectId);
+
+    long countByEmployeeId(Long employeeId);
+
+    @Query("SELECT COUNT(c) FROM CandidateApplication c WHERE c.employee.id = :employeeId AND " +
+            "c.status NOT IN ('ALLOCATED', 'DECLINED', 'REJECTED', 'WITHDRAWN')")
+    long countOpenForEmployee(@Param("employeeId") Long employeeId);
 }
