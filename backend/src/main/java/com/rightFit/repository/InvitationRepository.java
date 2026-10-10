@@ -29,4 +29,7 @@ public interface InvitationRepository extends JpaRepository<Invitation, Long> {
     @Query("SELECT COUNT(i) FROM Invitation i WHERE i.requirement.project.manager.id = :managerId " +
             "AND i.status IN ('SENT', 'VIEWED')")
     long countPendingForManager(@Param("managerId") Long managerId);
+
+    @Query("SELECT COUNT(i) FROM Invitation i WHERE i.employee.id = :employeeId AND i.status IN ('SENT', 'VIEWED')")
+    long countPendingForEmployee(@Param("employeeId") Long employeeId);
 }

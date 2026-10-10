@@ -47,4 +47,12 @@ public interface ProjectRequirementRepository extends JpaRepository<ProjectRequi
 
     @Query(value = "SELECT nextval('requirement_business_id_seq')", nativeQuery = true)
     Long nextRequirementSequence();
+
+    /** Demand & Supply Analytics (BRD 27): open demand for a skill, matched the same free-text way
+     * candidate search already matches requiredSkills - there's no structured FK to the Skill catalog. */
+    @Query("SELECT COUNT(r) FROM ProjectRequirement r WHERE r.status = 'PUBLISHED' AND " +
+            "LOWER(r.requiredSkills) LIKE LOWER(CONCAT('%', CAST(:skillName AS string), '%'))")
+    long countOpenDemandForSkill(@Param("skillName") String skillName);
+
+    long countByStatus(String status);
 }

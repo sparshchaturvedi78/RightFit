@@ -67,6 +67,19 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
      * for Admin's "find this RMG's roster"), pool visibility also includes employees with no RMG
      * assigned yet - same "unassigned -> visible to any RMG" rule used for allocation review.
      */
+    long countByEmploymentStatusAndPoolStatus(String employmentStatus, String poolStatus);
+
+    long countByEmploymentStatus(String employmentStatus);
+
+    List<Employee> findByAllocationStatus(String allocationStatus);
+
+    @Query("SELECT COUNT(DISTINCT e.rmgManager.id) FROM Employee e WHERE e.rmgManager IS NOT NULL")
+    long countDistinctRmgs();
+
+    /** Admin Dashboard: an active employee still assigned to an RMG who has since gone INACTIVE. */
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.employmentStatus = 'ACTIVE' AND e.rmgManager.employmentStatus = 'INACTIVE'")
+    long countPendingRmgReplacements();
+
     @Query("SELECT e FROM Employee e WHERE e.employmentStatus = 'ACTIVE' AND e.poolStatus = 'IN_RESOURCE_POOL' AND " +
             "(:rmgId IS NULL OR e.rmgManager.id = :rmgId OR e.rmgManager IS NULL) AND " +
             "(:query IS NULL OR LOWER(e.employeeId) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR " +

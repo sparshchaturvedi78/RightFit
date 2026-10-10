@@ -3,12 +3,17 @@ package com.rightFit.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
+
+    private final JavaMailSender mailSender;
 
     @Value("${app.mail.enabled:false}")
     private boolean mailEnabled;
@@ -38,7 +43,13 @@ public class EmailService {
 
         try {
             log.info("Sending OTP email to: {} for purpose: {}", toEmail, purpose);
-        } catch (Exception e) {
+            SimpleMailMessage mailMessage = new SimpleMailMessage();
+            mailMessage.setTo(toEmail);
+            mailMessage.setFrom(fromEmail);
+            mailMessage.setSubject(subject);
+            mailMessage.setText(message);
+            mailSender.send(mailMessage);
+        } catch (MailException e) {
             log.error("Failed to send OTP email to: {}, error: {}", toEmail, e.getMessage());
             throw new RuntimeException("Failed to send OTP email");
         }

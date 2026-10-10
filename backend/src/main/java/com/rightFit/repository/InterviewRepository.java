@@ -32,4 +32,8 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     @Query("SELECT COUNT(i) FROM Interview i WHERE i.requirement.project.manager.id = :managerId " +
             "AND i.status IN ('SCHEDULED', 'ACCEPTED') AND i.scheduledAt >= :from")
     long countUpcomingForManager(@Param("managerId") Long managerId, @Param("from") LocalDateTime from);
+
+    @Query("SELECT COUNT(i) FROM Interview i WHERE i.employee.id = :employeeId " +
+            "AND i.status IN ('SCHEDULED', 'ACCEPTED') AND i.scheduledAt >= :from")
+    long countUpcomingForEmployee(@Param("employeeId") Long employeeId, @Param("from") LocalDateTime from);
 }

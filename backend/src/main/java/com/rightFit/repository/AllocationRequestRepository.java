@@ -28,4 +28,11 @@ public interface AllocationRequestRepository extends JpaRepository<AllocationReq
 
     @Query("SELECT r.status, COUNT(r) FROM AllocationRequest r WHERE r.project.manager.id = :managerId GROUP BY r.status")
     List<Object[]> countByStatusForManager(@Param("managerId") Long managerId);
+
+    @Query("SELECT r.status, COUNT(r) FROM AllocationRequest r WHERE " +
+            "(r.employee.rmgManager.id = :rmgId OR r.employee.rmgManager IS NULL) GROUP BY r.status")
+    List<Object[]> countByStatusForRmg(@Param("rmgId") Long rmgId);
+
+    @Query("SELECT r.status, COUNT(r) FROM AllocationRequest r GROUP BY r.status")
+    List<Object[]> countByStatusAll();
 }

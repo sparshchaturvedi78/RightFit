@@ -32,6 +32,7 @@ public class CandidateDecisionService {
     private final CandidateWorkflowService workflow;
     private final RequirementAccessGuard accessGuard;
     private final NotificationService notificationService;
+    private final RejectionService rejectionService;
 
     /** Move the candidate into MANAGER_REVIEW so the Manager can review feedback and the recommendation. */
     public CandidateDTO startReview(String applicationId) {
@@ -78,6 +79,7 @@ public class CandidateDecisionService {
                 candidate.setRejectionComment(request.getComment());
                 candidate.setRejectedAt(LocalDateTime.now());
                 stamp(candidate, manager, "REJECT", request.getComment());
+                rejectionService.recordRejection(candidate, manager, code, request.getComment());
                 workflow.cancelOpenItems(candidate, "Candidate rejected");
                 notificationService.notify(candidate.getEmployee(), "MANAGER_DECISION",
                         "Update on " + requirement.getPositionTitle(),
