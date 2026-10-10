@@ -39,6 +39,11 @@ public class BenchHistory {
     @Column(name = "paused_days")
     private Integer pausedDays;
 
+    /** Set when a pause starts (availability approved), cleared when it ends (restored) - lets the Associate
+     * phase compute the elapsed pause length to add to pausedDays. Null when not currently paused. */
+    @Column(name = "pause_started_at")
+    private LocalDateTime pauseStartedAt;
+
     @Column(name = "is_current", nullable = false)
     private Boolean isCurrent;
 

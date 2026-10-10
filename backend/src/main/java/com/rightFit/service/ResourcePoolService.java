@@ -56,4 +56,23 @@ public class ResourcePoolService {
                 "WHERE employee_id = ? AND is_current = TRUE", employee.getId());
         log.info("Employee {} left the Resource Pool ({})", employee.getEmployeeId(), exitReason);
     }
+
+    /**
+     * Pool exit for verified temporary unavailability (Associate phase, BRD 21). Deliberately does
+     * NOT close out bench_history like exit() does - the BRD requires pausing the existing bench
+     * clock, not ending it, so the current row (if any) must stay is_current=true so the Associate
+     * phase can stamp/clear its pause marker and resume the SAME spell later. enterIfEligible()'s own
+     * "only insert if none is_current" check means re-entry won't start a new bench row either.
+     */
+    public void exitForUnavailability(Employee employee) {
+        if (NOT_IN_POOL.equals(employee.getPoolStatus())) {
+            return;
+        }
+        employee.setPoolStatus(NOT_IN_POOL);
+        employeeRepository.save(employee);
+        jdbcTemplate.update("UPDATE resource_pool_entries SET is_current = FALSE, exit_date = CURRENT_TIMESTAMP, " +
+                "exit_reason = 'UNAVAILABLE', updated_at = CURRENT_TIMESTAMP WHERE employee_id = ? AND is_current = TRUE",
+                employee.getId());
+        log.info("Employee {} left the Resource Pool (UNAVAILABLE, bench clock preserved)", employee.getEmployeeId());
+    }
 }

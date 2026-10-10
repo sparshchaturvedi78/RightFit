@@ -30,6 +30,10 @@ public class Skill {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    /** Retired skills are hidden from new selections but existing employee_skills rows keep working. */
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

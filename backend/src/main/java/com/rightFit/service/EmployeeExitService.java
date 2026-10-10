@@ -76,6 +76,9 @@ public class EmployeeExitService {
 
         resourcePoolService.exit(employee, "COMPANY_EXIT");
         employee.setAllocationStatus("UNALLOCATED");
+        // A stale return date must not outlive the employee's exit - the Associate phase's availability
+        // restoration job would otherwise eventually match this row and incorrectly restore an exited employee.
+        employee.setAvailableFromDate(null);
         employeeRepository.save(employee);
 
         String summary = "Employee exit cascade for " + employee.getEmployeeId() + ": " + allocationsEnded
