@@ -38,6 +38,18 @@ public class EmployeeCertification {
     @Column(name = "is_valid")
     private Boolean isValid;
 
+    @Column(name = "file_name")
+    private String fileName;
+
+    @Column(name = "storage_key")
+    private String storageKey;
+
+    @Column(name = "content_type")
+    private String contentType;
+
+    @Column(name = "file_size")
+    private Long fileSize;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

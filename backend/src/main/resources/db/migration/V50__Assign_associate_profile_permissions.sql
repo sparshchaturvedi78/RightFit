@@ -1,0 +1,34 @@
+-- V50__Assign_associate_profile_permissions.sql
+-- Self-service permissions + catalog browsing go to all four roles (everyone is an Employee first).
+-- Availability verification is RMG + Admin only. Catalog management (create/update/retire) is Admin only.
+
+CREATE OR REPLACE FUNCTION pg_temp.grant_permissions(p_role_code TEXT, p_names TEXT[]) RETURNS VOID AS $$
+DECLARE
+    v_role_id BIGINT;
+BEGIN
+    SELECT id INTO v_role_id FROM roles WHERE code = p_role_code LIMIT 1;
+    IF v_role_id IS NOT NULL THEN
+        INSERT INTO role_permissions (role_id, permission_id, created_at)
+        SELECT v_role_id, id, CURRENT_TIMESTAMP FROM permissions
+        WHERE name = ANY(p_names) AND is_system = true AND is_active = true
+        ON CONFLICT (role_id, permission_id) DO NOTHING;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT pg_temp.grant_permissions('ADMIN', ARRAY[
+    'EMPLOYEE_PROFILE_UPDATE', 'EMPLOYEE_SKILL_MANAGE', 'EMPLOYEE_CERTIFICATION_MANAGE', 'EMPLOYEE_PREFERENCE_MANAGE',
+    'EMPLOYEE_AVAILABILITY_REQUEST', 'EMPLOYEE_AVAILABILITY_VERIFY',
+    'SKILL_CATALOG_READ', 'SKILL_CATALOG_MANAGE', 'CERTIFICATION_CATALOG_READ', 'CERTIFICATION_CATALOG_MANAGE']);
+
+SELECT pg_temp.grant_permissions('MANAGER', ARRAY[
+    'EMPLOYEE_PROFILE_UPDATE', 'EMPLOYEE_SKILL_MANAGE', 'EMPLOYEE_CERTIFICATION_MANAGE', 'EMPLOYEE_PREFERENCE_MANAGE',
+    'EMPLOYEE_AVAILABILITY_REQUEST', 'SKILL_CATALOG_READ', 'CERTIFICATION_CATALOG_READ']);
+
+SELECT pg_temp.grant_permissions('RMG', ARRAY[
+    'EMPLOYEE_PROFILE_UPDATE', 'EMPLOYEE_SKILL_MANAGE', 'EMPLOYEE_CERTIFICATION_MANAGE', 'EMPLOYEE_PREFERENCE_MANAGE',
+    'EMPLOYEE_AVAILABILITY_REQUEST', 'EMPLOYEE_AVAILABILITY_VERIFY', 'SKILL_CATALOG_READ', 'CERTIFICATION_CATALOG_READ']);
+
+SELECT pg_temp.grant_permissions('ASSOCIATE', ARRAY[
+    'EMPLOYEE_PROFILE_UPDATE', 'EMPLOYEE_SKILL_MANAGE', 'EMPLOYEE_CERTIFICATION_MANAGE', 'EMPLOYEE_PREFERENCE_MANAGE',
+    'EMPLOYEE_AVAILABILITY_REQUEST', 'SKILL_CATALOG_READ', 'CERTIFICATION_CATALOG_READ']);

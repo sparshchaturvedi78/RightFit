@@ -55,6 +55,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     long countByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
 
+    /** Availability restoration job (Associate phase): due for restore, and still active - an exited
+     * employee's stale availableFromDate must never be acted on (EmployeeExitService clears it anyway,
+     * this filter is defense in depth, not the primary fix). */
+    @Query("SELECT e FROM Employee e WHERE e.employmentStatus = 'ACTIVE' AND e.availabilityStatus = 'UNAVAILABLE' " +
+            "AND e.availableFromDate IS NOT NULL AND e.availableFromDate <= :today")
+    List<Employee> findDueForAvailabilityRestoration(@Param("today") java.time.LocalDate today);
+
     /**
      * Resource Pool listing (RMG phase): unlike searchUsers' rmgId filter (exact match only, used
      * for Admin's "find this RMG's roster"), pool visibility also includes employees with no RMG

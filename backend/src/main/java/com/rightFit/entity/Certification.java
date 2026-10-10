@@ -33,6 +33,10 @@ public class Certification {
     @Column(name = "valid_years")
     private Integer validYears;
 
+    /** Retired certifications are hidden from new selections but existing employee_certifications rows keep working. */
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

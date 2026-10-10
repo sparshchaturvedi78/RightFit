@@ -3,14 +3,21 @@ package com.rightFit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Temporary-unavailability request history (BRD 21). One row per request: an employee asks to go
+ * unavailable until availableFrom, their RMG verifies it. Employee.availabilityStatus/availableFromDate
+ * are the live, current-state fields this workflow drives - this table is the request/decision history.
+ */
 @Entity
 @Table(name = "employee_availability")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -26,20 +33,25 @@ public class EmployeeAvailability {
     @Column(name = "availability_status", nullable = false)
     private String availabilityStatus;
 
-    @Column(name = "available_from_date")
-    private LocalDate availableFromDate;
+    /** The requested/approved return-to-available date - drives Employee.availableFromDate on approval. */
+    @Column(name = "available_from")
+    private LocalDate availableFrom;
 
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
-    @Column(name = "rmg_verified")
-    private Boolean rmgVerified;
+    @Column(name = "verification_status", nullable = false)
+    private String verificationStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "verified_by")
+    private Employee verifiedBy;
 
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
 
-    @Column(name = "verified_by")
-    private String verifiedBy;
+    @Column(name = "verification_comment", columnDefinition = "TEXT")
+    private String verificationComment;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
