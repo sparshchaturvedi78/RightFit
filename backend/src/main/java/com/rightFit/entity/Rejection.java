@@ -3,14 +3,22 @@ package com.rightFit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+/**
+ * One row per candidate rejection (BRD 28), feeding RMG's repeated-rejection analysis and the
+ * training-assignment workflow it can trigger. Written by CandidateDecisionService at the same
+ * moment it stamps the rejection reason onto CandidateApplication - that denormalized copy is for
+ * quick per-candidate display, this table is the cross-candidate history RMG actually reports on.
+ */
 @Entity
 @Table(name = "rejections")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -19,40 +27,45 @@ public class Rejection {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "rejection_id", nullable = false, unique = true)
+    @Column(name = "rejection_id", unique = true)
     private String rejectionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "candidate_application_id", nullable = false)
+    private CandidateApplication candidateApplication;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requirement_id", nullable = false)
     private ProjectRequirement requirement;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reason_id", nullable = false)
-    private RejectionReason reason;
+    @JoinColumn(name = "rejection_reason_id", nullable = false)
+    private RejectionReason rejectionReason;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "application_id")
-    private CandidateApplication application;
-
-    @Column(name = "additional_comments", columnDefinition = "TEXT")
-    private String additionalComments;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "rejected_by")
+    @JoinColumn(name = "rejected_by", nullable = false)
     private Employee rejectedBy;
 
-    @Column(name = "rejected_at", nullable = false)
-    private LocalDateTime rejectedAt;
+    @Column(name = "rejection_date", nullable = false)
+    private LocalDateTime rejectionDate;
+
+    @Column(name = "rejection_comment", columnDefinition = "TEXT")
+    private String rejectionComment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "interview_feedback_id")
+    private InterviewFeedback interviewFeedback;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "rejection")
     private Set<TrainingAssignment> trainingAssignments;
@@ -60,11 +73,8 @@ public class Rejection {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        if (rejectionDate == null) {
+            rejectionDate = LocalDateTime.now();
+        }
     }
 }
