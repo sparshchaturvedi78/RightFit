@@ -3,14 +3,16 @@ package com.rightFit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "employee_certifications")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -35,6 +37,18 @@ public class EmployeeCertification {
 
     @Column(name = "is_valid")
     private Boolean isValid;
+
+    @Column(name = "file_name")
+    private String fileName;
+
+    @Column(name = "storage_key")
+    private String storageKey;
+
+    @Column(name = "content_type")
+    private String contentType;
+
+    @Column(name = "file_size")
+    private Long fileSize;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

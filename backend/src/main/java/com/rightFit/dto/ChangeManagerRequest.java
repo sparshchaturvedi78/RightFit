@@ -12,8 +12,11 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ChangeManagerRequest {
 
-    @NotNull(message = "New manager ID is required")
+    /** Legacy numeric id. Prefer newManagerEmployeeId; at least one of the two is required. */
     private Long newManagerId;
+
+    /** Business Employee ID of the new Manager, e.g. "EMP004". */
+    private String newManagerEmployeeId;
 
     private String reason;
 }

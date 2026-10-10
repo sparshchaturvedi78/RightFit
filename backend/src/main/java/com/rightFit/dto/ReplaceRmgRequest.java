@@ -14,9 +14,14 @@ import java.util.List;
 @Builder
 public class ReplaceRmgRequest {
 
-    @NotNull(message = "New RMG ID is required")
+    /** Legacy numeric id. Prefer newRmgEmployeeId; at least one of the two is required. */
     private Long newRmgId;
 
-    @NotNull(message = "Selected employee IDs are required")
+    /** Business Employee ID of the replacement RMG, e.g. "EMP002". */
+    private String newRmgEmployeeId;
+
     private List<Long> selectedEmployeeIds;
+
+    /** Business Employee IDs to transfer, e.g. ["EMP005", "EMP006"]. Preferred over selectedEmployeeIds. */
+    private List<String> selectedEmployeeBusinessIds;
 }

@@ -23,7 +23,7 @@ public class AdminRoleController {
     private final RoleService roleService;
 
     @GetMapping
-    @PreAuthorize("hasPermission(null, 'ROLE_VIEW')")
+    @PreAuthorize("hasPermission(null, 'ROLE_READ')")
     public ResponseEntity<List<Role>> getAllRoles() {
         log.info("Fetching all roles");
         List<Role> roles = roleService.getAllRoles();
@@ -31,7 +31,7 @@ public class AdminRoleController {
     }
 
     @GetMapping("/system")
-    @PreAuthorize("hasPermission(null, 'ROLE_VIEW')")
+    @PreAuthorize("hasPermission(null, 'ROLE_READ')")
     public ResponseEntity<List<Role>> getSystemRoles() {
         log.info("Fetching all system roles");
         List<Role> roles = roleService.getAllSystemRoles();
@@ -39,7 +39,7 @@ public class AdminRoleController {
     }
 
     @GetMapping("/custom")
-    @PreAuthorize("hasPermission(null, 'ROLE_VIEW')")
+    @PreAuthorize("hasPermission(null, 'ROLE_READ')")
     public ResponseEntity<List<Role>> getCustomRoles() {
         log.info("Fetching all custom roles");
         List<Role> roles = roleService.getAllCustomRoles();
@@ -47,7 +47,7 @@ public class AdminRoleController {
     }
 
     @GetMapping("/{roleId}")
-    @PreAuthorize("hasPermission(null, 'ROLE_VIEW')")
+    @PreAuthorize("hasPermission(null, 'ROLE_READ')")
     public ResponseEntity<Role> getRoleById(@PathVariable Long roleId) {
         log.info("Fetching role with ID: {}", roleId);
         Role role = roleService.getRoleById(roleId);
@@ -55,7 +55,7 @@ public class AdminRoleController {
     }
 
     @GetMapping("/{roleId}/permissions")
-    @PreAuthorize("hasPermission(null, 'ROLE_VIEW')")
+    @PreAuthorize("hasPermission(null, 'ROLE_READ')")
     public ResponseEntity<List<String>> getRolePermissions(@PathVariable Long roleId) {
         log.info("Fetching permissions for role ID: {}", roleId);
         List<Permission> permissions = roleService.getRolePermissions(roleId);

@@ -3,14 +3,16 @@ package com.rightFit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.Set;
 
 @Entity
 @Table(name = "certifications")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -30,6 +32,10 @@ public class Certification {
 
     @Column(name = "valid_years")
     private Integer validYears;
+
+    /** Retired certifications are hidden from new selections but existing employee_certifications rows keep working. */
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -3,14 +3,18 @@ package com.rightFit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "allocations")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -27,38 +31,35 @@ public class Allocation {
     private Employee employee;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "requirement_id", nullable = false)
-    private ProjectRequirement requirement;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requirement_id")
+    private ProjectRequirement requirement;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "allocation_request_id")
     private AllocationRequest allocationRequest;
 
-    @Column(name = "allocation_start_date", nullable = false)
-    private LocalDate allocationStartDate;
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
 
-    @Column(name = "allocation_end_date")
-    private LocalDate allocationEndDate;
+    @Column(name = "end_date")
+    private LocalDate endDate;
 
-    @Column(name = "allocation_percentage", nullable = false)
-    private Integer allocationPercentage;
+    @Column(name = "hours_per_day", nullable = false)
+    private BigDecimal hoursPerDay;
 
-    @Column(name = "allocation_status", nullable = false)
-    private String allocationStatus;
+    @Column(name = "status", nullable = false)
+    private String status;
 
-    @Column(name = "allocation_end_reason")
-    private String allocationEndReason;
+    @Column(name = "end_reason")
+    private String endReason;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "allocated_by")
-    private Employee allocatedBy;
-
-    @Column(name = "allocated_at", nullable = false)
-    private LocalDateTime allocatedAt;
+    @JoinColumn(name = "created_by")
+    private Employee createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ended_by")

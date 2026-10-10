@@ -35,14 +35,14 @@ public class BenchHistory {
     @Column(name = "bench_status", nullable = false)
     private String benchStatus;
 
-    @Column(name = "bench_paused")
-    private Boolean benchPaused;
+    /** Days excluded from aging (e.g. verified temporary unavailability) - subtracted before classifying. */
+    @Column(name = "paused_days")
+    private Integer pausedDays;
 
-    @Column(name = "pause_start_date")
-    private LocalDateTime pauseStartDate;
-
-    @Column(name = "pause_end_date")
-    private LocalDateTime pauseEndDate;
+    /** Set when a pause starts (availability approved), cleared when it ends (restored) - lets the Associate
+     * phase compute the elapsed pause length to add to pausedDays. Null when not currently paused. */
+    @Column(name = "pause_started_at")
+    private LocalDateTime pauseStartedAt;
 
     @Column(name = "is_current", nullable = false)
     private Boolean isCurrent;

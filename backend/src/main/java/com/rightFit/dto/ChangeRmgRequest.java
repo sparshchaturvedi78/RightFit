@@ -12,8 +12,11 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ChangeRmgRequest {
 
-    @NotNull(message = "New RMG ID is required")
+    /** Legacy numeric id. Prefer newRmgEmployeeId; at least one of the two is required. */
     private Long newRmgId;
+
+    /** Business Employee ID of the new RMG, e.g. "EMP002". */
+    private String newRmgEmployeeId;
 
     private String reason;
 }

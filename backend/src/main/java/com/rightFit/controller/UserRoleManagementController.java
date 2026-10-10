@@ -23,7 +23,7 @@ public class UserRoleManagementController {
     private final UserRoleService userRoleService;
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasPermission(null, 'USER_ROLE_ASSIGN')")
+    @PreAuthorize("hasPermission(null, 'ROLE_ASSIGN_USER')")
     public ResponseEntity<List<UserRole>> getUserRoles(@PathVariable Long userId) {
         log.info("Fetching roles for user: {}", userId);
         List<UserRole> userRoles = userRoleService.getUserRoles(userId);
@@ -31,7 +31,7 @@ public class UserRoleManagementController {
     }
 
     @PostMapping("/assign")
-    @PreAuthorize("hasPermission(null, 'USER_ROLE_ASSIGN')")
+    @PreAuthorize("hasPermission(null, 'ROLE_ASSIGN_USER')")
     public ResponseEntity<Void> assignRoleToUser(
             @RequestParam Long userId,
             @RequestParam Long roleId) {
@@ -42,7 +42,7 @@ public class UserRoleManagementController {
     }
 
     @DeleteMapping("/remove")
-    @PreAuthorize("hasPermission(null, 'USER_ROLE_ASSIGN')")
+    @PreAuthorize("hasPermission(null, 'ROLE_ASSIGN_USER')")
     public ResponseEntity<Void> removeRoleFromUser(
             @RequestParam Long userId,
             @RequestParam Long roleId) {
@@ -52,7 +52,7 @@ public class UserRoleManagementController {
     }
 
     @PostMapping("/deactivate")
-    @PreAuthorize("hasPermission(null, 'USER_ROLE_ASSIGN')")
+    @PreAuthorize("hasPermission(null, 'ROLE_ASSIGN_USER')")
     public ResponseEntity<Void> deactivateUserRoles(@RequestParam Long userId) {
         log.info("Deactivating all roles for user: {}", userId);
         userRoleService.deactivateUserRoles(userId);
@@ -60,7 +60,7 @@ public class UserRoleManagementController {
     }
 
     @PostMapping("/reactivate")
-    @PreAuthorize("hasPermission(null, 'USER_ROLE_ASSIGN')")
+    @PreAuthorize("hasPermission(null, 'ROLE_ASSIGN_USER')")
     public ResponseEntity<Void> reactivateUserRoles(@RequestParam Long userId) {
         log.info("Reactivating all roles for user: {}", userId);
         userRoleService.reactivateUserRoles(userId);
