@@ -1,7 +1,7 @@
 package com.rightFit.controller;
 
-import com.rightFit.dto.ReportRequestDTO;
-import com.rightFit.dto.ReportDTO;
+import com.rightFit.dto.DashboardDtos.ReportDTO;
+import com.rightFit.service.AdminReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -9,11 +9,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Admin Reports (BRD 43). Previously a stub (hardcoded type list, fake "processing" response, fake
+ * download URL - nothing behind any of it actually worked). Replaced with the same real,
+ * synchronous row-based pattern ManagerDashboardService's reports already use: one GET to list
+ * available types, one GET to fetch a report's rows directly - no fake async generate/download
+ * round-trip, since there was never a real job system behind that shape to begin with.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/admin/reports")
@@ -21,39 +25,19 @@ import java.util.List;
 @Validated
 public class AdminReportController {
 
+    private final AdminReportService reportService;
+
     @GetMapping
     @PreAuthorize("hasPermission(null, 'REPORT_VIEW')")
     public ResponseEntity<List<String>> getAvailableReports() {
         log.info("Fetching available reports");
-        List<String> reports = Arrays.asList(
-                "EMPLOYEE_ACTIVITY",
-                "PROJECT_ACTIVITY",
-                "ADMIN_ACTION",
-                "USER_ACCESS"
-        );
-        return ResponseEntity.ok(reports);
+        return ResponseEntity.ok(reportService.availableTypes());
     }
 
-    @PostMapping("/generate")
+    @GetMapping("/{type}")
     @PreAuthorize("hasPermission(null, 'REPORT_GENERATE')")
-    public ResponseEntity<ReportDTO> generateReport(@Valid @RequestBody ReportRequestDTO request) {
-        log.info("Generating report: {}", request.getReportType());
-
-        ReportDTO report = ReportDTO.builder()
-                .reportType(request.getReportType())
-                .status("PROCESSING")
-                .generatedAt(LocalDateTime.now())
-                .format(request.getFormat() != null ? request.getFormat() : "PDF")
-                .message("Report generation started")
-                .build();
-
-        return ResponseEntity.ok(report);
-    }
-
-    @GetMapping("/{reportId}/download")
-    @PreAuthorize("hasPermission(null, 'REPORT_DOWNLOAD')")
-    public ResponseEntity<String> downloadReport(@PathVariable Long reportId) {
-        log.info("Downloading report: {}", reportId);
-        return ResponseEntity.ok("Report download URL: /api/admin/reports/" + reportId + "/file");
+    public ResponseEntity<ReportDTO> report(@PathVariable String type) {
+        log.info("Generating report: {}", type);
+        return ResponseEntity.ok(reportService.report(type));
     }
 }

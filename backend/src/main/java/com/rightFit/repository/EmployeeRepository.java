@@ -71,6 +71,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     long countByEmploymentStatus(String employmentStatus);
 
+    List<Employee> findByAllocationStatus(String allocationStatus);
+
     @Query("SELECT COUNT(DISTINCT e.rmgManager.id) FROM Employee e WHERE e.rmgManager IS NOT NULL")
     long countDistinctRmgs();
 
