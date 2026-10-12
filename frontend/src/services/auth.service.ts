@@ -10,13 +10,14 @@ export interface LoginRequest {
 export interface LoginOtpSentResponse {
   message: string
   email: string
-  sessionId: number
+  /** Serialized as a JSON string by the backend (large-Long safety), despite being a Long server-side. */
+  sessionId: string
   expiryMinutes: number
 }
 
 export interface VerifyLoginOtpRequest {
   otp: string
-  sessionId: number
+  sessionId: string
 }
 
 export interface LoginResponse {
