@@ -99,7 +99,7 @@ public class AuthenticationService {
         }
         Set<String> roles = userRoleRepository.findByUserId(user.getId())
                 .stream()
-                .map(ur -> ur.getRole().getName())
+                .map(ur -> ur.getRole().getCode())
                 .collect(Collectors.toSet());
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(
@@ -184,7 +184,7 @@ public class AuthenticationService {
 
         Set<String> roles = userRoleRepository.findByUserId(userId)
                 .stream()
-                .map(ur -> ur.getRole().getName())
+                .map(ur -> ur.getRole().getCode())
                 .collect(Collectors.toSet());
 
         Employee employee = user.getEmployee();
@@ -390,7 +390,7 @@ public class AuthenticationService {
 
         Set<String> roles = userRoleRepository.findByUserId(user.getId())
                 .stream()
-                .map(ur -> ur.getRole().getName())
+                .map(ur -> ur.getRole().getCode())
                 .collect(Collectors.toSet());
 
         String accessToken = jwtTokenProvider.generateAccessToken(
