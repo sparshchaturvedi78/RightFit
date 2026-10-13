@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { tokenStorage } from '../services/tokenStorage'
 import authReducer, { restoreSession, sessionEnded } from './authSlice'
 import notificationsReducer from './notificationsSlice'
+import queriesReducer from './queriesSlice'
 import resourcesReducer from './resourcesSlice'
 import toastsReducer from './toastSlice'
 
@@ -11,6 +12,7 @@ export const store = configureStore({
     auth: authReducer,
     notifications: notificationsReducer,
     resources: resourcesReducer,
+    queries: queriesReducer,
     toasts: toastsReducer,
   },
 })

@@ -1,16 +1,16 @@
 import { motion } from 'motion/react'
 import { RefreshCw, UserPlus } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { TILE_SURFACE, PanelError } from '../../../components/dashboard/Panel'
 import { Button } from '../../../components/ui/form'
 import { Pagination } from '../../../components/ui/Pagination'
 import { useResource } from '../../../hooks/useResource'
-import { adminEmployeeService, type EmployeeDTO, type EmployeeListFilters } from '../../../services/admin/employee.service'
-import type { PageResponse } from '../../../services/common.types'
-import { getApiErrorMessage } from '../../../services/httpClient'
+import { useQuery } from '../../../hooks/useQuery'
+import type { EmployeeDTO, EmployeeListFilters } from '../../../services/admin/employee.service'
 import { useAppDispatch } from '../../../store'
 import type { ResourceKey } from '../../../store/resourceRegistry'
+import { invalidateQueries } from '../../../store/queriesSlice'
 import { loadResource } from '../../../store/resourcesSlice'
 import { SORT_KEYS, type SortKey } from './employeeUi'
 import { AssignRmgDialog, StatusDialog } from './EmployeeActionDialogs'
@@ -22,12 +22,6 @@ import EmployeeTable, { type RowActions } from './EmployeeTable'
 const DEFAULT_SIZE = 20
 /** Cached dashboard / roster numbers that change when someone is added, deactivated or moved. */
 const STALE_AFTER_CHANGE: ResourceKey[] = ['admin/dashboard', 'admin/rmg-roster', 'admin/lookups', 'admin/recent-activity']
-
-interface ListResult {
-  key: string
-  data?: PageResponse<EmployeeDTO>
-  error?: string
-}
 
 /** `fromProfile`: the action was started from the profile drawer, so finishing or cancelling goes back to it. */
 type Dialog =
@@ -49,11 +43,9 @@ export default function EmployeesPage() {
   const dispatch = useAppDispatch()
   const [searchParams, setSearchParams] = useSearchParams()
   const [dialog, setDialog] = useState<Dialog | null>(null)
-  const [version, setVersion] = useState(0)
-  const [result, setResult] = useState<ListResult | null>(null)
 
   const dashboard = useResource('admin/dashboard')
-  const lookups = useResource('admin/lookups', { revalidateOnMount: true })
+  const lookups = useResource('admin/lookups')
 
   // ---- URL state: filters, sorting and paging are shareable and survive navigation -----------------------------
   const filters: EmployeeFilterValues = {
@@ -116,29 +108,18 @@ export default function EmployeesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [query],
   )
-  const requestKey = `${query}#${version}`
 
-  useEffect(() => {
-    let cancelled = false
-    adminEmployeeService
-      .list(request)
-      .then((data) => !cancelled && setResult({ key: requestKey, data }))
-      .catch((err: unknown) => {
-        if (!cancelled) setResult({ key: requestKey, error: getApiErrorMessage(err, "Couldn't load employees.") })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [request, requestKey])
-
-  // The previous page of results stays on screen (dimmed) while the next one loads.
-  const loading = result?.key !== requestKey
-  const data = result?.data ?? null
-  const error = !loading ? (result?.error ?? null) : null
+  // Every search / filter / page combination is kept in the Redux store: revisiting it shows the stored list with
+  // no request (the backend and database are on slow free tiers). Refresh or any change reloads it.
+  const list = useQuery('employees', request)
+  const data = list.data
+  const loading = list.loading
+  const error = data === null ? list.error : null
 
   // ---- Actions ----------------------------------------------------------------------------------------------
+  /** Refresh button and after any change: reload this list (others reload when next opened) and the cached stats. */
   function afterChange() {
-    setVersion((v) => v + 1)
+    dispatch(invalidateQueries('employees'))
     STALE_AFTER_CHANGE.forEach((key) => void dispatch(loadResource({ key, force: true })))
   }
 
@@ -226,7 +207,7 @@ export default function EmployeesPage() {
         />
 
         {error ? (
-          <PanelError message={error} status={null} onRetry={() => setVersion((v) => v + 1)} />
+          <PanelError message={error} status={null} onRetry={afterChange} />
         ) : empty ? (
           <div className="flex flex-col items-center gap-3 border-t border-slate-100 px-6 py-16 text-center dark:border-white/6">
             <p className="text-base font-semibold text-ink-900 dark:text-white">
