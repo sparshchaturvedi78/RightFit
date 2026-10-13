@@ -73,8 +73,18 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     List<Employee> findByAllocationStatus(String allocationStatus);
 
-    @Query("SELECT COUNT(DISTINCT e.rmgManager.id) FROM Employee e WHERE e.rmgManager IS NOT NULL")
+    /** An RMG is anyone holding the active RMG role, plus anyone still set as another employee's RMG manager. */
+    @Query("SELECT COUNT(DISTINCT e.id) FROM Employee e " +
+            "LEFT JOIN e.user u LEFT JOIN u.userRoles ur LEFT JOIN ur.role r " +
+            "WHERE (r.code = 'RMG' AND ur.isActive = true) " +
+            "OR e.id IN (SELECT s.rmgManager.id FROM Employee s WHERE s.rmgManager IS NOT NULL)")
     long countDistinctRmgs();
+
+    @Query("SELECT DISTINCT e FROM Employee e " +
+            "LEFT JOIN e.user u LEFT JOIN u.userRoles ur LEFT JOIN ur.role r " +
+            "WHERE (r.code = 'RMG' AND ur.isActive = true) " +
+            "OR e.id IN (SELECT s.rmgManager.id FROM Employee s WHERE s.rmgManager IS NOT NULL)")
+    List<Employee> findAllRmgs();
 
     /** Admin Dashboard: an active employee still assigned to an RMG who has since gone INACTIVE. */
     @Query("SELECT COUNT(e) FROM Employee e WHERE e.employmentStatus = 'ACTIVE' AND e.rmgManager.employmentStatus = 'INACTIVE'")
