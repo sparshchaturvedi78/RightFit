@@ -1,5 +1,6 @@
 import { Check, Copy, Eye, EyeOff, RefreshCw, UserPlus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import PersonPicker from '../../../components/people/PersonPicker'
 import { Dropdown } from '../../../components/ui/Dropdown'
 import { Button, Field, FormError, FormSection, Input } from '../../../components/ui/form'
 import { Drawer } from '../../../components/ui/Overlay'
@@ -79,6 +80,8 @@ function generatePassword(): string {
   const bytes = crypto.getRandomValues(new Uint32Array(12))
   return Array.from(bytes, (b) => chars[b % chars.length]).join('')
 }
+
+const SYSTEM_ROLE_CODES = ['ADMIN', 'MANAGER', 'RMG', 'ASSOCIATE']
 
 function validate(form: FormState, mode: 'create' | 'edit', rmgRequired: boolean): Errors {
   const errors: Errors = {}
@@ -216,7 +219,24 @@ function FormBody({
   const [form, setForm] = useState<FormState>(original)
   // A new Admin doesn't report to an RMG, so the RMG field is optional for them.
   const chosenRole = roleOptions.find((r) => String(r.id) === form.roleId)
-  const newAdmin = mode === 'create' && !!chosenRole && (chosenRole.code ?? chosenRole.name).toUpperCase() === 'ADMIN'
+  const roleCode = (chosenRole?.code ?? chosenRole?.name ?? '').toUpperCase()
+  const newAdmin = mode === 'create' && roleCode === 'ADMIN'
+  // A new RMG reports to an Admin (RMGs sit at the top of the resource chain); everyone else reports to an RMG.
+  const newRmg = mode === 'create' && roleCode === 'RMG'
+  const [reportsTo, setReportsTo] = useState<EmployeeDTO | null>(null)
+
+  // ---- Editing: change the person's main role (e.g. promote an Associate to Manager) -----------------------
+  const systemRoles = roleOptions.filter((r) => SYSTEM_ROLE_CODES.includes((r.code ?? '').toUpperCase()))
+  const currentRoles = employee ? systemRoles.filter((r) => employee.roles?.some((n) => n.toLowerCase() === r.name.toLowerCase())) : []
+  const hasSeveralRoles = currentRoles.length > 1
+  const originalRoleId = currentRoles.length === 1 ? String(currentRoles[0].id) : ''
+  const [pickedRoleId, setPickedRoleId] = useState<string | null>(null)
+  const editRoleId = pickedRoleId ?? originalRoleId
+  const roleChanged = mode === 'edit' && pickedRoleId !== null && pickedRoleId !== originalRoleId
+  const fromCode = (currentRoles[0]?.code ?? '').toUpperCase()
+  const toCode = (systemRoles.find((r) => String(r.id) === editRoleId)?.code ?? '').toUpperCase()
+  // A new RMG reports to an Admin; anyone coming from Admin or RMG into Manager / Associate needs an RMG above them.
+  const needsLead = roleChanged && toCode !== 'ADMIN' && (toCode === 'RMG' || fromCode === 'ADMIN' || fromCode === 'RMG')
   const [errors, setErrors] = useState<Errors>({})
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -231,7 +251,9 @@ function FormBody({
 
   async function submit(ev: FormEvent) {
     ev.preventDefault()
-    const found = validate(form, mode, !newAdmin)
+    const found = validate(form, mode, !newAdmin && !newRmg)
+    if (newRmg && !reportsTo) found.rmgId = 'Choose the Admin this RMG reports to'
+    if (needsLead && !reportsTo) found.rmgId = toCode === 'RMG' ? 'Choose the Admin this RMG reports to' : 'Choose the RMG they report to'
     setErrors(found)
     if (Object.keys(found).length > 0) return
     setServerError(null)
@@ -240,13 +262,31 @@ function FormBody({
       onSaving(true)
       if (employee) {
         const patch = buildUpdate(form, original)
-        if (Object.keys(patch).length === 0) {
+        if (!roleChanged && Object.keys(patch).length === 0) {
           toast.info('Nothing to save', 'No fields were changed.')
           onClose()
           return
         }
-        const saved = await adminEmployeeService.update(employee.employeeId, patch)
-        toast.success('Employee updated', `${saved.firstName} ${saved.lastName}`)
+        // Role first: it has the strictest rules, so if it is refused nothing else has been saved yet.
+        let saved = employee
+        if (roleChanged) {
+          saved = await adminEmployeeService.changeRole(employee.employeeId, {
+            newRoleId: Number(editRoleId),
+            reportsToEmployeeId: needsLead ? reportsTo?.employeeId : undefined,
+          })
+        }
+        if (Object.keys(patch).length > 0) {
+          try {
+            saved = await adminEmployeeService.update(employee.employeeId, patch)
+          } catch (err) {
+            if (roleChanged) onSaved(saved) // the role did change: refresh lists, then show what went wrong
+            throw new Error(
+              `${roleChanged ? 'The role was changed, but the other changes were not saved. ' : ''}${getApiErrorMessage(err, 'Could not save this employee.')}`,
+              { cause: err },
+            )
+          }
+        }
+        toast.success(roleChanged ? 'Role updated' : 'Employee updated', `${saved.firstName} ${saved.lastName}`)
         onSaved(saved)
       } else {
         const payload: CreateEmployeeRequest = {
@@ -258,7 +298,7 @@ function FormBody({
           designation: form.designation.trim(),
           departmentId: Number(form.departmentId),
           // A new Admin doesn't report to an RMG.
-          rmgId: newAdmin ? undefined : Number(form.rmgId),
+          rmgId: newAdmin ? undefined : newRmg ? reportsTo!.id : Number(form.rmgId),
           phone: text(form.phone),
           grade: text(form.grade),
           domain: text(form.domain),
@@ -273,7 +313,7 @@ function FormBody({
         onSaved(saved)
       }
     } catch (err) {
-      setServerError(getApiErrorMessage(err, 'Could not save this employee.'))
+      setServerError(err instanceof Error && !('response' in err) ? err.message : getApiErrorMessage(err, 'Could not save this employee.'))
     } finally {
       onSaving(false)
     }
@@ -344,6 +384,63 @@ function FormBody({
             options={locations.map((l) => ({ value: String(l.id), label: l.name, hint: l.city && l.city !== l.name ? l.city : undefined }))}
           />
         </Field>
+        {mode === 'edit' && (
+          <>
+            <Field
+              label="Role"
+              htmlFor="emp-edit-role"
+              className={needsLead ? '' : 'sm:col-span-2'}
+              hint={
+                hasSeveralRoles
+                  ? 'This person holds several roles — manage them on the User roles page.'
+                  : roleChanged
+                    ? 'The role changes when you save.'
+                    : 'Change it to promote or move this person, e.g. Associate → Manager.'
+              }
+            >
+              <Dropdown
+                id="emp-edit-role"
+                value={editRoleId}
+                disabled={hasSeveralRoles || roleOptions.length === 0}
+                placeholder={roles.data ? (hasSeveralRoles ? 'Several roles' : 'No role yet') : 'Loading…'}
+                onChange={(id) => {
+                  setPickedRoleId(id)
+                  setReportsTo(null)
+                  setErrors((e) => ({ ...e, rmgId: undefined }))
+                }}
+                options={systemRoles.map((r) => ({ value: String(r.id), label: r.name }))}
+              />
+            </Field>
+            {roleChanged && toCode === 'ADMIN' && (
+              <p className="text-xs text-amber-700 sm:col-span-2 dark:text-amber-300">
+                Admins don’t report to anyone, so the current reporting line is removed.
+              </p>
+            )}
+            {needsLead && (
+              <div className="sm:col-span-2">
+                <PersonPicker
+                  id="emp-edit-reports-to"
+                  label={toCode === 'RMG' ? 'Reports to (Admin)' : 'Reports to (RMG)'}
+                  role={toCode === 'RMG' ? 'ADMIN' : 'RMG'}
+                  roleLabel={toCode === 'RMG' ? 'Admin' : 'RMG'}
+                  value={reportsTo}
+                  onChange={(person) => {
+                    setReportsTo(person)
+                    setErrors((e) => ({ ...e, rmgId: undefined }))
+                  }}
+                  blocker={(person) =>
+                    person.id === employee?.id
+                      ? 'Someone can’t report to themselves.'
+                      : person.employmentStatus !== 'ACTIVE'
+                        ? `${person.firstName} ${person.lastName} is inactive.`
+                        : null
+                  }
+                  error={errors.rmgId}
+                />
+              </div>
+            )}
+          </>
+        )}
         {mode === 'create' && (
           <>
             <Field label="Role" htmlFor="emp-role" hint="Optional — add more on the User roles page">
@@ -352,11 +449,36 @@ function FormBody({
                 value={form.roleId}
                 onChange={(roleId) => {
                   set('roleId')(roleId)
+                  // The reporting person is a different kind of person for an RMG, so start that choice over.
+                  setReportsTo(null)
+                  set('rmgId')('')
                   setErrors((e) => ({ ...e, rmgId: undefined }))
                 }}
                 options={[{ value: '', label: 'No role yet' }, ...roleOptions.map((r) => ({ value: String(r.id), label: r.name }))]}
               />
             </Field>
+            {newRmg ? (
+              <div className="sm:col-span-2">
+                <PersonPicker
+                  id="emp-reports-to"
+                  label="Reports to (Admin)"
+                  role="ADMIN"
+                  roleLabel="Admin"
+                  value={reportsTo}
+                  onChange={(person) => {
+                    setReportsTo(person)
+                    setErrors((e) => ({ ...e, rmgId: undefined }))
+                  }}
+                  blocker={(person) =>
+                    person.employmentStatus !== 'ACTIVE' ? `${person.firstName} ${person.lastName} is inactive.` : null
+                  }
+                  error={errors.rmgId}
+                />
+                <p className="mt-3 text-xs text-ink-500 dark:text-slate-500">
+                  RMGs report to an Admin, not to another RMG.
+                </p>
+              </div>
+            ) : (
             <Field
               label="RMG"
               htmlFor="emp-rmg"
@@ -379,6 +501,7 @@ function FormBody({
                 }))}
               />
             </Field>
+            )}
           </>
         )}
       </FormSection>

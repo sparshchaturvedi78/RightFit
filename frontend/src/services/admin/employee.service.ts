@@ -22,8 +22,15 @@ export interface EmployeeDTO {
   locationName?: string
   rmgId?: number
   rmgName?: string
+  /** Business ID of the person this employee reports to. */
+  rmgEmployeeId?: string
   employmentStatus: string
   allocationStatus: string
+  /**
+   * Whether the person is in an active project (member, allocation, or the Manager of one). null = not applicable:
+   * Admins and RMGs aren't allocated, people report to them. Absent on an older backend.
+   */
+  inProject?: boolean | null
   availabilityStatus: string
   availableFromDate?: string
   userId?: number
@@ -32,6 +39,22 @@ export interface EmployeeDTO {
   createdBy?: string
   updatedBy?: string
   roles?: string[]
+}
+
+export interface EmployeeProjectsDTO {
+  /** Projects this employee is the Manager of. */
+  managing: { projectId: string; projectName: string; status: string; clientName?: string }[]
+  /** Projects this employee is allocated to right now. */
+  allocations: {
+    projectId: string
+    projectName: string
+    projectStatus: string
+    /** Their role on the team, e.g. Developer. */
+    role?: string
+    hoursPerDay?: number
+    startDate?: string
+    endDate?: string
+  }[]
 }
 
 export interface CreateEmployeeRequest {
@@ -87,6 +110,13 @@ export interface ChangeRmgRequest {
   reason?: string
 }
 
+export interface ChangeRoleRequest {
+  newRoleId: number
+  /** Employee ID of who they report to afterwards (an Admin for a new RMG, an RMG for everyone else). */
+  reportsToEmployeeId?: string
+  reason?: string
+}
+
 export interface DeactivateEmployeeRequest {
   reason: string
   effectiveDate?: string
@@ -124,6 +154,11 @@ async function list(filters: EmployeeListFilters = {}): Promise<PageResponse<Emp
   return data
 }
 
+async function projects(employeeId: string): Promise<EmployeeProjectsDTO> {
+  const { data } = await httpClient.get<EmployeeProjectsDTO>(ADMIN_EMPLOYEE_API.projects(employeeId))
+  return data
+}
+
 async function byId(employeeId: string): Promise<EmployeeDTO> {
   const { data } = await httpClient.get<EmployeeDTO>(ADMIN_EMPLOYEE_API.byId(employeeId))
   return data
@@ -139,6 +174,11 @@ async function changeRmg(employeeId: string, payload: ChangeRmgRequest): Promise
   return data
 }
 
+async function changeRole(employeeId: string, payload: ChangeRoleRequest): Promise<EmployeeDTO> {
+  const { data } = await httpClient.put<EmployeeDTO>(ADMIN_EMPLOYEE_API.role(employeeId), payload)
+  return data
+}
+
 async function deactivate(employeeId: string, payload: DeactivateEmployeeRequest): Promise<EmployeeDTO> {
   const { data } = await httpClient.put<EmployeeDTO>(ADMIN_EMPLOYEE_API.deactivate(employeeId), payload)
   return data
@@ -149,4 +189,4 @@ async function reactivate(employeeId: string, payload: DeactivateEmployeeRequest
   return data
 }
 
-export const adminEmployeeService = { create, list, byId, update, changeRmg, deactivate, reactivate }
+export const adminEmployeeService = { create, list, projects, changeRole, byId, update, changeRmg, deactivate, reactivate }

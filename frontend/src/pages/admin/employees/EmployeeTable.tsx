@@ -3,7 +3,7 @@ import { Badge, type BadgeTone } from '../../../components/ui/Badge'
 import { Skeleton } from '../../../components/dashboard/Panel'
 import type { EmployeeDTO } from '../../../services/admin/employee.service'
 import { humanize, initialsOf } from '../../../utils/format'
-import { allocationTone, avatarGradient, employmentTone, formatDay, fullName, type SortKey } from './employeeUi'
+import { allocationBadge, avatarGradient, employmentTone, formatDay, fullName, type SortKey } from './employeeUi'
 
 export interface RowActions {
   onOpen: (e: EmployeeDTO) => void
@@ -208,7 +208,7 @@ export default function EmployeeTable({
                     <Badge tone={employmentTone(e.employmentStatus)} dot>
                       {humanize(e.employmentStatus)}
                     </Badge>
-                    <Badge tone={allocationTone(e.allocationStatus)}>{humanize(e.allocationStatus)}</Badge>
+                    {allocationBadge(e) && <Badge tone={allocationBadge(e)!.tone}>{allocationBadge(e)!.label}</Badge>}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-xs whitespace-nowrap text-ink-500 dark:text-slate-400">

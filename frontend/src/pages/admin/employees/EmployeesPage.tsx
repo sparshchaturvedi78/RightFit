@@ -120,6 +120,7 @@ export default function EmployeesPage() {
   /** Refresh button and after any change: reload this list (others reload when next opened) and the cached stats. */
   function afterChange() {
     dispatch(invalidateQueries('employees'))
+    dispatch(invalidateQueries('employeeProjects'))
     STALE_AFTER_CHANGE.forEach((key) => void dispatch(loadResource({ key, force: true })))
   }
 

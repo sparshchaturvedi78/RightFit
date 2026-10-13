@@ -1,11 +1,12 @@
-import { Mail, Pencil, Phone, Power, PowerOff, UserCog } from 'lucide-react'
+import { Briefcase, FolderKanban, Mail, Pencil, Phone, Power, PowerOff, UserCog } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/form'
 import { Drawer } from '../../../components/ui/Overlay'
+import { useQuery } from '../../../hooks/useQuery'
 import type { EmployeeDTO } from '../../../services/admin/employee.service'
 import { humanize, initialsOf, parseServerDate } from '../../../utils/format'
-import { allocationTone, availabilityTone, avatarGradient, employmentTone, formatDay, fullName } from './employeeUi'
+import { allocationBadge, availabilityTone, avatarGradient, employmentTone, formatDay, fullName } from './employeeUi'
 import type { RowActions } from './EmployeeTable'
 
 function Item({ label, children }: { label: string; children: ReactNode }) {
@@ -14,6 +15,75 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
       <dt className="text-[11px] font-medium text-ink-500 dark:text-slate-500">{label}</dt>
       <dd className="mt-0.5 text-sm text-ink-900 dark:text-white">{children || '—'}</dd>
     </div>
+  )
+}
+
+/**
+ * Where this person works: the projects they manage and the ones they're allocated to. Loaded when the profile
+ * opens and kept in the Redux store, so reopening it is instant.
+ */
+function ProjectTrace({ employeeId, applicable }: { employeeId: string; applicable: boolean }) {
+  const { data, loading, error } = useQuery('employeeProjects', { employeeId })
+  const managing = data?.managing ?? []
+  const allocations = data?.allocations ?? []
+  const empty = data !== null && managing.length === 0 && allocations.length === 0
+
+  return (
+    <section className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/6 dark:bg-white/2">
+      <h3 className="mb-3 text-[11px] font-semibold tracking-[0.14em] text-ink-500 uppercase dark:text-slate-500">Projects</h3>
+      {data === null && !error ? (
+        <div className="space-y-2">
+          <div className="h-10 animate-pulse rounded-xl bg-slate-200/80 dark:bg-white/8" />
+        </div>
+      ) : error && data === null ? (
+        <p className="text-sm text-ink-500 dark:text-slate-400">Couldn’t load this person’s projects.</p>
+      ) : empty ? (
+        <p className="text-sm text-ink-500 dark:text-slate-400">
+          {applicable ? 'Not on any project right now.' : 'Admins and RMGs aren’t allocated to projects — people report to them.'}
+        </p>
+      ) : (
+        <ul className={`space-y-2 transition-opacity ${loading ? 'opacity-60' : ''}`}>
+          {managing.map((p) => (
+            <li
+              key={`m-${p.projectId}`}
+              className="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-2 dark:border-white/8 dark:bg-white/3"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                <Briefcase className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-ink-900 dark:text-white">{p.projectName}</p>
+                <p className="truncate text-xs text-ink-500 dark:text-slate-400">
+                  {p.projectId}
+                  {p.clientName ? ` · ${p.clientName}` : ''} · Manages
+                </p>
+              </div>
+              <Badge tone={p.status === 'ACTIVE' ? 'green' : 'slate'}>{humanize(p.status)}</Badge>
+            </li>
+          ))}
+          {allocations.map((a) => (
+            <li
+              key={`a-${a.projectId}`}
+              className="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-2 dark:border-white/8 dark:bg-white/3"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-400">
+                <FolderKanban className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-ink-900 dark:text-white">{a.projectName}</p>
+                <p className="truncate text-xs text-ink-500 dark:text-slate-400">
+                  {a.projectId}
+                  {a.role ? ` · ${a.role}` : ''}
+                  {a.hoursPerDay != null ? ` · ${a.hoursPerDay} h/day` : ''}
+                  {a.startDate ? ` · since ${formatDay(a.startDate)}` : ''}
+                </p>
+              </div>
+              <Badge tone={a.projectStatus === 'ACTIVE' ? 'green' : 'slate'}>{humanize(a.projectStatus)}</Badge>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -77,7 +147,7 @@ export default function EmployeeProfileDrawer({
                 <Badge tone={employmentTone(e.employmentStatus)} dot>
                   {humanize(e.employmentStatus)}
                 </Badge>
-                <Badge tone={allocationTone(e.allocationStatus)}>{humanize(e.allocationStatus)}</Badge>
+                {allocationBadge(e) && <Badge tone={allocationBadge(e)!.tone}>{allocationBadge(e)!.label}</Badge>}
                 <Badge tone={availabilityTone(e.availabilityStatus)}>{humanize(e.availabilityStatus)}</Badge>
               </div>
               <p className="flex items-center gap-1.5 truncate text-sm text-ink-500 dark:text-slate-400">
@@ -118,12 +188,17 @@ export default function EmployeeProfileDrawer({
           <Group title="Placement">
             <Item label="Department">{e.departmentName}</Item>
             <Item label="Location">{e.locationName}</Item>
-            <Item label="RMG">{e.rmgName}</Item>
+            <Item label="Reports to">
+              {e.rmgName}
+              {e.rmgEmployeeId && <span className="block text-xs text-ink-500 dark:text-slate-400">{e.rmgEmployeeId}</span>}
+            </Item>
             <Item label="Pool">{e.poolStatus ? humanize(e.poolStatus) : undefined}</Item>
             <Item label="Available from">
               {formatDay(e.availableFromDate) ?? (e.availabilityStatus === 'AVAILABLE' ? 'Available now' : 'Not set')}
             </Item>
           </Group>
+
+          <ProjectTrace key={e.employeeId} employeeId={e.employeeId} applicable={e.inProject !== null} />
 
           <Group title="Record">
             <Item label="Created">

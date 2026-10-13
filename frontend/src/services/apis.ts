@@ -36,6 +36,8 @@ export const ADMIN_EMPLOYEE_API = {
   byId: (employeeId: string) => `/api/admin/employees/${employeeId}`,
   update: (employeeId: string) => `/api/admin/employees/${employeeId}`,
   assignRmg: (employeeId: string) => `/api/admin/employees/${employeeId}/rmg`,
+  projects: (employeeId: string) => `/api/admin/employees/${employeeId}/projects`,
+  role: (employeeId: string) => `/api/admin/employees/${employeeId}/role`,
   deactivate: (employeeId: string) => `/api/admin/employees/${employeeId}/deactivate`,
   reactivate: (employeeId: string) => `/api/admin/employees/${employeeId}/reactivate`,
 }
@@ -56,6 +58,7 @@ export const ADMIN_PROJECT_API = {
   byId: (projectId: string) => `/api/admin/projects/${projectId}`,
   update: (projectId: string) => `/api/admin/projects/${projectId}`,
   assignManager: (projectId: string) => `/api/admin/projects/${projectId}/manager`,
+  team: (projectId: string) => `/api/admin/projects/${projectId}/team`,
   close: (projectId: string) => `/api/admin/projects/${projectId}/close`,
   reopen: (projectId: string) => `/api/admin/projects/${projectId}/reopen`,
 }

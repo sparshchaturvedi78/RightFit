@@ -39,7 +39,7 @@ export const ADMIN_NAV: NavGroup[] = [
     title: 'People & projects',
     items: [
       { label: 'Employees', to: '/admin/employees', icon: Users, ready: true },
-      { label: 'Projects', to: '/admin/projects', icon: FolderKanban, ready: false },
+      { label: 'Projects', to: '/admin/projects', icon: FolderKanban, ready: true },
       { label: 'RMG', to: '/admin/rmg', icon: UsersRound, ready: false },
       { label: 'Assignments', to: '/admin/assignments', icon: ArrowLeftRight, ready: false },
     ],
