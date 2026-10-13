@@ -77,6 +77,12 @@ public class AdminEmployeeController {
         return ResponseEntity.ok(employee);
     }
 
+    @GetMapping("/{employeeId}/projects")
+    @PreAuthorize("hasPermission(null, 'EMPLOYEE_READ')")
+    public ResponseEntity<com.rightFit.dto.EmployeeProjectsDTO> getEmployeeProjects(@PathVariable String employeeId) {
+        return ResponseEntity.ok(employeeManagementService.getEmployeeProjects(employeeId));
+    }
+
     @PutMapping("/{employeeId}")
     @PreAuthorize("hasPermission(null, 'EMPLOYEE_UPDATE')")
     public ResponseEntity<EmployeeDTO> updateEmployee(
@@ -85,6 +91,15 @@ public class AdminEmployeeController {
         log.info("Updating employee: {}", employeeId);
         EmployeeDTO employee = employeeManagementService.updateEmployee(employeeId, request);
         return ResponseEntity.ok(employee);
+    }
+
+    @PutMapping("/{employeeId}/role")
+    @PreAuthorize("hasPermission(null, 'ROLE_ASSIGN_USER')")
+    public ResponseEntity<EmployeeDTO> changeRole(
+            @PathVariable String employeeId,
+            @Valid @RequestBody com.rightFit.dto.ChangeRoleRequest request) {
+        log.info("Changing role for employee: {}", employeeId);
+        return ResponseEntity.ok(employeeManagementService.changeRole(employeeId, request));
     }
 
     @PutMapping("/{employeeId}/rmg")

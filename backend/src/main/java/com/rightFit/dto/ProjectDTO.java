@@ -27,6 +27,10 @@ public class ProjectDTO {
     private Long managerId;
 
     private String managerName;
+    /** Business ID of the manager, e.g. "EMP003". */
+    private String managerEmployeeId;
+    /** ACTIVE or INACTIVE — an inactive manager means the project needs a replacement. */
+    private String managerEmploymentStatus;
 
     private String status;
 

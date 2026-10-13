@@ -22,6 +22,11 @@ public interface TrainingAssignmentRepository extends JpaRepository<TrainingAssi
             "ORDER BY a.assignedAt DESC")
     List<TrainingAssignment> findForRmg(@Param("rmgId") Long rmgId);
 
+    /** Employees with a training that is assigned or running and not yet passed / failed. */
+    @Query("SELECT DISTINCT a.employee.id FROM TrainingAssignment a WHERE a.assignmentStatus IN ('ASSIGNED', 'IN_PROGRESS') " +
+            "AND (a.completionStatus IS NULL OR a.completionStatus NOT IN ('PASSED', 'FAILED'))")
+    List<Long> findEmployeeIdsInActiveTraining();
+
     @Query("SELECT a FROM TrainingAssignment a ORDER BY a.assignedAt DESC")
     List<TrainingAssignment> findAllOrderByAssignedAtDesc();
 

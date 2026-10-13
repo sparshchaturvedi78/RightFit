@@ -19,6 +19,10 @@ public interface BenchHistoryRepository extends JpaRepository<BenchHistory, Long
     @Query("SELECT b FROM BenchHistory b WHERE b.isCurrent = true ORDER BY b.benchStartDate ASC")
     List<BenchHistory> findAllCurrent();
 
+    /** Employees on an open bench spell. */
+    @Query("SELECT DISTINCT b.employee.id FROM BenchHistory b WHERE b.isCurrent = true")
+    List<Long> findCurrentEmployeeIds();
+
     @Query("SELECT b FROM BenchHistory b WHERE b.isCurrent = true AND " +
             "(b.employee.rmgManager.id = :rmgId OR b.employee.rmgManager IS NULL) ORDER BY b.benchStartDate ASC")
     List<BenchHistory> findCurrentForRmg(@Param("rmgId") Long rmgId);

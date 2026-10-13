@@ -35,6 +35,8 @@ public class ProjectManagementService {
     private final AuditLogService auditLogService;
     private final RequirementAccessGuard accessGuard;
     private final ClosureService closureService;
+    private final com.rightFit.repository.ProjectMemberRepository projectMemberRepository;
+    private final com.rightFit.repository.AllocationRepository allocationRepository;
 
     @Auditable(action = "CREATE", entityType = "PROJECT", entityIdParamName = "result.id")
     public ProjectDTO createProject(CreateProjectRequest request) {
@@ -45,7 +47,10 @@ public class ProjectManagementService {
         Employee manager = employeeRepository.findById(request.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Manager not found: " + request.getManagerId()));
 
+        String actor = actorLabel();
         Project project = Project.builder()
+                .createdBy(actor)
+                .updatedBy(actor)
                 .projectId(request.getProjectId())
                 .projectName(request.getProjectName())
                 .description(request.getDescription())
@@ -98,6 +103,7 @@ public class ProjectManagementService {
         }
 
         project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedBy(actorLabel());
         Project updated = projectRepository.save(project);
         log.info("Project updated successfully: {}", projectId);
 
@@ -115,6 +121,7 @@ public class ProjectManagementService {
         Long previousManagerId = project.getManager() != null ? project.getManager().getId() : null;
         project.assignManager(newManager);
         project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedBy(actorLabel());
         Project updated = projectRepository.save(project);
 
         log.info("Manager changed for project {} to {}", projectId, newManager.getEmployeeId());
@@ -132,6 +139,7 @@ public class ProjectManagementService {
 
         project.setStatus("CLOSED");
         project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedBy(actorLabel());
         Project updated = projectRepository.save(project);
 
         log.info("Project closed successfully: {}", projectId);
@@ -150,6 +158,7 @@ public class ProjectManagementService {
 
         project.setStatus("ACTIVE");
         project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedBy(actorLabel());
         Project updated = projectRepository.save(project);
 
         log.info("Project reopened successfully: {}", projectId);
@@ -168,12 +177,107 @@ public class ProjectManagementService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ProjectDTO> getProjects(String projectId, String projectName, String status,
-                                        Long managerId, String clientName, Pageable pageable) {
+    public Page<ProjectDTO> getProjects(String q, String projectId, String projectName, String status,
+                                        Long managerId, String clientName, Boolean claimed, String managerStatus,
+                                        Pageable pageable) {
         log.debug("Searching projects with filters");
+        String query = q == null || q.isBlank() ? null : q.trim();
+        String mgrStatus = managerStatus == null || managerStatus.isBlank() ? null : managerStatus.trim().toUpperCase();
         Page<Project> projects = projectRepository.searchProjects(
-                projectId, projectName, status, managerId, clientName, pageable);
+                query, projectId, projectName, status, managerId, clientName, claimed, mgrStatus, pageable);
         return projects.map(this::mapToDTO);
+    }
+
+    /** The project's team: its manager, active team members and active allocations, one row per person. */
+    @Transactional(readOnly = true)
+    public com.rightFit.dto.ProjectTeamDTO getTeam(String projectId, String grade, int page, int size) {
+        Project project = projectRepository.findByProjectId(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+
+        java.util.Map<Long, com.rightFit.dto.ProjectTeamDTO.MemberDTO> people = new java.util.LinkedHashMap<>();
+        Employee manager = project.getManager();
+        if (manager != null) {
+            people.put(manager.getId(), member(manager, "Manager", true, null, null));
+        }
+        for (var a : allocationRepository.findActiveWithEmployeeByProjectId(project.getId())) {
+            Employee e = a.getEmployee();
+            var existing = people.get(e.getId());
+            if (existing != null) {
+                existing.setHoursPerDay(a.getHoursPerDay());
+                continue;
+            }
+            people.put(e.getId(), member(e, "Team member", false, a.getHoursPerDay(), a.getStartDate()));
+        }
+        for (var m : projectMemberRepository.findByProjectIdAndIsActiveTrueOrderByJoinedAtAsc(project.getId())) {
+            Employee e = m.getEmployee();
+            var existing = people.get(e.getId());
+            if (existing != null) {
+                if (!existing.isManager() && m.getRole() != null && !m.getRole().isBlank()) existing.setRole(m.getRole());
+                if (existing.getSince() == null && m.getJoinedAt() != null) existing.setSince(m.getJoinedAt().toLocalDate());
+                continue;
+            }
+            people.put(e.getId(), member(e, m.getRole(), false, null,
+                    m.getJoinedAt() != null ? m.getJoinedAt().toLocalDate() : null));
+        }
+
+        java.util.List<com.rightFit.dto.ProjectTeamDTO.MemberDTO> all = new java.util.ArrayList<>(people.values());
+        java.util.List<String> grades = all.stream().map(com.rightFit.dto.ProjectTeamDTO.MemberDTO::getGrade)
+                .filter(g -> g != null && !g.isBlank()).distinct()
+                .sorted(GRADE_HIGH_FIRST).toList();
+
+        String wanted = grade == null || grade.isBlank() ? null : grade.trim();
+        java.util.List<com.rightFit.dto.ProjectTeamDTO.MemberDTO> filtered = all.stream()
+                .filter(m -> wanted == null || wanted.equalsIgnoreCase(m.getGrade()))
+                // Highest grade first, then the manager, then by name.
+                .sorted(java.util.Comparator
+                        .comparing(com.rightFit.dto.ProjectTeamDTO.MemberDTO::getGrade, GRADE_HIGH_FIRST)
+                        .thenComparing(m -> !m.isManager())
+                        .thenComparing(com.rightFit.dto.ProjectTeamDTO.MemberDTO::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        int pageSize = Math.max(1, Math.min(size, 50));
+        int pageNo = Math.max(0, page);
+        int from = Math.min(pageNo * pageSize, filtered.size());
+        int to = Math.min(from + pageSize, filtered.size());
+
+        return com.rightFit.dto.ProjectTeamDTO.builder()
+                .content(filtered.subList(from, to))
+                .totalElements(filtered.size())
+                .totalPages((int) Math.ceil(filtered.size() / (double) pageSize))
+                .number(pageNo)
+                .size(pageSize)
+                .teamSize(all.size())
+                .grades(grades)
+                .build();
+    }
+
+    /** Grades like "L1".."L5": higher number first; anything unparseable (or missing) last. */
+    private static final java.util.Comparator<String> GRADE_HIGH_FIRST = (a, b) -> {
+        int x = gradeRank(a);
+        int y = gradeRank(b);
+        return x != y ? Integer.compare(y, x) : String.valueOf(a).compareToIgnoreCase(String.valueOf(b));
+    };
+
+    private static int gradeRank(String grade) {
+        if (grade == null) return -1;
+        String digits = grade.replaceAll("\\D", "");
+        return digits.isEmpty() ? -1 : Integer.parseInt(digits.length() > 6 ? digits.substring(0, 6) : digits);
+    }
+
+    private com.rightFit.dto.ProjectTeamDTO.MemberDTO member(Employee e, String role, boolean manager,
+                                                              java.math.BigDecimal hours, java.time.LocalDate since) {
+        return com.rightFit.dto.ProjectTeamDTO.MemberDTO.builder()
+                .id(e.getId())
+                .employeeId(e.getEmployeeId())
+                .name(e.getFirstName() + " " + e.getLastName())
+                .designation(e.getDesignation())
+                .grade(e.getGrade())
+                .role(role)
+                .manager(manager)
+                .employmentStatus(e.getEmploymentStatus())
+                .hoursPerDay(hours)
+                .since(since)
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -245,6 +349,8 @@ public class ProjectManagementService {
                 .managerId(project.getManager() != null ? project.getManager().getId() : null)
                 .managerName(project.getManager() != null ?
                         project.getManager().getFirstName() + " " + project.getManager().getLastName() : null)
+                .managerEmployeeId(project.getManager() != null ? project.getManager().getEmployeeId() : null)
+                .managerEmploymentStatus(project.getManager() != null ? project.getManager().getEmploymentStatus() : null)
                 .status(project.getStatus())
                 .startDate(project.getStartDate())
                 .endDate(project.getEndDate())
@@ -256,6 +362,12 @@ public class ProjectManagementService {
                 .createdBy(project.getCreatedBy())
                 .updatedBy(project.getUpdatedBy())
                 .build();
+    }
+
+    /** "Rajesh Kumar (EMP001)" for the signed-in admin; "System" when there is no employee profile. */
+    private String actorLabel() {
+        Employee me = accessGuard.currentEmployeeOrNull();
+        return me == null ? "System" : me.getFirstName() + " " + me.getLastName() + " (" + me.getEmployeeId() + ")";
     }
 
     private Long getCurrentUserId() {

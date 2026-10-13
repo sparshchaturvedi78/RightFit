@@ -40,11 +40,16 @@ public class AdminProjectController {
     @GetMapping
     @PreAuthorize("hasPermission(null, 'PROJECT_READ')")
     public ResponseEntity<Page<ProjectDTO>> getProjects(
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) String projectId,
             @RequestParam(required = false) String projectName,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long managerId,
             @RequestParam(required = false) String clientName,
+            /** true = the manager has claimed the project, false = still waiting for the manager to claim it. */
+            @RequestParam(required = false) Boolean claimed,
+            /** ACTIVE or INACTIVE: only projects whose manager is in that employment state. */
+            @RequestParam(required = false) String managerStatus,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "projectName") String sortBy,
@@ -57,7 +62,7 @@ public class AdminProjectController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
         Page<ProjectDTO> projects = projectManagementService.getProjects(
-                projectId, projectName, status, managerId, clientName, pageable);
+                q, projectId, projectName, status, managerId, clientName, claimed, managerStatus, pageable);
         return ResponseEntity.ok(projects);
     }
 
@@ -67,6 +72,16 @@ public class AdminProjectController {
         log.info("Fetching project: {}", projectId);
         ProjectDTO project = projectManagementService.getProject(projectId);
         return ResponseEntity.ok(project);
+    }
+
+    @GetMapping("/{projectId}/team")
+    @PreAuthorize("hasPermission(null, 'PROJECT_READ')")
+    public ResponseEntity<com.rightFit.dto.ProjectTeamDTO> getProjectTeam(
+            @PathVariable String projectId,
+            @RequestParam(required = false) String grade,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(projectManagementService.getTeam(projectId, grade, page, size));
     }
 
     @PutMapping("/{projectId}")

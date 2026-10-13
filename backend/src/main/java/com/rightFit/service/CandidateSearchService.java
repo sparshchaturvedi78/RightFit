@@ -73,7 +73,7 @@ public class CandidateSearchService {
     }
 
     public List<ProjectLookupDTO> lookupProjects(String projectId) {
-        List<ProjectLookupDTO> found = projectRepository.searchProjects(projectId, null, null, null, null, PageRequest.of(0, 20)).stream()
+        List<ProjectLookupDTO> found = projectRepository.searchProjects(null, projectId, null, null, null, null, null, null, PageRequest.of(0, 20)).stream()
                 .map(p -> ProjectLookupDTO.builder()
                         .projectId(p.getProjectId())
                         .projectName(p.getProjectName())
