@@ -41,6 +41,13 @@ export const ADMIN_EMPLOYEE_API = {
 }
 
 // ---------------------------------------------------------------------------
+// Admin — Lookups (departments, locations, designations) — AdminLookupController (/api/admin/lookups)
+// ---------------------------------------------------------------------------
+export const ADMIN_LOOKUP_API = {
+  get: '/api/admin/lookups',
+}
+
+// ---------------------------------------------------------------------------
 // Admin — Projects — AdminProjectController (/api/admin/projects)
 // ---------------------------------------------------------------------------
 export const ADMIN_PROJECT_API = {

@@ -4,9 +4,15 @@ import { tokenStorage } from '../services/tokenStorage'
 import authReducer, { restoreSession, sessionEnded } from './authSlice'
 import notificationsReducer from './notificationsSlice'
 import resourcesReducer from './resourcesSlice'
+import toastsReducer from './toastSlice'
 
 export const store = configureStore({
-  reducer: { auth: authReducer, notifications: notificationsReducer, resources: resourcesReducer },
+  reducer: {
+    auth: authReducer,
+    notifications: notificationsReducer,
+    resources: resourcesReducer,
+    toasts: toastsReducer,
+  },
 })
 
 // Logout, or a refresh token that no longer works: the session is over, so every slice resets.

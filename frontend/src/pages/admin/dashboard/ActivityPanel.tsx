@@ -7,7 +7,7 @@ import type { AuditLogDTO } from '../../../services/admin/audit.service'
 import { humanize, timeAgo } from '../../../utils/format'
 
 /** How many events the timeline lists (the hero chart uses the full page). */
-const VISIBLE = 6
+const VISIBLE = 4
 
 function kindOf(entry: AuditLogDTO): { icon: LucideIcon; tone: string } {
   const action = entry.action.toUpperCase()

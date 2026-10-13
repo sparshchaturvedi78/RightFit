@@ -42,7 +42,8 @@ export interface CreateEmployeeRequest {
   password: string
   designation: string
   departmentId: number
-  rmgId: number
+  /** Required unless the new employee is an Admin (optionalRoleId = the Admin role). */
+  rmgId?: number
   phone?: string
   grade?: string
   domain?: string
@@ -92,6 +93,8 @@ export interface DeactivateEmployeeRequest {
 }
 
 export interface EmployeeListFilters {
+  /** Free text: matches employee ID, name or email. */
+  q?: string
   employeeId?: string
   firstName?: string
   lastName?: string
@@ -99,7 +102,12 @@ export interface EmployeeListFilters {
   status?: string
   designation?: string
   departmentId?: number
+  locationId?: number
   rmgId?: number
+  /** Role code: ADMIN | MANAGER | RMG | ASSOCIATE. */
+  role?: string
+  /** IN_PROJECT | ON_BENCH | IN_TRAINING | UNASSIGNED — the dashboard's workforce buckets. */
+  workforce?: string
   page?: number
   size?: number
   sortBy?: string
