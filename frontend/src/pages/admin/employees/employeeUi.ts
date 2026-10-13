@@ -34,6 +34,17 @@ export function allocationTone(status: string): BadgeTone {
   return status === 'ALLOCATED' ? 'sky' : 'slate'
 }
 
+/**
+ * The allocation badge to show, or null for none. Admins and RMGs aren't allocated to projects (people report to
+ * them), so they get no badge; everyone else is Allocated when they are in an active project — as a member, by
+ * allocation, or as the Manager of one — and Unallocated otherwise.
+ */
+export function allocationBadge(e: { inProject?: boolean | null; allocationStatus: string }): { tone: BadgeTone; label: string } | null {
+  const inProject = e.inProject === undefined ? e.allocationStatus === 'ALLOCATED' : e.inProject
+  if (inProject === null) return null
+  return inProject ? { tone: 'sky', label: 'Allocated' } : { tone: 'slate', label: 'Unallocated' }
+}
+
 export function availabilityTone(status: string): BadgeTone {
   return status === 'AVAILABLE' ? 'green' : 'amber'
 }

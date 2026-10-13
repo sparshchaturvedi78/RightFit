@@ -51,7 +51,7 @@ export default function WorkforcePanel({ state }: { state: AsyncResult<AdminDash
                   </>
                 }
               />
-              <ul className="w-full flex-1 space-y-2">
+              <ul className="w-full min-w-0 flex-1 space-y-2 sm:w-auto xl:w-full 2xl:w-auto">
                 {segments.map((s) => (
                   <li key={s.key}>
                     {/* Each bucket opens the Employees list filtered to exactly those people. */}
@@ -61,9 +61,9 @@ export default function WorkforcePanel({ state }: { state: AsyncResult<AdminDash
                       className="group flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-white/3"
                     >
                       <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
-                      <span className="text-ink-700 group-hover:text-ink-900 dark:text-slate-300 dark:group-hover:text-white">{s.label}</span>
+                      <span className="min-w-0 truncate text-ink-700 group-hover:text-ink-900 dark:text-slate-300 dark:group-hover:text-white">{s.label}</span>
                       <span className="ml-auto font-semibold text-ink-900 tabular-nums dark:text-white">{s.value}</span>
-                      <span className="w-10 text-right text-xs text-ink-500 tabular-nums dark:text-slate-400">
+                      <span className="w-9 shrink-0 text-right text-xs text-ink-500 tabular-nums dark:text-slate-400">
                         {percent(s.value, total)}%
                       </span>
                       <ChevronRight className="h-3.5 w-3.5 shrink-0 text-ink-500/50 transition-transform group-hover:translate-x-0.5 dark:text-slate-500" />

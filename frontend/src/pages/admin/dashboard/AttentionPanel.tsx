@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { Bell, ShieldAlert, ShieldCheck, UserX } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { AsyncBody, Panel, Skeleton } from '../../../components/dashboard/Panel'
 import type { AsyncResult } from '../../../hooks/useAsyncData'
 import type { AdminDashboardDTO } from '../../../services/admin/dashboard.service'
@@ -11,21 +12,18 @@ function AttentionRow({
   hint,
   count,
   urgent,
+  to,
 }: {
   icon: ReactNode
   title: string
   hint: string
   count: number
   urgent: boolean
+  /** When set (and there is something to act on) the whole row links there. */
+  to?: string
 }) {
-  return (
-    <li
-      className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors ${
-        urgent
-          ? 'border-amber-500/30 bg-amber-500/6'
-          : 'border-slate-200/80 bg-slate-50/60 dark:border-white/6 dark:bg-white/2'
-      }`}
-    >
+  const body = (
+    <>
       <span
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
           urgent ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' : 'bg-white text-ink-500 shadow-sm dark:bg-white/6 dark:text-slate-400 dark:shadow-none'
@@ -44,6 +42,21 @@ function AttentionRow({
       >
         {count}
       </span>
+    </>
+  )
+  const surface = `flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors ${
+    urgent ? 'border-amber-500/30 bg-amber-500/6' : 'border-slate-200/80 bg-slate-50/60 dark:border-white/6 dark:bg-white/2'
+  }`
+
+  return (
+    <li>
+      {to && count > 0 ? (
+        <Link to={to} className={`${surface} hover:border-amber-500/50 hover:bg-amber-500/10`}>
+          {body}
+        </Link>
+      ) : (
+        <div className={surface}>{body}</div>
+      )}
     </li>
   )
 }
@@ -102,6 +115,7 @@ export default function AttentionPanel({ state }: { state: AsyncResult<AdminDash
                   hint="Projects whose manager is now inactive"
                   count={d.pendingManagerReplacements}
                   urgent={d.pendingManagerReplacements > 0}
+                  to="/admin/projects?mgr=INACTIVE"
                 />
                 <AttentionRow
                   icon={<ShieldAlert className="h-4 w-4" />}

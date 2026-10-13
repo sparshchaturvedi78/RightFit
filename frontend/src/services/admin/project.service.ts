@@ -9,6 +9,10 @@ export interface ProjectDTO {
   description?: string
   managerId: number
   managerName?: string
+  /** Business ID of the manager, e.g. EMP003. */
+  managerEmployeeId?: string
+  /** ACTIVE / INACTIVE — an inactive manager means the project needs a replacement. */
+  managerEmploymentStatus?: string
   status: string
   startDate?: string
   endDate?: string
@@ -19,6 +23,31 @@ export interface ProjectDTO {
   updatedAt?: string
   createdBy?: string
   updatedBy?: string
+}
+
+export interface ProjectTeamMember {
+  id: number
+  employeeId: string
+  name: string
+  designation?: string
+  grade?: string
+  role?: string
+  manager: boolean
+  employmentStatus: string
+  hoursPerDay?: number
+  since?: string
+}
+
+export interface ProjectTeamPage {
+  content: ProjectTeamMember[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+  /** Everyone on the team, ignoring the grade filter. */
+  teamSize: number
+  /** Distinct grades on the team, highest first. */
+  grades: string[]
 }
 
 export interface CreateProjectRequest {
@@ -48,6 +77,12 @@ export interface CloseProjectRequest {
 }
 
 export interface ProjectListFilters {
+  /** Free text: matches project ID, name, client, or the manager's name / employee ID. */
+  q?: string
+  /** true = the manager has claimed the project, false = still pending. */
+  claimed?: boolean
+  /** ACTIVE or INACTIVE: only projects whose manager is in that state. */
+  managerStatus?: string
   projectId?: string
   projectName?: string
   status?: string
@@ -66,6 +101,13 @@ async function create(payload: CreateProjectRequest): Promise<ProjectDTO> {
 
 async function list(filters: ProjectListFilters = {}): Promise<PageResponse<ProjectDTO>> {
   const { data } = await httpClient.get<PageResponse<ProjectDTO>>(ADMIN_PROJECT_API.list, { params: filters })
+  return data
+}
+
+async function team(projectId: string, grade: string | undefined, page: number, size: number): Promise<ProjectTeamPage> {
+  const { data } = await httpClient.get<ProjectTeamPage>(ADMIN_PROJECT_API.team(projectId), {
+    params: { grade: grade || undefined, page, size },
+  })
   return data
 }
 
@@ -94,4 +136,4 @@ async function reopen(projectId: string, payload: CloseProjectRequest): Promise<
   return data
 }
 
-export const adminProjectService = { create, list, byId, update, changeManager, close, reopen }
+export const adminProjectService = { create, list, team, byId, update, changeManager, close, reopen }
