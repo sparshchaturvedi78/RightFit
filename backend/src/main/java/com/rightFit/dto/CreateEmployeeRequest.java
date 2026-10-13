@@ -37,7 +37,7 @@ public class CreateEmployeeRequest {
     @NotNull(message = "Department ID is required")
     private Long departmentId;
 
-    @NotNull(message = "RMG ID is required")
+    /** Required for everyone except a new Admin (checked in EmployeeManagementService). */
     private Long rmgId;
 
     private String phone;

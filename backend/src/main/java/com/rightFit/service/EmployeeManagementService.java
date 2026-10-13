@@ -40,6 +40,9 @@ public class EmployeeManagementService {
     private final AuditLogService auditLogService;
     private final EmployeeExitService employeeExitService;
     private final RequirementAccessGuard accessGuard;
+    private final ResourcePoolService resourcePoolService;
+    private final com.rightFit.repository.UserRoleRepository userRoleRepository;
+    private final com.rightFit.repository.RoleRepository roleRepository;
 
     @Auditable(action = "CREATE", entityType = "EMPLOYEE", entityIdParamName = "result.id")
     public EmployeeDTO createEmployee(CreateEmployeeRequest request) {
@@ -47,8 +50,18 @@ public class EmployeeManagementService {
 
         validateEmployeeUniqueness(request.getEmployeeId(), request.getEmail());
 
-        Employee rmg = employeeRepository.findById(request.getRmgId())
-                .orElseThrow(() -> new RuntimeException("RMG not found: " + request.getRmgId()));
+        boolean newAdmin = request.getOptionalRoleId() != null && roleRepository.findById(request.getOptionalRoleId())
+                .map(r -> "ADMIN".equalsIgnoreCase(r.getCode())).orElse(false);
+        if (request.getRmgId() == null && !newAdmin) {
+            throw new com.rightFit.exception.BusinessRuleException("An RMG is required for everyone except a new Admin");
+        }
+        Employee rmg = request.getRmgId() == null ? null : employeeRepository.findById(request.getRmgId())
+                .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("RMG", String.valueOf(request.getRmgId())));
+        String actor = actorLabel();
+        Department department = departmentRepository.findById(request.getDepartmentId())
+                .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
+        Location location = request.getLocationId() == null ? null : locationRepository.findById(request.getLocationId())
+                .orElseThrow(() -> new RuntimeException("Location not found: " + request.getLocationId()));
 
         Employee employee = Employee.builder()
                 .employeeId(request.getEmployeeId())
@@ -61,9 +74,13 @@ public class EmployeeManagementService {
                 .domain(request.getDomain())
                 .yearsOfExperience(request.getYearsOfExperience())
                 .dateOfJoining(request.getDateOfJoining() != null ? request.getDateOfJoining() : LocalDate.now())
-                .poolStatus("IN_POOL")
+                .poolStatus("NOT_IN_RESOURCE_POOL")
                 .workingHoursPerDay(request.getWorkingHoursPerDay() != null ? request.getWorkingHoursPerDay() : 8.0)
                 .rmgManager(rmg)
+                .createdBy(actor)
+                .updatedBy(actor)
+                .department(department)
+                .location(location)
                 .employmentStatus(request.getEmploymentStatus() != null ? request.getEmploymentStatus() : "ACTIVE")
                 .allocationStatus(request.getAllocationStatus() != null ? request.getAllocationStatus() : "UNALLOCATED")
                 .availabilityStatus(request.getAvailabilityStatus() != null ? request.getAvailabilityStatus() : "AVAILABLE")
@@ -83,6 +100,10 @@ public class EmployeeManagementService {
         savedEmployee.setUser(savedUser);
         employeeRepository.save(savedEmployee);
         log.info("User account created for employee: {}", request.getEmployeeId());
+
+        // A new, active, available and unallocated employee is on the bench from day one: enter the pool through
+        // the same path every other pool entry uses, so the pool and bench-aging rows exist too.
+        resourcePoolService.enterIfEligible(savedEmployee, "MANUAL_ENTRY");
 
         if (request.getOptionalRoleId() != null) {
             try {
@@ -171,6 +192,7 @@ public class EmployeeManagementService {
         }
 
         employee.setUpdatedAt(LocalDateTime.now());
+        employee.setUpdatedBy(actorLabel());
         Employee updated = employeeRepository.save(employee);
         log.info("Employee updated successfully: {}", employeeId);
 
@@ -197,6 +219,7 @@ public class EmployeeManagementService {
         Long previousRmgId = employee.getRmgManager() != null ? employee.getRmgManager().getId() : null;
         employee.setRmgManager(newRmg);
         employee.setUpdatedAt(LocalDateTime.now());
+        employee.setUpdatedBy(actorLabel());
         Employee updated = employeeRepository.save(employee);
 
         log.info("RMG changed for employee {} to {}", employeeId, newRmg.getEmployeeId());
@@ -215,6 +238,7 @@ public class EmployeeManagementService {
         employee.setEmploymentStatus("INACTIVE");
         employee.setAvailabilityStatus("UNAVAILABLE");
         employee.setUpdatedAt(LocalDateTime.now());
+        employee.setUpdatedBy(actorLabel());
         Employee updated = employeeRepository.save(employee);
 
         if (employee.getUser() != null) {
@@ -240,6 +264,7 @@ public class EmployeeManagementService {
         employee.setEmploymentStatus("ACTIVE");
         employee.setAvailabilityStatus("AVAILABLE");
         employee.setUpdatedAt(LocalDateTime.now());
+        employee.setUpdatedBy(actorLabel());
         Employee updated = employeeRepository.save(employee);
 
         if (employee.getUser() != null) {
@@ -258,18 +283,36 @@ public class EmployeeManagementService {
     public EmployeeDTO getEmployee(String employeeId) {
         log.debug("Fetching employee: {}", employeeId);
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found: " + employeeId));
+                .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Employee", employeeId));
         return mapToDTO(employee);
     }
 
     @Transactional(readOnly = true)
-    public Page<EmployeeDTO> getEmployees(String employeeId, String firstName, String lastName,
+    public Page<EmployeeDTO> getEmployees(String q, String employeeId, String firstName, String lastName,
                                            String email, String status, String designation,
-                                           Long departmentId, Long rmgId, Pageable pageable) {
+                                           Long departmentId, Long locationId, Long rmgId, String role,
+                                           String workforce, Pageable pageable) {
         log.debug("Searching employees with filters");
+        String query = q == null || q.isBlank() ? null : q.trim();
+        String roleCode = role == null || role.isBlank() ? null : role.trim().toUpperCase();
+        String bucket = workforce == null || workforce.isBlank() ? null : workforce.trim().toUpperCase();
         Page<Employee> employees = employeeRepository.searchEmployees(
-                employeeId, firstName, lastName, email, status, designation, departmentId, rmgId, pageable);
-        return employees.map(this::mapToDTO);
+                query, employeeId, firstName, lastName, email, status, designation, departmentId, locationId, rmgId,
+                roleCode, bucket, pageable);
+
+        // One query for every row's roles instead of one (or more) per employee.
+        java.util.List<Long> userIds = employees.getContent().stream()
+                .filter(e -> e.getUser() != null)
+                .map(e -> e.getUser().getId())
+                .toList();
+        java.util.Map<Long, java.util.Set<String>> rolesByUser = new java.util.HashMap<>();
+        if (!userIds.isEmpty()) {
+            for (Object[] row : userRoleRepository.findActiveRoleNamesByUserIds(userIds)) {
+                rolesByUser.computeIfAbsent((Long) row[0], k -> new java.util.TreeSet<>()).add((String) row[1]);
+            }
+        }
+        return employees.map(e -> mapToDTO(e,
+                e.getUser() != null ? rolesByUser.getOrDefault(e.getUser().getId(), java.util.Set.of()) : java.util.Set.of()));
     }
 
     private void validateEmployeeUniqueness(String employeeId, String email) {
@@ -290,6 +333,15 @@ public class EmployeeManagementService {
     }
 
     private EmployeeDTO mapToDTO(Employee employee) {
+        java.util.Set<String> roles = employee.getUser() != null
+                ? userRoleService.getUserRoles(employee.getUser().getId()).stream()
+                    .map(ur -> ur.getRole().getName())
+                    .collect(java.util.stream.Collectors.toSet())
+                : java.util.Set.of();
+        return mapToDTO(employee, roles);
+    }
+
+    private EmployeeDTO mapToDTO(Employee employee, java.util.Set<String> roles) {
         return EmployeeDTO.builder()
                 .id(employee.getId())
                 .employeeId(employee.getEmployeeId())
@@ -320,12 +372,14 @@ public class EmployeeManagementService {
                 .updatedAt(employee.getUpdatedAt())
                 .createdBy(employee.getCreatedBy())
                 .updatedBy(employee.getUpdatedBy())
-                .roles(employee.getUser() != null
-                        ? userRoleService.getUserRoles(employee.getUser().getId()).stream()
-                            .map(ur -> ur.getRole().getName())
-                            .collect(java.util.stream.Collectors.toSet())
-                        : java.util.Set.of())
+                .roles(roles)
                 .build();
+    }
+
+    /** "Rajesh Kumar (EMP001)" for the signed-in admin; "System" when there is no employee profile. */
+    private String actorLabel() {
+        Employee me = accessGuard.currentEmployeeOrNull();
+        return me == null ? "System" : me.getFirstName() + " " + me.getLastName() + " (" + me.getEmployeeId() + ")";
     }
 
     private Long getCurrentUserId() {

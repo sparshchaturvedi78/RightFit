@@ -30,8 +30,9 @@ import java.util.stream.Collectors;
 public class AdminDashboardService {
 
     private static final int UPCOMING_INTERVIEW_LIMIT = 5;
-    /** Training assignments in these states no longer occupy the employee. */
-    private static final Set<String> FINISHED_TRAINING = Set.of("COMPLETED", "CANCELLED", "WITHDRAWN");
+    /** A training assignment occupies the employee only while it is assigned or running and not yet passed/failed. */
+    private static final Set<String> ACTIVE_TRAINING = Set.of("ASSIGNED", "IN_PROGRESS");
+    private static final Set<String> FINISHED_COMPLETION = Set.of("PASSED", "FAILED");
 
     private final EmployeeRepository employeeRepository;
     private final ProjectRepository projectRepository;
@@ -80,8 +81,8 @@ public class AdminDashboardService {
     /** Each active employee lands in exactly one bucket: project > training > bench/pool > unassigned. */
     private void addWorkforceDistribution(AdminDashboardDTO.AdminDashboardDTOBuilder builder) {
         Set<Long> inTraining = trainingAssignmentRepository.findAllOrderByAssignedAtDesc().stream()
-                .filter(a -> a.getAssignmentStatus() == null || !FINISHED_TRAINING.contains(a.getAssignmentStatus().toUpperCase()))
-                .filter(a -> !"COMPLETED".equalsIgnoreCase(a.getCompletionStatus()))
+                .filter(a -> a.getAssignmentStatus() != null && ACTIVE_TRAINING.contains(a.getAssignmentStatus().toUpperCase()))
+                .filter(a -> a.getCompletionStatus() == null || !FINISHED_COMPLETION.contains(a.getCompletionStatus().toUpperCase()))
                 .map(a -> a.getEmployee().getId())
                 .collect(Collectors.toSet());
         Set<Long> onBench = benchHistoryRepository.findAllCurrent().stream()

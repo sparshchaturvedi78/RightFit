@@ -40,6 +40,7 @@ public class AdminEmployeeController {
     @GetMapping
     @PreAuthorize("hasPermission(null, 'EMPLOYEE_READ')")
     public ResponseEntity<Page<EmployeeDTO>> getEmployees(
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) String employeeId,
             @RequestParam(required = false) String firstName,
             @RequestParam(required = false) String lastName,
@@ -47,7 +48,11 @@ public class AdminEmployeeController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String designation,
             @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long locationId,
             @RequestParam(required = false) Long rmgId,
+            @RequestParam(required = false) String role,
+            /** IN_PROJECT | ON_BENCH | IN_TRAINING | UNASSIGNED (the dashboard's workforce buckets). */
+            @RequestParam(required = false) String workforce,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "firstName") String sortBy,
@@ -60,7 +65,7 @@ public class AdminEmployeeController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
         Page<EmployeeDTO> employees = employeeManagementService.getEmployees(
-                employeeId, firstName, lastName, email, status, designation, departmentId, rmgId, pageable);
+                q, employeeId, firstName, lastName, email, status, designation, departmentId, locationId, rmgId, role, workforce, pageable);
         return ResponseEntity.ok(employees);
     }
 
