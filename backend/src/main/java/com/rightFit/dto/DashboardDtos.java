@@ -84,6 +84,36 @@ public final class DashboardDtos {
         private long totalAuditEntries;
         private long auditEntriesLast24h;
         private long unreadNotifications;
+        /** Active employees by where they are right now; each person is counted once, in this order of
+         * precedence: allocated to a project, in an active training, on the bench / in the pool, otherwise unassigned. */
+        private long inProjectEmployees;
+        private long inTrainingEmployees;
+        private long onBenchEmployees;
+        private long unassignedEmployees;
+        /** Current bench, bucketed by the active bench policy's green/amber/red thresholds. */
+        private long benchGreen;
+        private long benchAmber;
+        private long benchRed;
+        private long openRequirements;
+        /** The next few scheduled/accepted interviews across the organization, soonest first. */
+        private List<UpcomingInterviewDTO> upcomingInterviews;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class UpcomingInterviewDTO {
+        private String interviewId;
+        private String candidateName;
+        private String candidateEmployeeId;
+        private String positionTitle;
+        private String projectName;
+        private String interviewerName;
+        private LocalDateTime scheduledAt;
+        private Integer roundNumber;
+        private String mode;
+        private String status;
     }
 
     @Data

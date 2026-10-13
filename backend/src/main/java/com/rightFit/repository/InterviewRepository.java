@@ -1,6 +1,7 @@
 package com.rightFit.repository;
 
 import com.rightFit.entity.Interview;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,4 +37,9 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     @Query("SELECT COUNT(i) FROM Interview i WHERE i.employee.id = :employeeId " +
             "AND i.status IN ('SCHEDULED', 'ACCEPTED') AND i.scheduledAt >= :from")
     long countUpcomingForEmployee(@Param("employeeId") Long employeeId, @Param("from") LocalDateTime from);
+
+    /** Admin Dashboard: upcoming interviews organization-wide, soonest first. */
+    @Query("SELECT i FROM Interview i WHERE i.status IN ('SCHEDULED', 'ACCEPTED') AND i.scheduledAt >= :from " +
+            "ORDER BY i.scheduledAt ASC")
+    List<Interview> findUpcoming(@Param("from") LocalDateTime from, Pageable pageable);
 }

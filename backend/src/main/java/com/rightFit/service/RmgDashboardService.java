@@ -24,9 +24,7 @@ public class RmgDashboardService {
     public List<RmgDetailDTO> getAllRmgs() {
         log.debug("Fetching all RMGs with associate counts");
 
-        List<Employee> rmgs = employeeRepository.findAll().stream()
-                .filter(e -> e.getSubordinates() != null && !e.getSubordinates().isEmpty())
-                .collect(Collectors.toList());
+        List<Employee> rmgs = employeeRepository.findAllRmgs();
 
         return rmgs.stream()
                 .map(this::mapToRmgDetail)
