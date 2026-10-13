@@ -6,7 +6,13 @@ export interface StoredTokens {
   refreshToken: string
 }
 
+const clearListeners = new Set<() => void>()
+
 export const tokenStorage = {
+  /** Runs when the stored session is discarded (logout, or the refresh token no longer works). */
+  onClear(listener: () => void) {
+    clearListeners.add(listener)
+  },
   get(): StoredTokens | null {
     try {
       const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
@@ -33,6 +39,7 @@ export const tokenStorage = {
     }
   },
   clear() {
+    clearListeners.forEach((listener) => listener())
     try {
       localStorage.removeItem(ACCESS_TOKEN_KEY)
       localStorage.removeItem(REFRESH_TOKEN_KEY)

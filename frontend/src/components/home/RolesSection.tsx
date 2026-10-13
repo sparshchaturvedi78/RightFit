@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { ArrowRight, Check, UserCircle2, UserCog, Users, UsersRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useDashboardLink } from '../../hooks/useDashboardLink'
 import Reveal from '../ui/Reveal'
 import SectionHeading from '../ui/SectionHeading'
 
@@ -71,6 +72,7 @@ const ROLES = [
 const AUTOPLAY_MS = 6000
 
 export default function RolesSection() {
+  const { loggedIn, to: ctaTo } = useDashboardLink()
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
 
@@ -175,10 +177,10 @@ export default function RolesSection() {
                   ))}
                 </ul>
                 <Link
-                  to="/login"
+                  to={ctaTo}
                   className={`mt-10 inline-flex items-center gap-2 rounded-full bg-linear-to-r ${role.gradient} px-6 py-3 text-sm font-semibold text-white shadow-lg transition-transform hover:scale-105`}
                 >
-                  Sign in as {role.title.replace(/s$/, '')}
+                  {loggedIn ? 'Open your dashboard' : `Sign in as ${role.title.replace(/s$/, '')}`}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </motion.div>

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { ArrowLeft, KeyRound, Lock, LogIn, ShieldCheck, UserRound } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import AuthShell from '../components/auth/AuthShell'
 import {
   AuthField,
@@ -45,7 +45,7 @@ const modeMotion = {
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { setUserFromLogin } = useAuth()
+  const { setUserFromLogin, user, status } = useAuth()
 
   const [mode, setMode] = useState<Mode>('login')
   const [forgotStepIndex, setForgotStepIndex] = useState(0)
@@ -132,6 +132,12 @@ export default function LoginPage() {
   }
 
   const expiryLabel = `${Math.floor(secondsLeft / 60)}:${(secondsLeft % 60).toString().padStart(2, '0')}`
+
+  // Already signed in (e.g. opened /login directly): skip the form. Not while the post-login success screen is showing.
+  const signedInDestination = user ? dashboardPathForRoles(user.roles) : '/login'
+  if (status === 'authenticated' && step !== 'success' && signedInDestination !== '/login') {
+    return <Navigate to={signedInDestination} replace />
+  }
 
   return (
     <AuthShell journey={mode} activeStep={mode === 'forgot' ? forgotStepIndex : LOGIN_STEP_INDEX[step]}>

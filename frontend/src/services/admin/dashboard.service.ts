@@ -14,6 +14,30 @@ export interface AdminDashboardDTO {
   totalAuditEntries: number
   auditEntriesLast24h: number
   unreadNotifications: number
+  // Workforce distribution, bench aging, requirements and interviews. Optional so the page still renders
+  // against a backend deployed before these fields existed.
+  inProjectEmployees?: number
+  inTrainingEmployees?: number
+  onBenchEmployees?: number
+  unassignedEmployees?: number
+  benchGreen?: number
+  benchAmber?: number
+  benchRed?: number
+  openRequirements?: number
+  upcomingInterviews?: UpcomingInterviewDTO[]
+}
+
+export interface UpcomingInterviewDTO {
+  interviewId: string
+  candidateName?: string
+  candidateEmployeeId?: string
+  positionTitle?: string
+  projectName?: string
+  interviewerName?: string
+  scheduledAt: string
+  roundNumber?: number
+  mode?: string
+  status: string
 }
 
 async function get(): Promise<AdminDashboardDTO> {

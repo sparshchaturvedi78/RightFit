@@ -1,8 +1,10 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import DashboardPlaceholderPage from './pages/DashboardPlaceholderPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminLayout from './pages/admin/AdminLayout'
 
 function App() {
   return (
@@ -11,13 +13,16 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
 
       <Route
-        path="/admin/dashboard"
+        path="/admin"
         element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
-            <DashboardPlaceholderPage role="ADMIN" />
+            <AdminLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
+      </Route>
       <Route
         path="/manager/dashboard"
         element={

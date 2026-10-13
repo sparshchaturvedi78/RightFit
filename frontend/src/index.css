@@ -46,6 +46,15 @@ body {
   @apply bg-white text-ink-900 antialiased transition-colors dark:bg-ink-950 dark:text-white;
 }
 
+/* Slim, theme-aware scrollbars (page and every scrollable panel). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(100 116 139 / 0.4) transparent;
+}
+.dark * {
+  scrollbar-color: rgb(34 197 94 / 0.35) transparent;
+}
+
 /* ---------- keyframes ---------- */
 @keyframes marquee {
   from { transform: translateX(0); }
