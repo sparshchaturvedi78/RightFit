@@ -1,7 +1,8 @@
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react'
-import { ArrowRight, CheckCircle2, LogIn, Sparkles } from 'lucide-react'
+import { ArrowRight, CheckCircle2, LayoutDashboard, LogIn, Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useDashboardLink } from '../../hooks/useDashboardLink'
 import AnimatedCounter from '../ui/AnimatedCounter'
 import DashboardPreview from './DashboardPreview'
 import HeroBackground from './HeroBackground'
@@ -67,7 +68,7 @@ function LiveToast() {
   const toast = TOASTS[index]
 
   return (
-    <div className="animate-float-y absolute top-28 -left-10 z-20 hidden w-72 xl:block">
+    <div className="animate-float-y absolute top-[48%] -left-16 z-20 hidden w-72 xl:block">
       <AnimatePresence mode="wait">
         <motion.div
           key={toast.title}
@@ -92,7 +93,7 @@ function LiveToast() {
 
 function MatchCard() {
   return (
-    <div className="animate-float-y-slow absolute top-1/2 -right-10 z-20 hidden w-60 xl:block">
+    <div className="animate-float-y-slow absolute -right-14 -bottom-10 z-20 hidden w-60 xl:block">
       <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-4 text-left shadow-xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-ink-900/90 dark:shadow-black/50">
         <div className="flex items-center gap-3">
           <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90">
@@ -127,6 +128,7 @@ function MatchCard() {
 }
 
 export default function Hero() {
+  const { checking, loggedIn, to: ctaTo } = useDashboardLink()
   const previewRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({ target: previewRef, offset: ['start end', 'start 25%'] })
   const rotateX = useTransform(scrollYProgress, [0, 1], [22, 0])
@@ -183,11 +185,14 @@ export default function Hero() {
           className="mt-10 flex flex-wrap items-center justify-center gap-4"
         >
           <Link
-            to="/login"
-            className="shimmer group flex items-center gap-2 rounded-full bg-linear-to-r from-brand-600 to-emerald-600 px-7 py-3.5 text-sm font-semibold text-white shadow-xl shadow-brand-600/30 transition-transform hover:scale-105"
+            to={ctaTo}
+            aria-busy={checking}
+            className={`shimmer group flex items-center gap-2 rounded-full bg-linear-to-r from-brand-600 to-emerald-600 px-7 py-3.5 text-sm font-semibold text-white shadow-xl shadow-brand-600/30 transition-all hover:scale-105 ${
+              checking ? 'pointer-events-none opacity-60' : ''
+            }`}
           >
-            <LogIn className="h-4 w-4" />
-            Login to RightFit
+            {loggedIn ? <LayoutDashboard className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+            {loggedIn ? 'Go to your dashboard' : 'Login to RightFit'}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
           <a

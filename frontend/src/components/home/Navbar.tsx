@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { LogIn, Menu, Moon, Sprout, Sun, X } from 'lucide-react'
+import { LayoutDashboard, LogIn, Menu, Moon, Sprout, Sun, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../../contexts/theme'
+import { useDashboardLink } from '../../hooks/useDashboardLink'
 
 const NAV_LINKS = [
   { label: 'Home', id: 'top' },
@@ -14,6 +15,7 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme()
+  const { checking, loggedIn, to: ctaTo } = useDashboardLink()
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState('top')
   const [open, setOpen] = useState(false)
@@ -108,11 +110,14 @@ export default function Navbar() {
           </button>
 
           <Link
-            to="/login"
-            className="shimmer hidden items-center gap-2 rounded-full bg-linear-to-r from-brand-600 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-transform hover:scale-105 sm:flex"
+            to={ctaTo}
+            aria-busy={checking}
+            className={`shimmer hidden items-center gap-2 rounded-full bg-linear-to-r from-brand-600 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:scale-105 sm:flex ${
+              checking ? 'pointer-events-none opacity-60' : ''
+            }`}
           >
-            <LogIn className="h-4 w-4" />
-            Login
+            {loggedIn ? <LayoutDashboard className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+            {loggedIn ? 'Dashboard' : 'Login'}
           </Link>
 
           <button
@@ -146,11 +151,11 @@ export default function Navbar() {
               </a>
             ))}
             <Link
-              to="/login"
+              to={ctaTo}
               className="mt-2 flex items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white"
             >
-              <LogIn className="h-4 w-4" />
-              Login to RightFit
+              {loggedIn ? <LayoutDashboard className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+              {loggedIn ? 'Go to your dashboard' : 'Login to RightFit'}
             </Link>
           </motion.div>
         )}

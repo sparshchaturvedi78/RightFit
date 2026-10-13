@@ -1,30 +1,36 @@
-import { createContext, useContext } from 'react'
-import type { LoginResponse } from '../services/auth.service'
+import { useCallback } from 'react'
+import { authService, type LoginResponse } from '../services/auth.service'
+import { useAppDispatch, useAppSelector } from '../store'
+import { signedIn, type AuthStatus, type AuthUser } from '../store/authSlice'
 
-export interface AuthUser {
-  userId: number
-  employeeId: string
-  email: string
-  firstName: string
-  lastName: string
-  roles: string[]
-}
+export type { AuthStatus, AuthUser }
 
-export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
-
-export interface AuthContextValue {
-  user: AuthUser | null
-  status: AuthStatus
-  setUserFromLogin: (response: LoginResponse) => void
-  logout: () => Promise<void>
-}
-
-export const AuthContext = createContext<AuthContextValue | null>(null)
-
+/** The signed-in user, backed by the Redux store. */
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
-  return ctx
+  const dispatch = useAppDispatch()
+  const user = useAppSelector((s) => s.auth.user)
+  const status = useAppSelector((s) => s.auth.status)
+
+  const setUserFromLogin = useCallback(
+    (response: LoginResponse) => {
+      dispatch(
+        signedIn({
+          userId: response.userId,
+          employeeId: response.employeeId,
+          email: response.email,
+          firstName: response.firstName,
+          lastName: response.lastName,
+          roles: response.roles,
+        }),
+      )
+    },
+    [dispatch],
+  )
+
+  // authService.logout() clears the tokens, which ends the session in the store.
+  const logout = useCallback(() => authService.logout(), [])
+
+  return { user, status, setUserFromLogin, logout }
 }
 
 const ROLE_DASHBOARD_PRIORITY = ['ADMIN', 'MANAGER', 'RMG', 'ASSOCIATE']
