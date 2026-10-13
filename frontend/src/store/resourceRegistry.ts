@@ -1,6 +1,8 @@
 import { adminAuditService } from '../services/admin/audit.service'
 import { adminDashboardService } from '../services/admin/dashboard.service'
+import { adminLookupService } from '../services/admin/lookup.service'
 import { adminRmgService } from '../services/admin/rmg.service'
+import { adminRoleService } from '../services/admin/role.service'
 
 /** Every page-level dataset kept in the Redux store, and how to load it. Add new pages here. */
 export const RESOURCE_FETCHERS = {
@@ -8,6 +10,9 @@ export const RESOURCE_FETCHERS = {
   'admin/rmg-roster': () => adminRmgService.dashboard(),
   // A page large enough for the hero's 24-hour chart; the timeline shows the newest few.
   'admin/recent-activity': () => adminAuditService.list(0, 100),
+  // Reference data for forms and filters.
+  'admin/lookups': () => adminLookupService.get(),
+  'admin/roles': () => adminRoleService.list(),
 } as const
 
 export type ResourceKey = keyof typeof RESOURCE_FETCHERS

@@ -4,6 +4,7 @@ import DashboardPlaceholderPage from './pages/DashboardPlaceholderPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import EmployeesPage from './pages/admin/employees/EmployeesPage'
 import AdminLayout from './pages/admin/AdminLayout'
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
       >
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboardPage />} />
+        <Route path="employees" element={<EmployeesPage />} />
       </Route>
       <Route
         path="/manager/dashboard"
