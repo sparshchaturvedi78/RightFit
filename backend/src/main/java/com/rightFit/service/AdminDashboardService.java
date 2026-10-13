@@ -2,25 +2,19 @@ package com.rightFit.service;
 
 import com.rightFit.dto.DashboardDtos.AdminDashboardDTO;
 import com.rightFit.dto.DashboardDtos.UpcomingInterviewDTO;
-import com.rightFit.entity.Employee;
 import com.rightFit.entity.Interview;
 import com.rightFit.repository.AuditLogRepository;
-import com.rightFit.repository.BenchHistoryRepository;
 import com.rightFit.repository.EmployeeRepository;
 import com.rightFit.repository.InterviewRepository;
 import com.rightFit.repository.NotificationRepository;
 import com.rightFit.repository.ProjectRepository;
 import com.rightFit.repository.ProjectRequirementRepository;
-import com.rightFit.repository.TrainingAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /** Admin Dashboard (BRD 42): the org-level counts already shown individually elsewhere in the Admin
  * API, bundled into one call. */
@@ -30,20 +24,16 @@ import java.util.stream.Collectors;
 public class AdminDashboardService {
 
     private static final int UPCOMING_INTERVIEW_LIMIT = 5;
-    /** A training assignment occupies the employee only while it is assigned or running and not yet passed/failed. */
-    private static final Set<String> ACTIVE_TRAINING = Set.of("ASSIGNED", "IN_PROGRESS");
-    private static final Set<String> FINISHED_COMPLETION = Set.of("PASSED", "FAILED");
 
     private final EmployeeRepository employeeRepository;
     private final ProjectRepository projectRepository;
     private final AuditLogRepository auditLogRepository;
     private final NotificationRepository notificationRepository;
-    private final BenchHistoryRepository benchHistoryRepository;
-    private final TrainingAssignmentRepository trainingAssignmentRepository;
     private final InterviewRepository interviewRepository;
     private final ProjectRequirementRepository requirementRepository;
     private final BenchTrackingService benchTrackingService;
     private final RequirementAccessGuard accessGuard;
+    private final WorkforceBucketService workforceBucketService;
 
     public AdminDashboardDTO dashboard() {
         var me = accessGuard.currentEmployeeOrNull();
@@ -80,31 +70,16 @@ public class AdminDashboardService {
 
     /** Each active employee lands in exactly one bucket: project > training > bench/pool > unassigned. */
     private void addWorkforceDistribution(AdminDashboardDTO.AdminDashboardDTOBuilder builder) {
-        Set<Long> inTraining = trainingAssignmentRepository.findAllOrderByAssignedAtDesc().stream()
-                .filter(a -> a.getAssignmentStatus() != null && ACTIVE_TRAINING.contains(a.getAssignmentStatus().toUpperCase()))
-                .filter(a -> a.getCompletionStatus() == null || !FINISHED_COMPLETION.contains(a.getCompletionStatus().toUpperCase()))
-                .map(a -> a.getEmployee().getId())
-                .collect(Collectors.toSet());
-        Set<Long> onBench = benchHistoryRepository.findAllCurrent().stream()
-                .map(b -> b.getEmployee().getId())
-                .collect(Collectors.toSet());
-
         long project = 0;
         long training = 0;
         long bench = 0;
         long unassigned = 0;
-        List<Employee> active = employeeRepository.findAll().stream()
-                .filter(e -> "ACTIVE".equals(e.getEmploymentStatus()))
-                .toList();
-        for (Employee e : active) {
-            if ("ALLOCATED".equals(e.getAllocationStatus())) {
-                project++;
-            } else if (inTraining.contains(e.getId())) {
-                training++;
-            } else if (onBench.contains(e.getId()) || "IN_RESOURCE_POOL".equals(e.getPoolStatus())) {
-                bench++;
-            } else {
-                unassigned++;
+        for (String bucket : workforceBucketService.bucketsOfActiveEmployees().values()) {
+            switch (bucket) {
+                case WorkforceBucketService.IN_PROJECT -> project++;
+                case WorkforceBucketService.IN_TRAINING -> training++;
+                case WorkforceBucketService.ON_BENCH -> bench++;
+                default -> unassigned++;
             }
         }
         builder.inProjectEmployees(project)

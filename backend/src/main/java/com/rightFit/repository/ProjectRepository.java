@@ -3,6 +3,7 @@ package com.rightFit.repository;
 import com.rightFit.entity.Project;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,17 +26,30 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByStatusAndManagerId(String status, Long managerId);
 
     @Query("SELECT p FROM Project p WHERE " +
+            // Free text: project ID, name, client, or the manager's name / employee ID (case-insensitive).
+            "(:q IS NULL OR LOWER(p.projectId) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(p.projectName) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(COALESCE(p.clientName, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(p.manager.employeeId) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(CONCAT(p.manager.firstName, ' ', p.manager.lastName)) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))) AND " +
             "(:projectId IS NULL OR p.projectId LIKE CONCAT('%', CAST(:projectId AS string), '%')) AND " +
             "(:projectName IS NULL OR p.projectName LIKE CONCAT('%', CAST(:projectName AS string), '%')) AND " +
             "(:status IS NULL OR p.status = :status) AND " +
             "(:managerId IS NULL OR p.manager.id = :managerId) AND " +
-            "(:clientName IS NULL OR p.clientName LIKE CONCAT('%', CAST(:clientName AS string), '%'))")
+            "(:clientName IS NULL OR p.clientName LIKE CONCAT('%', CAST(:clientName AS string), '%')) AND " +
+            "(:claimed IS NULL OR p.managerClaimed = :claimed) AND " +
+            "(:managerStatus IS NULL OR p.manager.employmentStatus = CAST(:managerStatus AS string))")
+    // The manager is shown on every row: load it in the same query (the database is remote and slow).
+    @EntityGraph(attributePaths = {"manager"})
     Page<Project> searchProjects(
+            @Param("q") String q,
             @Param("projectId") String projectId,
             @Param("projectName") String projectName,
             @Param("status") String status,
             @Param("managerId") Long managerId,
             @Param("clientName") String clientName,
+            @Param("claimed") Boolean claimed,
+            @Param("managerStatus") String managerStatus,
             Pageable pageable);
 
     @Query("SELECT p FROM Project p WHERE " +
@@ -44,6 +58,13 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     Page<Project> quickSearch(@Param("query") String query, Pageable pageable);
 
     long countByStatus(String status);
+
+    /** Managers of ACTIVE projects (all, or just the given ones): a manager with a live project is "in a project". */
+    @Query("SELECT DISTINCT p.manager.id FROM Project p WHERE p.status = 'ACTIVE'")
+    List<Long> findManagerIdsOfActiveProjects();
+
+    @Query("SELECT DISTINCT p.manager.id FROM Project p WHERE p.status = 'ACTIVE' AND p.manager.id IN :ids")
+    List<Long> findManagerIdsOfActiveProjects(@Param("ids") java.util.Collection<Long> ids);
 
     @Query("SELECT COUNT(DISTINCT p.manager.id) FROM Project p WHERE p.manager IS NOT NULL")
     long countDistinctManagers();

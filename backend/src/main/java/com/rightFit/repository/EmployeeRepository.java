@@ -51,14 +51,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
             "(:rmgId IS NULL OR e.rmgManager.id = :rmgId) AND " +
             "(:role IS NULL OR EXISTS (SELECT 1 FROM UserRole ur WHERE ur.user = e.user AND ur.isActive = true " +
             "   AND ur.role.code = CAST(:role AS string))) AND " +
-            // Workforce bucket (AdminDashboardService): project > training > bench/pool > unassigned, active only.
-            "(:workforce IS NULL OR (e.employmentStatus = 'ACTIVE' AND (" +
-            "   (CAST(:workforce AS string) = 'IN_PROJECT' AND e.allocationStatus = 'ALLOCATED') OR " +
-            "   (CAST(:workforce AS string) = 'IN_TRAINING' AND e.allocationStatus <> 'ALLOCATED' AND " + ACTIVE_TRAINING + ") OR " +
-            "   (CAST(:workforce AS string) = 'ON_BENCH' AND e.allocationStatus <> 'ALLOCATED' AND NOT " + ACTIVE_TRAINING +
-            "       AND (" + CURRENT_BENCH + " OR e.poolStatus = 'IN_RESOURCE_POOL')) OR " +
-            "   (CAST(:workforce AS string) = 'UNASSIGNED' AND e.allocationStatus <> 'ALLOCATED' AND NOT " + ACTIVE_TRAINING +
-            "       AND NOT " + CURRENT_BENCH + " AND (e.poolStatus IS NULL OR e.poolStatus <> 'IN_RESOURCE_POOL')))))")
+            // Workforce bucket: resolved to a list of ids by WorkforceBucketService (a predicate here was far too heavy).
+            "(:wfFilter = 0 OR e.id IN :wfIds)")
     // Admin Employees list: load the associations every row shows in the same query (the database is remote,
     // so per-row lazy loads made each page take seconds).
     @EntityGraph(attributePaths = {"department", "location", "rmgManager", "user", "preferences"})
@@ -74,15 +68,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
             @Param("locationId") Long locationId,
             @Param("rmgId") Long rmgId,
             @Param("role") String role,
-            @Param("workforce") String workforce,
+            @Param("wfFilter") int wfFilter,
+            @Param("wfIds") java.util.Collection<Long> wfIds,
             Pageable pageable);
 
-    /** An assigned / running training that hasn't been passed or failed yet. */
-    String ACTIVE_TRAINING = "EXISTS (SELECT 1 FROM TrainingAssignment ta WHERE ta.employee = e " +
-            "AND ta.assignmentStatus IN ('ASSIGNED', 'IN_PROGRESS') " +
-            "AND (ta.completionStatus IS NULL OR ta.completionStatus NOT IN ('PASSED', 'FAILED')))";
-    /** An open bench spell. */
-    String CURRENT_BENCH = "EXISTS (SELECT 1 FROM BenchHistory bh WHERE bh.employee = e AND bh.isCurrent = true)";
+    /** [id, allocationStatus, poolStatus] of every ACTIVE employee — the inputs of the workforce buckets. */
+    @Query("SELECT e.id, e.allocationStatus, e.poolStatus FROM Employee e WHERE e.employmentStatus = 'ACTIVE'")
+    List<Object[]> findActiveEmployeeWorkflags();
 
     long countByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
 

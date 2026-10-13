@@ -43,6 +43,11 @@ public class EmployeeManagementService {
     private final ResourcePoolService resourcePoolService;
     private final com.rightFit.repository.UserRoleRepository userRoleRepository;
     private final com.rightFit.repository.RoleRepository roleRepository;
+    private final com.rightFit.repository.ProjectRepository projectRepository;
+    private final com.rightFit.repository.AllocationRepository allocationRepository;
+    private final com.rightFit.repository.ProjectMemberRepository projectMemberRepository;
+    private final ProjectMembershipService projectMembershipService;
+    private final WorkforceBucketService workforceBucketService;
 
     @Auditable(action = "CREATE", entityType = "EMPLOYEE", entityIdParamName = "result.id")
     public EmployeeDTO createEmployee(CreateEmployeeRequest request) {
@@ -279,6 +284,177 @@ public class EmployeeManagementService {
         return mapToDTO(updated);
     }
 
+    /** Projects the employee manages and the ones they are allocated to right now (for the Admin profile view). */
+    @Transactional(readOnly = true)
+    public com.rightFit.dto.EmployeeProjectsDTO getEmployeeProjects(String employeeId) {
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Employee", employeeId));
+
+        var managing = projectRepository.findByManagerId(employee.getId()).stream()
+                .map(p -> com.rightFit.dto.EmployeeProjectsDTO.ProjectRefDTO.builder()
+                        .projectId(p.getProjectId())
+                        .projectName(p.getProjectName())
+                        .status(p.getStatus())
+                        .clientName(p.getClientName())
+                        .build())
+                .toList();
+
+        var managedIds = managing.stream().map(com.rightFit.dto.EmployeeProjectsDTO.ProjectRefDTO::getProjectId)
+                .collect(java.util.stream.Collectors.toSet());
+
+        // Everything they belong to: capacity allocations first (they carry hours), then plain team membership.
+        // One entry per project; a project they manage is listed under "managing" only.
+        java.util.Map<String, com.rightFit.dto.EmployeeProjectsDTO.AllocationRefDTO> byProject = new java.util.LinkedHashMap<>();
+        for (var a : allocationRepository.findByEmployeeIdAndStatus(employee.getId(), "ACTIVE")) {
+            String pid = a.getProject().getProjectId();
+            if (managedIds.contains(pid)) continue;
+            byProject.put(pid, com.rightFit.dto.EmployeeProjectsDTO.AllocationRefDTO.builder()
+                    .projectId(pid)
+                    .projectName(a.getProject().getProjectName())
+                    .projectStatus(a.getProject().getStatus())
+                    .hoursPerDay(a.getHoursPerDay())
+                    .startDate(a.getStartDate())
+                    .endDate(a.getEndDate())
+                    .build());
+        }
+        for (var m : projectMemberRepository.findActiveWithProjectByEmployeeId(employee.getId())) {
+            String pid = m.getProject().getProjectId();
+            if (managedIds.contains(pid)) continue;
+            var existing = byProject.get(pid);
+            if (existing != null) {
+                if (existing.getRole() == null) existing.setRole(m.getRole());
+                continue;
+            }
+            byProject.put(pid, com.rightFit.dto.EmployeeProjectsDTO.AllocationRefDTO.builder()
+                    .projectId(pid)
+                    .projectName(m.getProject().getProjectName())
+                    .projectStatus(m.getProject().getStatus())
+                    .role(m.getRole())
+                    .startDate(m.getJoinedAt() != null ? m.getJoinedAt().toLocalDate() : null)
+                    .build());
+        }
+        var allocations = new java.util.ArrayList<>(byProject.values());
+
+        return com.rightFit.dto.EmployeeProjectsDTO.builder().managing(managing).allocations(allocations).build();
+    }
+
+    private static final java.util.List<String> SYSTEM_ROLE_CODES = java.util.List.of("ADMIN", "MANAGER", "RMG", "ASSOCIATE");
+
+    /**
+     * Changes an employee's main role (e.g. promotes an Associate to Manager). Replaces their current system role(s),
+     * keeps any custom roles, and enforces what the new role needs:
+     * - the last active Admin can't be demoted, and nobody changes their own role (no accidental lock-out);
+     * - a Manager of live projects, or an RMG with people reporting to them, must hand those over first;
+     * - the reporting line follows the role: a new RMG reports to an Admin, an Associate / Manager to an RMG, an Admin to nobody.
+     */
+    public EmployeeDTO changeRole(String employeeId, com.rightFit.dto.ChangeRoleRequest request) {
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Employee", employeeId));
+        User user = employee.getUser();
+        if (user == null) {
+            throw new com.rightFit.exception.BusinessRuleException("This employee has no sign-in account, so they can't hold a role");
+        }
+        var newRole = roleRepository.findById(request.getNewRoleId())
+                .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Role", String.valueOf(request.getNewRoleId())));
+        String newCode = newRole.getCode() == null ? "" : newRole.getCode().toUpperCase();
+        if (!SYSTEM_ROLE_CODES.contains(newCode)) {
+            throw new com.rightFit.exception.BusinessRuleException("Choose one of Admin, Manager, RMG or Associate");
+        }
+
+        var current = userRoleService.getUserRoles(user.getId());
+        java.util.Set<String> currentCodes = current.stream()
+                .map(ur -> ur.getRole().getCode() == null ? "" : ur.getRole().getCode().toUpperCase())
+                .filter(SYSTEM_ROLE_CODES::contains)
+                .collect(java.util.stream.Collectors.toSet());
+        if (currentCodes.equals(java.util.Set.of(newCode))) {
+            return mapToDTO(employee); // already exactly that role
+        }
+
+        Employee actor = accessGuard.currentEmployeeOrNull();
+        if (actor != null && actor.getId().equals(employee.getId())) {
+            throw new com.rightFit.exception.BusinessRuleException("You can't change your own role");
+        }
+
+        if (currentCodes.contains("ADMIN") && !newCode.equals("ADMIN")) {
+            var adminRole = roleRepository.findByCode("ADMIN").orElseThrow();
+            long activeAdmins = userRoleRepository.findByRoleIdAndActive(adminRole.getId()).stream()
+                    .filter(ur -> "ACTIVE".equals(ur.getUser().getStatus()))
+                    .count();
+            if (activeAdmins <= 1) {
+                throw new com.rightFit.exception.BusinessRuleException("This is the last active Admin — make someone else an Admin first");
+            }
+        }
+        if (currentCodes.contains("MANAGER") && !newCode.equals("MANAGER")) {
+            long live = projectRepository.findByManagerId(employee.getId()).stream()
+                    .filter(p -> "ACTIVE".equals(p.getStatus())).count();
+            if (live > 0) {
+                throw new com.rightFit.exception.BusinessRuleException("They manage " + live + " active project" + (live == 1 ? "" : "s")
+                        + " — give those projects another manager before changing this role");
+            }
+        }
+        if (currentCodes.contains("RMG") && !newCode.equals("RMG")) {
+            long reports = employeeRepository.countByEmploymentStatusAndRmgManagerId("ACTIVE", employee.getId());
+            if (reports > 0) {
+                throw new com.rightFit.exception.BusinessRuleException(reports + " active " + (reports == 1 ? "person reports" : "people report")
+                        + " to them — assign those people to another RMG before changing this role");
+            }
+        }
+
+        // The reporting line that goes with the new role.
+        Employee reportsTo = null;
+        if (!newCode.equals("ADMIN")) {
+            String requiredCode = newCode.equals("RMG") ? "ADMIN" : "RMG";
+            Employee currentLead = employee.getRmgManager();
+            boolean currentLeadFits = currentLead != null && currentLead.getUser() != null
+                    && userRoleService.getUserRoles(currentLead.getUser().getId()).stream()
+                            .anyMatch(ur -> requiredCode.equalsIgnoreCase(ur.getRole().getCode()));
+            String wanted = request.getReportsToEmployeeId();
+            if (wanted != null && !wanted.isBlank()) {
+                reportsTo = employeeRepository.findByEmployeeId(wanted.trim())
+                        .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Employee", wanted.trim()));
+                final Employee lead = reportsTo;
+                boolean hasRequired = lead.getUser() != null && userRoleService.getUserRoles(lead.getUser().getId()).stream()
+                        .anyMatch(ur -> requiredCode.equalsIgnoreCase(ur.getRole().getCode()));
+                if (!hasRequired || !"ACTIVE".equals(lead.getEmploymentStatus())) {
+                    throw new com.rightFit.exception.BusinessRuleException("They need to report to an active "
+                            + (requiredCode.equals("ADMIN") ? "Admin" : "RMG") + " — " + lead.getFirstName() + " " + lead.getLastName() + " isn't one");
+                }
+                if (lead.getId().equals(employee.getId())) {
+                    throw new com.rightFit.exception.BusinessRuleException("Someone can't report to themselves");
+                }
+            } else if (currentLeadFits) {
+                reportsTo = currentLead; // unchanged
+            } else {
+                throw new com.rightFit.exception.BusinessRuleException("Choose who they report to — an active "
+                        + (requiredCode.equals("ADMIN") ? "Admin" : "RMG") + " is required for the " + newRole.getName() + " role");
+            }
+        }
+
+        // Swap the system role(s); custom roles stay.
+        for (var ur : current) {
+            String code = ur.getRole().getCode() == null ? "" : ur.getRole().getCode().toUpperCase();
+            if (SYSTEM_ROLE_CODES.contains(code) && !code.equals(newCode)) {
+                userRoleRepository.deleteByUserIdAndRoleId(user.getId(), ur.getRole().getId());
+            }
+        }
+        userRoleService.assignRoleToUser(user.getId(), newRole.getId(), getCurrentUserId());
+
+        Long previousLeadId = employee.getRmgManager() != null ? employee.getRmgManager().getId() : null;
+        employee.setRmgManager(reportsTo);
+        employee.setUpdatedAt(LocalDateTime.now());
+        employee.setUpdatedBy(actorLabel());
+        Employee saved = employeeRepository.save(employee);
+
+        auditLogService.logAction(getCurrentUserId(), "ROLE_CHANGED", "EMPLOYEE", employee.getId(),
+                String.join(",", currentCodes), newCode, request.getReason());
+        if (!java.util.Objects.equals(previousLeadId, reportsTo != null ? reportsTo.getId() : null)) {
+            auditLogService.logAction(getCurrentUserId(), "RMG_CHANGED", "EMPLOYEE", employee.getId(),
+                    previousLeadId, reportsTo != null ? reportsTo.getId() : null, "Reporting line changed with the role");
+        }
+        log.info("Role of {} changed {} -> {}", employeeId, currentCodes, newCode);
+        return mapToDTO(saved);
+    }
+
     @Transactional(readOnly = true)
     public EmployeeDTO getEmployee(String employeeId) {
         log.debug("Fetching employee: {}", employeeId);
@@ -296,9 +472,20 @@ public class EmployeeManagementService {
         String query = q == null || q.isBlank() ? null : q.trim();
         String roleCode = role == null || role.isBlank() ? null : role.trim().toUpperCase();
         String bucket = workforce == null || workforce.isBlank() ? null : workforce.trim().toUpperCase();
+        // The workforce bucket is worked out from small id lookups, then applied as a plain "id in (...)" filter.
+        int wfFilter = 0;
+        java.util.Collection<Long> wfIds = java.util.List.of(-1L); // placeholder so the IN list is never empty
+        if (bucket != null) {
+            java.util.Set<Long> ids = workforceBucketService.idsIn(bucket);
+            if (ids.isEmpty()) {
+                return Page.empty(pageable);
+            }
+            wfFilter = 1;
+            wfIds = ids;
+        }
         Page<Employee> employees = employeeRepository.searchEmployees(
                 query, employeeId, firstName, lastName, email, status, designation, departmentId, locationId, rmgId,
-                roleCode, bucket, pageable);
+                roleCode, wfFilter, wfIds, pageable);
 
         // One query for every row's roles instead of one (or more) per employee.
         java.util.List<Long> userIds = employees.getContent().stream()
@@ -311,8 +498,13 @@ public class EmployeeManagementService {
                 rolesByUser.computeIfAbsent((Long) row[0], k -> new java.util.TreeSet<>()).add((String) row[1]);
             }
         }
-        return employees.map(e -> mapToDTO(e,
-                e.getUser() != null ? rolesByUser.getOrDefault(e.getUser().getId(), java.util.Set.of()) : java.util.Set.of()));
+        java.util.Set<Long> inProject = projectMembershipService.inActiveProjects(
+                employees.getContent().stream().map(Employee::getId).toList());
+        return employees.map(e -> {
+            java.util.Set<String> roleNames = e.getUser() != null
+                    ? rolesByUser.getOrDefault(e.getUser().getId(), java.util.Set.of()) : java.util.Set.of();
+            return mapToDTO(e, roleNames, inProject.contains(e.getId()));
+        });
     }
 
     private void validateEmployeeUniqueness(String employeeId, String email) {
@@ -338,10 +530,19 @@ public class EmployeeManagementService {
                     .map(ur -> ur.getRole().getName())
                     .collect(java.util.stream.Collectors.toSet())
                 : java.util.Set.of();
-        return mapToDTO(employee, roles);
+        return mapToDTO(employee, roles, projectMembershipService.inActiveProjects(java.util.List.of(employee.getId()))
+                .contains(employee.getId()));
     }
 
-    private EmployeeDTO mapToDTO(Employee employee, java.util.Set<String> roles) {
+    /** Admins and RMGs aren't allocated to projects (people report to them), so "in a project" doesn't apply. */
+    private static Boolean effectiveInProject(java.util.Set<String> roles, boolean inProject) {
+        java.util.Set<String> lower = roles.stream().map(String::toLowerCase).collect(java.util.stream.Collectors.toSet());
+        boolean worker = lower.contains("manager") || lower.contains("associate");
+        boolean leadership = lower.contains("admin") || lower.contains("rmg");
+        return leadership && !worker ? null : inProject;
+    }
+
+    private EmployeeDTO mapToDTO(Employee employee, java.util.Set<String> roles, boolean inProject) {
         return EmployeeDTO.builder()
                 .id(employee.getId())
                 .employeeId(employee.getEmployeeId())
@@ -363,8 +564,10 @@ public class EmployeeManagementService {
                 .rmgId(employee.getRmgManager() != null ? employee.getRmgManager().getId() : null)
                 .rmgName(employee.getRmgManager() != null ? employee.getRmgManager().getFirstName() + " " +
                         employee.getRmgManager().getLastName() : null)
+                .rmgEmployeeId(employee.getRmgManager() != null ? employee.getRmgManager().getEmployeeId() : null)
                 .employmentStatus(employee.getEmploymentStatus())
                 .allocationStatus(employee.getAllocationStatus())
+                .inProject(effectiveInProject(roles, inProject || "ALLOCATED".equals(employee.getAllocationStatus())))
                 .availabilityStatus(employee.getAvailabilityStatus())
                 .availableFromDate(employee.getAvailableFromDate())
                 .userId(employee.getUser() != null ? employee.getUser().getId() : null)

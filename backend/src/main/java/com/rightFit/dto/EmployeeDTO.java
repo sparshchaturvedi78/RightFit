@@ -55,9 +55,21 @@ public class EmployeeDTO {
 
     private String rmgName;
 
+    /** Business ID of the person this employee reports to (an RMG, or an Admin for RMGs). */
+    private String rmgEmployeeId;
+
     private String employmentStatus;
 
     private String allocationStatus;
+
+    /**
+     * What the Admin screens show instead of the raw flag: true = in an active project (member, allocation, or the
+     * Manager of one), false = free. null = not applicable (Admins and RMGs are not allocated to projects; people
+     * report to them).
+     */
+    // The class omits nulls; here null means "not applicable" (Admin / RMG) and must reach the client.
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private Boolean inProject;
 
     private String availabilityStatus;
 
