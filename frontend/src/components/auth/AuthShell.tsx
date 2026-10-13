@@ -67,7 +67,7 @@ export default function AuthShell({ journey, activeStep, children }: AuthShellPr
             transition={{ duration: 0.7, ease: 'easeOut' }}
             className="w-full max-w-md"
           >
-            <div className="glow-border rounded-4xl">
+            <div className="glow-border glow-border-line rounded-4xl">
               <div className="relative rounded-4xl border border-white/60 bg-white/85 p-8 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:p-10 dark:border-white/10 dark:bg-ink-950/85 dark:shadow-black/50">
                 {children}
               </div>

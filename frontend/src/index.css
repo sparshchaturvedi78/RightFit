@@ -33,6 +33,15 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Tailwind v4's reset leaves buttons with the default arrow cursor; restore the pointer.
+   Disabled buttons are excluded so `disabled:cursor-not-allowed` still applies. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 body {
   @apply bg-white text-ink-900 antialiased transition-colors dark:bg-ink-950 dark:text-white;
 }
@@ -167,6 +176,19 @@ body {
   animation: spin-angle 5s linear infinite;
 }
 .glow-border::after { filter: blur(24px); opacity: 0.6; }
+
+/* Border line only: masked to a 2px ring so nothing shows through the card, and no blurred glow. */
+.glow-border-line::after { content: none; }
+.glow-border-line::before {
+  inset: 0;
+  z-index: 1;
+  padding: 2px;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
 
 /* ---------- auth screens ---------- */
 @keyframes pulse-ring {
