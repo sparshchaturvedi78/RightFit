@@ -3,6 +3,7 @@ package com.rightFit.repository;
 import com.rightFit.entity.Employee;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -34,6 +35,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     List<Employee> findByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
 
     @Query("SELECT e FROM Employee e WHERE " +
+            "(:q IS NULL OR LOWER(e.employeeId) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(e.firstName) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(e.lastName) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(CONCAT(e.firstName, ' ', e.lastName)) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(e.email) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))) AND " +
             "(:employeeId IS NULL OR e.employeeId LIKE CONCAT('%', CAST(:employeeId AS string), '%')) AND " +
             "(:firstName IS NULL OR e.firstName LIKE CONCAT('%', CAST(:firstName AS string), '%')) AND " +
             "(:lastName IS NULL OR e.lastName LIKE CONCAT('%', CAST(:lastName AS string), '%')) AND " +
@@ -41,8 +47,23 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
             "(:status IS NULL OR e.employmentStatus = :status) AND " +
             "(:designation IS NULL OR e.designation = :designation) AND " +
             "(:departmentId IS NULL OR e.department.id = :departmentId) AND " +
-            "(:rmgId IS NULL OR e.rmgManager.id = :rmgId)")
+            "(:locationId IS NULL OR e.location.id = :locationId) AND " +
+            "(:rmgId IS NULL OR e.rmgManager.id = :rmgId) AND " +
+            "(:role IS NULL OR EXISTS (SELECT 1 FROM UserRole ur WHERE ur.user = e.user AND ur.isActive = true " +
+            "   AND ur.role.code = CAST(:role AS string))) AND " +
+            // Workforce bucket (AdminDashboardService): project > training > bench/pool > unassigned, active only.
+            "(:workforce IS NULL OR (e.employmentStatus = 'ACTIVE' AND (" +
+            "   (CAST(:workforce AS string) = 'IN_PROJECT' AND e.allocationStatus = 'ALLOCATED') OR " +
+            "   (CAST(:workforce AS string) = 'IN_TRAINING' AND e.allocationStatus <> 'ALLOCATED' AND " + ACTIVE_TRAINING + ") OR " +
+            "   (CAST(:workforce AS string) = 'ON_BENCH' AND e.allocationStatus <> 'ALLOCATED' AND NOT " + ACTIVE_TRAINING +
+            "       AND (" + CURRENT_BENCH + " OR e.poolStatus = 'IN_RESOURCE_POOL')) OR " +
+            "   (CAST(:workforce AS string) = 'UNASSIGNED' AND e.allocationStatus <> 'ALLOCATED' AND NOT " + ACTIVE_TRAINING +
+            "       AND NOT " + CURRENT_BENCH + " AND (e.poolStatus IS NULL OR e.poolStatus <> 'IN_RESOURCE_POOL')))))")
+    // Admin Employees list: load the associations every row shows in the same query (the database is remote,
+    // so per-row lazy loads made each page take seconds).
+    @EntityGraph(attributePaths = {"department", "location", "rmgManager", "user", "preferences"})
     Page<Employee> searchEmployees(
+            @Param("q") String q,
             @Param("employeeId") String employeeId,
             @Param("firstName") String firstName,
             @Param("lastName") String lastName,
@@ -50,10 +71,24 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
             @Param("status") String status,
             @Param("designation") String designation,
             @Param("departmentId") Long departmentId,
+            @Param("locationId") Long locationId,
             @Param("rmgId") Long rmgId,
+            @Param("role") String role,
+            @Param("workforce") String workforce,
             Pageable pageable);
 
+    /** An assigned / running training that hasn't been passed or failed yet. */
+    String ACTIVE_TRAINING = "EXISTS (SELECT 1 FROM TrainingAssignment ta WHERE ta.employee = e " +
+            "AND ta.assignmentStatus IN ('ASSIGNED', 'IN_PROGRESS') " +
+            "AND (ta.completionStatus IS NULL OR ta.completionStatus NOT IN ('PASSED', 'FAILED')))";
+    /** An open bench spell. */
+    String CURRENT_BENCH = "EXISTS (SELECT 1 FROM BenchHistory bh WHERE bh.employee = e AND bh.isCurrent = true)";
+
     long countByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
+
+    /** Filter dropdown on the Admin Employees page. */
+    @Query("SELECT DISTINCT e.designation FROM Employee e WHERE e.designation IS NOT NULL ORDER BY e.designation")
+    List<String> findDistinctDesignations();
 
     /** Availability restoration job (Associate phase): due for restore, and still active - an exited
      * employee's stale availableFromDate must never be acted on (EmployeeExitService clears it anyway,

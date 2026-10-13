@@ -17,6 +17,10 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
     @Query("SELECT ur FROM UserRole ur WHERE ur.user.id = :userId AND ur.isActive = true")
     List<UserRole> findByUserIdAndActive(@Param("userId") Long userId);
 
+    /** [userId, roleName] pairs for many users at once (Admin Employees list). */
+    @Query("SELECT ur.user.id, r.name FROM UserRole ur JOIN ur.role r WHERE ur.isActive = true AND ur.user.id IN :userIds")
+    List<Object[]> findActiveRoleNamesByUserIds(@Param("userIds") java.util.Collection<Long> userIds);
+
     @Query("SELECT ur FROM UserRole ur WHERE ur.user.id = :userId AND ur.role.id = :roleId")
     Optional<UserRole> findByUserIdAndRoleId(@Param("userId") Long userId, @Param("roleId") Long roleId);
 
