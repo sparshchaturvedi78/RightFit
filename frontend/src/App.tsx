@@ -8,6 +8,7 @@ import EmployeesPage from './pages/admin/employees/EmployeesPage'
 import ProjectsPage from './pages/admin/projects/ProjectsPage'
 import RmgPage from './pages/admin/rmg/RmgPage'
 import AssignmentsPage from './pages/admin/assignments/AssignmentsPage'
+import UsersPage from './pages/admin/users/UsersPage'
 import AdminLayout from './pages/admin/AdminLayout'
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="rmg" element={<RmgPage />} />
         <Route path="assignments" element={<AssignmentsPage />} />
+        <Route path="users" element={<UsersPage />} />
       </Route>
       <Route
         path="/manager/dashboard"

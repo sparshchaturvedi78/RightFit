@@ -1,32 +1,28 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { ChevronDown, LogOut } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/auth'
 import { useDismiss } from '../../hooks/useDismiss'
 import { initialsOf } from '../../utils/format'
+import LogoutDialog from './LogoutDialog'
 
 export default function UserMenu({ roleLabel }: { roleLabel: string }) {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
-  const [signingOut, setSigningOut] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
 
   if (!user) return null
 
-  async function handleLogout() {
-    setSigningOut(true)
-    try {
-      await logout()
-    } finally {
-      navigate('/login', { replace: true })
-    }
+  function askLogout() {
+    setOpen(false)
+    setConfirming(true)
   }
 
   return (
+    <>
     <div ref={ref} className="relative">
       <button
         type="button"
@@ -65,17 +61,18 @@ export default function UserMenu({ roleLabel }: { roleLabel: string }) {
             <div className="p-2">
               <button
                 type="button"
-                onClick={handleLogout}
-                disabled={signingOut}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:text-rose-400"
+                onClick={askLogout}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-500/10 dark:text-rose-400"
               >
                 <LogOut className="h-4 w-4" />
-                {signingOut ? 'Signing out…' : 'Log out'}
+                Log out
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+    <LogoutDialog open={confirming} onClose={() => setConfirming(false)} />
+    </>
   )
 }

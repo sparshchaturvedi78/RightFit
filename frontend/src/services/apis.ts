@@ -76,6 +76,18 @@ export const ADMIN_RMG_API = {
 }
 
 // ---------------------------------------------------------------------------
+// Admin — Users (login accounts) — AdminUserAccountController (/api/admin/users/accounts)
+// ---------------------------------------------------------------------------
+export const ADMIN_USER_ACCOUNT_API = {
+  list: '/api/admin/users/accounts',
+  summary: '/api/admin/users/accounts/summary',
+  byId: (userId: number) => `/api/admin/users/accounts/${userId}`,
+  block: (userId: number) => `/api/admin/users/accounts/${userId}/block`,
+  unblock: (userId: number) => `/api/admin/users/accounts/${userId}/unblock`,
+  unlock: (userId: number) => `/api/admin/users/accounts/${userId}/unlock`,
+}
+
+// ---------------------------------------------------------------------------
 // Admin — Assignment replacement — AdminAssignmentController (/api/admin/assignments)
 // ---------------------------------------------------------------------------
 export const ADMIN_ASSIGNMENT_API = {

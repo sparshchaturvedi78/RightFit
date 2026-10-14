@@ -47,7 +47,7 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     title: 'Access control',
     items: [
-      { label: 'Users', to: '/admin/users', icon: UserCog, ready: false },
+      { label: 'Users', to: '/admin/users', icon: UserCog, ready: true },
       { label: 'Roles', to: '/admin/roles', icon: ShieldCheck, ready: false },
       { label: 'Permissions', to: '/admin/permissions', icon: KeyRound, ready: false },
       { label: 'Role mapping', to: '/admin/role-permissions', icon: GitMerge, ready: false },

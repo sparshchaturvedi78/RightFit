@@ -2,6 +2,7 @@ import { adminAssignmentService, type HandoverKind } from '../services/admin/ass
 import { adminEmployeeService, type EmployeeListFilters } from '../services/admin/employee.service'
 import { adminProjectService, type ProjectListFilters } from '../services/admin/project.service'
 import { adminRmgService, type RmgListFilters } from '../services/admin/rmg.service'
+import { adminUserAccountService, type UserAccountFilters } from '../services/admin/userAccount.service'
 
 /**
  * Parameterised page data (lists with search / filters / paging) kept in the Redux store, one entry per distinct
@@ -16,6 +17,8 @@ export const QUERY_FETCHERS = {
   /** Where one employee works (projects managed / allocated) — shown in their profile. */
   employeeProjects: (params: { employeeId: string }) => adminEmployeeService.projects(params.employeeId),
   rmgs: (params: RmgListFilters) => adminRmgService.list(params),
+  /** One page of login accounts for a role lane, search or sign-in state (Users page). */
+  userAccounts: (params: UserAccountFilters) => adminUserAccountService.list(params),
   /** Assignments page: who has left but still holds projects / people. */
   // No parameters: the empty object only gives it a store key like every other entry.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
