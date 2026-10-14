@@ -1,5 +1,6 @@
 import { LogOut, Sprout } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import LogoutDialog from '../components/layout/LogoutDialog'
 import AuroraBackground from '../components/ui/AuroraBackground'
 import { useAuth } from '../contexts/auth'
 
@@ -11,13 +12,8 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export default function DashboardPlaceholderPage({ role }: { role: string }) {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-
-  async function handleLogout() {
-    await logout()
-    navigate('/login', { replace: true })
-  }
+  const { user } = useAuth()
+  const [confirming, setConfirming] = useState(false)
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-6">
@@ -39,13 +35,14 @@ export default function DashboardPlaceholderPage({ role }: { role: string }) {
 
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={() => setConfirming(true)}
           className="mt-8 flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 px-6 py-3 text-sm font-semibold text-ink-900 transition-colors hover:bg-slate-50 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
         >
           <LogOut className="h-4 w-4" />
           Log out
         </button>
       </div>
+      <LogoutDialog open={confirming} onClose={() => setConfirming(false)} />
     </div>
   )
 }

@@ -1,27 +1,19 @@
 import { motion } from 'motion/react'
 import { LogOut, Sprout } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../../contexts/auth'
 import { initialsOf } from '../../utils/format'
 import type { NavGroup } from './adminNav'
+import LogoutDialog from './LogoutDialog'
 
 function ProfileCard() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const [signingOut, setSigningOut] = useState(false)
+  const { user } = useAuth()
+  const [confirming, setConfirming] = useState(false)
   if (!user) return null
 
-  async function handleLogout() {
-    setSigningOut(true)
-    try {
-      await logout()
-    } finally {
-      navigate('/login', { replace: true })
-    }
-  }
-
   return (
+    <>
     <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-2.5 dark:border-white/6 dark:bg-white/3">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-brand-400 to-emerald-700 text-xs font-bold text-white shadow-sm">
         {initialsOf(user.firstName, user.lastName)}
@@ -38,13 +30,14 @@ function ProfileCard() {
         type="button"
         aria-label="Log out"
         title="Log out"
-        onClick={handleLogout}
-        disabled={signingOut}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-rose-500/10 hover:text-rose-600 disabled:cursor-wait disabled:opacity-60 dark:text-slate-400 dark:hover:text-rose-400"
+        onClick={() => setConfirming(true)}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400"
       >
         <LogOut className="h-4 w-4" />
       </button>
     </div>
+    <LogoutDialog open={confirming} onClose={() => setConfirming(false)} />
+    </>
   )
 }
 

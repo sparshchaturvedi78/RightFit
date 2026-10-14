@@ -124,6 +124,9 @@ export default function EmployeesPage() {
     // Adding, deactivating, re-roling or moving someone changes RMG team sizes.
     dispatch(invalidateQueries('rmgs'))
     dispatch(invalidateQueries('rmgTeam'))
+    // Deactivating or reactivating someone also blocks or restores their sign-in.
+    dispatch(invalidateQueries('userAccounts'))
+    void dispatch(loadResource({ key: 'admin/user-summary', force: true }))
     STALE_AFTER_CHANGE.forEach((key) => void dispatch(loadResource({ key, force: true })))
   }
 
