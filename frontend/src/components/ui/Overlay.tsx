@@ -34,7 +34,7 @@ interface OverlayProps {
 
 const BACKDROP = 'fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm dark:bg-black/60'
 const PANEL_SURFACE =
-  'border border-slate-200 bg-white shadow-2xl shadow-slate-900/20 dark:border-white/10 dark:bg-ink-900 dark:shadow-black/60'
+  'border border-slate-200 bg-white shadow-2xl shadow-slate-900/20 dark:border-white/10 dark:bg-ink-925 dark:shadow-black/60'
 
 function Header({ id, title, subtitle, onClose }: { id: string; title: string; subtitle?: string; onClose: () => void }) {
   return (

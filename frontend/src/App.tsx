@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import EmployeesPage from './pages/admin/employees/EmployeesPage'
 import ProjectsPage from './pages/admin/projects/ProjectsPage'
+import RmgPage from './pages/admin/rmg/RmgPage'
+import AssignmentsPage from './pages/admin/assignments/AssignmentsPage'
 import AdminLayout from './pages/admin/AdminLayout'
 
 function App() {
@@ -26,6 +28,8 @@ function App() {
         <Route path="dashboard" element={<AdminDashboardPage />} />
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="projects" element={<ProjectsPage />} />
+        <Route path="rmg" element={<RmgPage />} />
+        <Route path="assignments" element={<AssignmentsPage />} />
       </Route>
       <Route
         path="/manager/dashboard"

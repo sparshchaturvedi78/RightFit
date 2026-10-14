@@ -1,5 +1,7 @@
+import { adminAssignmentService, type HandoverKind } from '../services/admin/assignment.service'
 import { adminEmployeeService, type EmployeeListFilters } from '../services/admin/employee.service'
 import { adminProjectService, type ProjectListFilters } from '../services/admin/project.service'
+import { adminRmgService, type RmgListFilters } from '../services/admin/rmg.service'
 
 /**
  * Parameterised page data (lists with search / filters / paging) kept in the Redux store, one entry per distinct
@@ -13,6 +15,17 @@ export const QUERY_FETCHERS = {
     adminProjectService.team(params.projectId, params.grade, params.page, params.size),
   /** Where one employee works (projects managed / allocated) — shown in their profile. */
   employeeProjects: (params: { employeeId: string }) => adminEmployeeService.projects(params.employeeId),
+  rmgs: (params: RmgListFilters) => adminRmgService.list(params),
+  /** Assignments page: who has left but still holds projects / people. */
+  // No parameters: the empty object only gives it a store key like every other entry.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  pendingHandovers: (_params: Record<string, never>) => adminAssignmentService.pending(),
+  /** Assignments page: what one person would hand over (projects for a manager, people for an RMG). */
+  handoverPreview: (params: { kind: HandoverKind; employeeId: string }) =>
+    adminAssignmentService.preview(params.kind, params.employeeId),
+  /** One page of the associates reporting to an RMG, optionally one workforce bucket — shown in the RMG's details. */
+  rmgTeam: (params: { rmgId: string; workforce?: string; page: number; size: number }) =>
+    adminRmgService.team(params.rmgId, params.workforce, params.page, params.size),
 } as const
 
 export type QueryNamespace = keyof typeof QUERY_FETCHERS

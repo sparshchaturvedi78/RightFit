@@ -237,7 +237,7 @@ export function Dropdown({
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.12 }}
               style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
-              className="fixed z-[90] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 dark:border-white/10 dark:bg-ink-900 dark:shadow-black/50"
+              className="fixed z-[90] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 dark:border-white/10 dark:bg-ink-925 dark:shadow-black/50"
             >
               {withSearch && (
                 <div className="relative shrink-0 border-b border-slate-100 p-1.5 dark:border-white/8">

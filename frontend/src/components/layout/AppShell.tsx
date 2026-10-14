@@ -82,7 +82,7 @@ export default function AppShell({ groups, roleLabel }: AppShellProps) {
 
       {/* Desktop: floating sidebar card */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 p-3 lg:block">
-        <div className="h-full overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/7 dark:bg-ink-900/60 dark:shadow-black/40">
+        <div className="h-full overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/7 dark:bg-ink-925 dark:shadow-black/40">
           <Sidebar groups={groups} roleLabel={roleLabel} />
         </div>
       </aside>
@@ -103,7 +103,7 @@ export default function AppShell({ groups, roleLabel }: AppShellProps) {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200 bg-white lg:hidden dark:border-white/10 dark:bg-ink-950"
+              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200 bg-white lg:hidden dark:border-white/10 dark:bg-ink-925"
             >
               <button
                 type="button"
