@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,4 +28,18 @@ public class RmgDetailDTO {
     private Long associateCount;
 
     private String status;
+
+    // ---- Admin RMG page only (null on the dashboard roster) ----
+
+    private String grade;
+
+    private String location;
+
+    /** The Admin this RMG reports to. */
+    private String reportsToName;
+
+    private String reportsToEmployeeId;
+
+    /** The RMG's active associates per workforce bucket (IN_PROJECT, ON_BENCH, IN_TRAINING, UNASSIGNED). */
+    private Map<String, Long> workforce;
 }

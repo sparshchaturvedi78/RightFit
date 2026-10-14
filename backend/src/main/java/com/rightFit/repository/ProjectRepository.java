@@ -63,6 +63,11 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     @Query("SELECT DISTINCT p.manager.id FROM Project p WHERE p.status = 'ACTIVE'")
     List<Long> findManagerIdsOfActiveProjects();
 
+    /** [managerId, active project count] for managers who have left but still manage ACTIVE projects. */
+    @Query("SELECT p.manager.id, COUNT(p) FROM Project p WHERE p.status = 'ACTIVE' " +
+            "AND p.manager.employmentStatus <> 'ACTIVE' GROUP BY p.manager.id")
+    List<Object[]> countActiveProjectsOfInactiveManagers();
+
     @Query("SELECT DISTINCT p.manager.id FROM Project p WHERE p.status = 'ACTIVE' AND p.manager.id IN :ids")
     List<Long> findManagerIdsOfActiveProjects(@Param("ids") java.util.Collection<Long> ids);
 
