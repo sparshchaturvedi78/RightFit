@@ -134,10 +134,8 @@ public final class PoolBenchDtos {
         @NotNull(message = "Amber threshold (max days) is required")
         @Min(value = 1, message = "Amber threshold must be at least 1 day")
         private Integer amberMaxDays;
-        @NotNull(message = "Red threshold (days) is required")
-        @Min(value = 1, message = "Red threshold must be at least 1 day")
-        private Integer redThresholdDays;
-        /** Defaults to today. */
+        /** Red starts the day after amber ends, so the server works it out; no red field is sent. */
+        /** Defaults to today. Can't be earlier than today. */
         private LocalDate effectiveFrom;
     }
 }

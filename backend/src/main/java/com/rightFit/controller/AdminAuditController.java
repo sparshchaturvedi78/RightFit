@@ -123,4 +123,35 @@ public class AdminAuditController {
                 userId, entityType, action, year, month, startDate, endDate, pageable);
         return ResponseEntity.ok(auditLogs);
     }
+
+    /** Every action name, for the action search box. */
+    @GetMapping("/actions")
+    @PreAuthorize("hasPermission(null, 'AUDIT_READ')")
+    public ResponseEntity<java.util.List<String>> actions() {
+        return ResponseEntity.ok(auditQueryService.actions());
+    }
+
+    /** Entries per day for the filters given (the day headers on the Audit log page). */
+    @GetMapping("/daily-counts")
+    @PreAuthorize("hasPermission(null, 'AUDIT_READ')")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> dailyCounts(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        return ResponseEntity.ok(auditQueryService.dailyCounts(userId, entityType, action, startDate, endDate));
+    }
+
+    /** Header numbers for the same filters: people involved and the most common action. */
+    @GetMapping("/summary")
+    @PreAuthorize("hasPermission(null, 'AUDIT_READ')")
+    public ResponseEntity<java.util.Map<String, Object>> summary(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        return ResponseEntity.ok(auditQueryService.summary(userId, entityType, action, startDate, endDate));
+    }
 }

@@ -41,10 +41,15 @@ public class BenchConfigurationService {
     }
 
     public BenchConfigurationDTO create(CreateBenchConfigurationRequest request) {
-        if (request.getGreenMaxDays() >= request.getRedThresholdDays()) {
-            throw new BusinessRuleException("Green threshold must be less than the red threshold");
+        if (request.getAmberMaxDays() <= request.getGreenMaxDays()) {
+            throw new BusinessRuleException("Amber must be longer than green");
         }
         LocalDate effectiveFrom = request.getEffectiveFrom() != null ? request.getEffectiveFrom() : LocalDate.now();
+        if (effectiveFrom.isBefore(LocalDate.now())) {
+            throw new BusinessRuleException("A new bench policy can't start in the past. Pick today or a later date.");
+        }
+        // Red starts the day after amber ends. The tracking service reads this threshold, so it is stored here.
+        int redFrom = request.getAmberMaxDays() + 1;
 
         configRepository.findFirstByIsActiveTrueOrderByEffectiveFromDesc().ifPresent(previous -> {
             previous.setIsActive(false);
@@ -56,7 +61,7 @@ public class BenchConfigurationService {
                 .organizationId(DEFAULT_ORGANIZATION_ID)
                 .greenMaxDays(request.getGreenMaxDays())
                 .amberMaxDays(request.getAmberMaxDays())
-                .redThresholdDays(request.getRedThresholdDays())
+                .redThresholdDays(redFrom)
                 .effectiveFrom(effectiveFrom)
                 .isActive(true)
                 .build());

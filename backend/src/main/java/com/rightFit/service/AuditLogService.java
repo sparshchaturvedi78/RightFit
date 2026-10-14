@@ -1,7 +1,10 @@
 package com.rightFit.service;
 
 import com.rightFit.entity.AuditLog;
+import com.rightFit.entity.Employee;
 import com.rightFit.repository.AuditLogRepository;
+import com.rightFit.repository.EmployeeRepository;
+import com.rightFit.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,8 @@ import java.util.UUID;
 public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
+    private final EmployeeRepository employeeRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     public void logAction(Long userId, String action, String entityType, Long entityId,
@@ -32,13 +37,19 @@ public class AuditLogService {
     public void logAction(Long userId, String action, String entityType, Long entityId,
                          Object beforeState, Object afterState, String context) {
         try {
-            String performedByEmail = "system"; // Get from SecurityContext later
+            // Who did it: the caller's employee record and email. Only system jobs (no user) are "system".
+            Employee performer = userId != null ? employeeRepository.findByUserId(userId).orElse(null) : null;
+            String performedByEmail = performer != null ? performer.getEmail()
+                    : userId != null ? userRepository.findById(userId).map(u -> u.getEmail()).orElse("system")
+                    : "system";
 
             AuditLog auditLog = AuditLog.builder()
                     .auditId(UUID.randomUUID().toString())
                     .action(action)
                     .entityType(entityType)
                     .entityId(entityId)
+                    .userId(userId)
+                    .performedBy(performer)
                     .performedByEmail(performedByEmail)
                     .oldValue(serializeState(beforeState))
                     .newValue(serializeState(afterState))

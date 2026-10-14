@@ -92,4 +92,58 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     @Query("SELECT COUNT(al) FROM AuditLog al WHERE al.entityType = :entityType")
     long countByEntityType(@Param("entityType") String entityType);
+
+    /** Every action name that has been logged, for the Audit log's action search. */
+    @Query("SELECT DISTINCT al.action FROM AuditLog al ORDER BY al.action")
+    java.util.List<String> findDistinctActions();
+
+    /** [day, number of entries] for the filters given; days with no entries are absent. */
+    @Query("""
+        SELECT CAST(al.timestamp AS date), COUNT(al) FROM AuditLog al
+        WHERE (:userId IS NULL OR al.userId = :userId)
+        AND (:entityType IS NULL OR al.entityType = :entityType)
+        AND (:action IS NULL OR al.action = :action)
+        AND al.timestamp BETWEEN :startTime AND :endTime
+        GROUP BY CAST(al.timestamp AS date)
+        ORDER BY CAST(al.timestamp AS date)
+        """)
+    java.util.List<Object[]> countPerDay(
+            @Param("userId") Long userId,
+            @Param("entityType") String entityType,
+            @Param("action") String action,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    /** How many different people made the entries matching the filters. */
+    @Query("""
+        SELECT COUNT(DISTINCT al.userId) FROM AuditLog al
+        WHERE (:userId IS NULL OR al.userId = :userId)
+        AND (:entityType IS NULL OR al.entityType = :entityType)
+        AND (:action IS NULL OR al.action = :action)
+        AND al.timestamp BETWEEN :startTime AND :endTime
+        """)
+    long countPeople(
+            @Param("userId") Long userId,
+            @Param("entityType") String entityType,
+            @Param("action") String action,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    /** [action, number of entries] for the filters, most common first. */
+    @Query("""
+        SELECT al.action, COUNT(al) FROM AuditLog al
+        WHERE (:userId IS NULL OR al.userId = :userId)
+        AND (:entityType IS NULL OR al.entityType = :entityType)
+        AND (:action IS NULL OR al.action = :action)
+        AND al.timestamp BETWEEN :startTime AND :endTime
+        GROUP BY al.action
+        ORDER BY COUNT(al) DESC
+        """)
+    java.util.List<Object[]> countPerAction(
+            @Param("userId") Long userId,
+            @Param("entityType") String entityType,
+            @Param("action") String action,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            Pageable pageable);
 }

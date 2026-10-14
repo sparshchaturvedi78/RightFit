@@ -171,6 +171,7 @@ public class ManagerDashboardService {
                     Map<String, Object> row = new LinkedHashMap<>();
                     row.put("interviewId", i.getInterviewId());
                     row.put("requirementId", r.getRequirementId());
+                    row.put("employeeId", i.getEmployee().getEmployeeId());
                     row.put("employee", CandidateWorkflowService.name(i.getEmployee()));
                     row.put("interviewer", CandidateWorkflowService.name(i.getInterviewer()));
                     row.put("round", i.getRoundNumber());

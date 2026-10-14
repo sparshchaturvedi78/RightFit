@@ -60,6 +60,8 @@ public final class DashboardDtos {
         private String report;
         private LocalDateTime generatedAt;
         private int rowCount;
+        /** Whose rows these are: everyone (Admin), your projects (Manager), your associates (RMG). */
+        private String scope;
         private List<Map<String, Object>> rows;
     }
 

@@ -23,6 +23,11 @@ public class AuditLogDTO {
 
     private String performedByEmail;
 
+    /** The performer's name and employee ID, when the entry is linked to an employee. */
+    private String performedByName;
+
+    private String performedByEmployeeId;
+
     private String action;
 
     private String entityType;
