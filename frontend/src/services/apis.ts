@@ -67,7 +67,9 @@ export const ADMIN_PROJECT_API = {
 // Admin — RMG roster — AdminRmgController (/api/admin/rmg)
 // ---------------------------------------------------------------------------
 export const ADMIN_RMG_API = {
+  list: '/api/admin/rmg',
   dashboard: '/api/admin/rmg/dashboard',
+  team: (rmgId: string) => `/api/admin/rmg/${rmgId}/team`,
   byId: (rmgId: string) => `/api/admin/rmg/${rmgId}`,
   associates: (rmgId: string) => `/api/admin/rmg/${rmgId}/associates`,
   associateCount: (rmgId: string) => `/api/admin/rmg/${rmgId}/associate-count`,
@@ -77,6 +79,7 @@ export const ADMIN_RMG_API = {
 // Admin — Assignment replacement — AdminAssignmentController (/api/admin/assignments)
 // ---------------------------------------------------------------------------
 export const ADMIN_ASSIGNMENT_API = {
+  pending: '/api/admin/assignments/pending',
   departingManager: (managerId: string) => `/api/admin/assignments/departing/manager/${managerId}`,
   departingRmg: (rmgId: string) => `/api/admin/assignments/departing/rmg/${rmgId}`,
   replaceManager: (departingManagerId: string) => `/api/admin/assignments/replace-manager/${departingManagerId}`,
