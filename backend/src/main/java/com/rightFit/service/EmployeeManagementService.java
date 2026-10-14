@@ -248,7 +248,14 @@ public class EmployeeManagementService {
 
         if (employee.getUser() != null) {
             userRoleService.deactivateUserRoles(employee.getUser().getId());
-            log.info("User roles deactivated for employee: {}", employeeId);
+            // Deactivating an employee also switches off their sign-in, not just their roles.
+            var account = employee.getUser();
+            account.setStatus("INACTIVE");
+            account.setBlockReason(AdminUserAccountService.EMPLOYEE_DEACTIVATED_PREFIX + request.getReason());
+            account.setBlockedBy(actorLabel());
+            account.setBlockedAt(LocalDateTime.now());
+            userRepository.save(account);
+            log.info("User roles deactivated and sign-in blocked for employee: {}", employeeId);
         }
 
         log.info("Employee deactivated successfully: {}", employeeId);
@@ -274,6 +281,16 @@ public class EmployeeManagementService {
 
         if (employee.getUser() != null) {
             userRoleService.reactivateUserRoles(employee.getUser().getId());
+            // Only lift a block that came from the deactivation itself; an Admin's separate block stays in place.
+            var account = employee.getUser();
+            String reason = account.getBlockReason();
+            if (reason != null && reason.startsWith(AdminUserAccountService.EMPLOYEE_DEACTIVATED_PREFIX)) {
+                account.setStatus("ACTIVE");
+                account.setBlockReason(null);
+                account.setBlockedBy(null);
+                account.setBlockedAt(null);
+                userRepository.save(account);
+            }
             log.info("User roles reactivated for employee: {}", employeeId);
         }
 
