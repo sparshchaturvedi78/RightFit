@@ -49,7 +49,7 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     title: 'Catalogs & policy',
     items: [
-      { label: 'Skills', to: '/admin/skills', icon: Sparkles, ready: false },
+      { label: 'Skills', to: '/admin/skills', icon: Sparkles, ready: true },
       { label: 'Certifications', to: '/admin/certifications', icon: Award, ready: false },
       { label: 'Bench policy', to: '/admin/bench-configuration', icon: Gauge, ready: false },
     ],
