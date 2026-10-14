@@ -41,7 +41,7 @@ public class AdminBenchConfigurationController {
     @PreAuthorize("hasPermission(null, 'BENCH_CONFIGURATION_MANAGE')")
     public ResponseEntity<BenchConfigurationDTO> create(@Valid @RequestBody CreateBenchConfigurationRequest request) {
         log.info("Creating new bench configuration: green<={}, amber<={}, red>={}",
-                request.getGreenMaxDays(), request.getAmberMaxDays(), request.getRedThresholdDays());
+                request.getGreenMaxDays(), request.getAmberMaxDays());
         return ResponseEntity.ok(configService.create(request));
     }
 }

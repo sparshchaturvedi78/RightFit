@@ -2,6 +2,7 @@ package com.rightFit.service;
 
 import com.rightFit.dto.AuditLogDTO;
 import com.rightFit.entity.AuditLog;
+import com.rightFit.exception.BusinessRuleException;
 import com.rightFit.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,20 +72,25 @@ public class AuditQueryService {
         return auditLogs.map(this::mapToDTO);
     }
 
+    /** Largest period one audit download may cover. Older entries are reached by picking custom dates inside this limit. */
+    public static final int EXPORT_MAX_DAYS = 15;
+
     /**
-     * Builds the complete, downloadable audit-history CSV for the selected period (BR-050 / FR-056).
-     * Filter by an exact range (startDate/endDate), or the coarser year/month BR-049 asks for -
-     * year alone exports the whole year, year+month exports just that month. All filters are optional;
-     * passing none exports the complete history.
+     * Builds the downloadable audit-history CSV for the selected period (BR-050 / FR-056), capped at
+     * EXPORT_MAX_DAYS. Filter by an exact range (startDate/endDate), or year/month (BR-049). A period
+     * must be given: the range is required, so an unbounded export is refused rather than run.
      */
     public String exportCsv(Long userId, String entityType, String action,
                             Integer year, Integer month, LocalDate startDate, LocalDate endDate) {
         LocalDateTime[] range = resolveRange(year, month, startDate, endDate);
-        if (range[0] == null) {
-            // Postgres can't infer a bare "?" parameter's type when it's only ever compared to NULL;
-            // defaulting to an all-time bound (rather than a true null) avoids that and keeps "export everything".
-            range[0] = LocalDateTime.of(1970, 1, 1, 0, 0);
-            range[1] = LocalDateTime.now().plusYears(1);
+        String choose = " Downloads are limited to " + EXPORT_MAX_DAYS
+                + " days at a time; for older entries, pick custom dates within that limit.";
+        if (range[0] == null || range[1] == null) {
+            throw new BusinessRuleException("Choose a start and end date to download the audit log." + choose);
+        }
+        long days = java.time.temporal.ChronoUnit.DAYS.between(range[0].toLocalDate(), range[1].toLocalDate()) + 1;
+        if (days > EXPORT_MAX_DAYS) {
+            throw new BusinessRuleException("This range is " + days + " days." + choose);
         }
         java.util.List<AuditLog> rows = auditLogRepository.findForExport(userId, entityType, action, range[0], range[1]);
 
@@ -131,12 +137,14 @@ public class AuditQueryService {
     }
 
     private AuditLogDTO mapToDTO(AuditLog auditLog) {
-        Long performedById = auditLog.getPerformedBy() != null ? auditLog.getPerformedBy().getId() : null;
+        var performer = auditLog.getPerformedBy();
         return AuditLogDTO.builder()
                 .id(auditLog.getId())
                 .auditId(auditLog.getAuditId())
-                .userId(performedById)
+                .userId(auditLog.getUserId())
                 .performedByEmail(auditLog.getPerformedByEmail())
+                .performedByName(performer != null ? performer.getFirstName() + " " + performer.getLastName() : null)
+                .performedByEmployeeId(performer != null ? performer.getEmployeeId() : null)
                 .action(auditLog.getAction())
                 .entityType(auditLog.getEntityType())
                 .entityId(auditLog.getEntityId())
@@ -148,5 +156,38 @@ public class AuditQueryService {
                 .status(auditLog.getStatus())
                 .timestamp(auditLog.getCreatedAt())
                 .build();
+    }
+
+    /** Every action name that has been logged. */
+    public java.util.List<String> actions() {
+        return auditLogRepository.findDistinctActions();
+    }
+
+    /** Entries per day for the same filters the list uses. The range is required from the page. */
+    public java.util.List<java.util.Map<String, Object>> dailyCounts(Long userId, String entityType, String action,
+                                                                     LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now().minusDays(6);
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+        java.util.List<java.util.Map<String, Object>> days = new java.util.ArrayList<>();
+        for (Object[] row : auditLogRepository.countPerDay(userId, entityType, action,
+                start.atStartOfDay(), end.atTime(LocalTime.MAX))) {
+            days.add(java.util.Map.of("date", row[0].toString(), "count", ((Number) row[1]).longValue()));
+        }
+        return days;
+    }
+
+    /** Header numbers for the same filters: how many people made the entries, and the most common action. */
+    public java.util.Map<String, Object> summary(Long userId, String entityType, String action,
+                                                 LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now().minusDays(6);
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+        LocalDateTime from = start.atStartOfDay(), to = end.atTime(LocalTime.MAX);
+        long people = auditLogRepository.countPeople(userId, entityType, action, from, to);
+        java.util.List<Object[]> top = auditLogRepository.countPerAction(userId, entityType, action, from, to,
+                org.springframework.data.domain.PageRequest.of(0, 1));
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("people", people);
+        out.put("topAction", top.isEmpty() ? null : top.get(0)[0]);
+        return out;
     }
 }
