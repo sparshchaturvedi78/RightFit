@@ -3,6 +3,7 @@ import { adminEmployeeService, type EmployeeListFilters } from '../services/admi
 import { adminProjectService, type ProjectListFilters } from '../services/admin/project.service'
 import { adminRmgService, type RmgListFilters } from '../services/admin/rmg.service'
 import { adminUserAccountService, type UserAccountFilters } from '../services/admin/userAccount.service'
+import { adminSkillCatalogService, type LevelBand } from '../services/admin/skillCatalog.service'
 
 /**
  * Parameterised page data (lists with search / filters / paging) kept in the Redux store, one entry per distinct
@@ -19,6 +20,9 @@ export const QUERY_FETCHERS = {
   rmgs: (params: RmgListFilters) => adminRmgService.list(params),
   /** One page of login accounts for a role lane, search or sign-in state (Users page). */
   userAccounts: (params: UserAccountFilters) => adminUserAccountService.list(params),
+  /** One page of a skill's active associates, optionally one proficiency band — Skills page detail. */
+  skillHolders: (params: { skillId: number; level: LevelBand; page: number; size: number }) =>
+    adminSkillCatalogService.holders(params.skillId, params.level, params.page, params.size),
   /** Assignments page: who has left but still holds projects / people. */
   // No parameters: the empty object only gives it a store key like every other entry.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

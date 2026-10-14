@@ -4,6 +4,7 @@ import { adminLookupService } from '../services/admin/lookup.service'
 import { adminRmgService } from '../services/admin/rmg.service'
 import { adminRoleService } from '../services/admin/role.service'
 import { adminUserAccountService } from '../services/admin/userAccount.service'
+import { adminSkillCatalogService } from '../services/admin/skillCatalog.service'
 
 /** Every page-level dataset kept in the Redux store, and how to load it. Add new pages here. */
 export const RESOURCE_FETCHERS = {
@@ -16,6 +17,9 @@ export const RESOURCE_FETCHERS = {
   'admin/roles': () => adminRoleService.list(),
   // Users page header: totals, attention counts and the 14-day sign-in series.
   'admin/user-summary': () => adminUserAccountService.summary(),
+  // Skills page: every skill (retired ones too) and every category, each with its holder counts.
+  'admin/skills': () => adminSkillCatalogService.listSkills(false),
+  'admin/skill-categories': () => adminSkillCatalogService.listCategories(),
 } as const
 
 export type ResourceKey = keyof typeof RESOURCE_FETCHERS

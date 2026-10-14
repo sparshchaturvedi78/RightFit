@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8081'
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'https://rightfit-zt87.onrender.com'
 
 // ---------------------------------------------------------------------------
 // Auth — AuthController (/api/auth)
@@ -177,6 +177,19 @@ export const ADMIN_SKILL_CATALOG_API = {
   create: '/api/admin/skills',
   update: (id: string | number) => `/api/admin/skills/${id}`,
   retire: (id: string | number) => `/api/admin/skills/${id}/retire`,
+  restore: (id: string | number) => `/api/admin/skills/${id}/restore`,
+  holders: (id: string | number) => `/api/admin/skills/${id}/holders`,
+}
+
+// ---------------------------------------------------------------------------
+// Admin — Skill categories — AdminSkillCategoryController (/api/admin/skill-categories)
+// ---------------------------------------------------------------------------
+export const ADMIN_SKILL_CATEGORY_API = {
+  list: '/api/admin/skill-categories',
+  create: '/api/admin/skill-categories',
+  update: (id: string | number) => `/api/admin/skill-categories/${id}`,
+  retire: (id: string | number) => `/api/admin/skill-categories/${id}/retire`,
+  restore: (id: string | number) => `/api/admin/skill-categories/${id}/restore`,
 }
 
 // ---------------------------------------------------------------------------
