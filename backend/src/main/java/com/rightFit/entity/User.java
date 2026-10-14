@@ -38,6 +38,16 @@ public class User {
     @Column(name = "last_login_at")
     private LocalDateTime lastLogin;
 
+    /** Why sign-in was blocked (status INACTIVE). Null while the account is allowed. */
+    @Column(name = "block_reason")
+    private String blockReason;
+
+    @Column(name = "blocked_by")
+    private String blockedBy;
+
+    @Column(name = "blocked_at")
+    private LocalDateTime blockedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

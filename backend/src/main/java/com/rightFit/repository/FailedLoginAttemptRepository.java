@@ -13,6 +13,12 @@ public interface FailedLoginAttemptRepository extends JpaRepository<FailedLoginA
 
     Optional<FailedLoginAttempt> findByUser(User user);
 
+    /** Accounts currently locked after failed sign-ins (lock still in the future). */
+    long countByLockedUntilAfter(java.time.LocalDateTime now);
+
+    /** Failed-sign-in records for a page of accounts, in one query. */
+    java.util.List<FailedLoginAttempt> findByEmailIn(java.util.Collection<String> emails);
+
     void deleteByEmail(String email);
 
     void deleteByUser(User user);

@@ -21,6 +21,14 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
     @Query("SELECT ur.user.id, r.name FROM UserRole ur JOIN ur.role r WHERE ur.isActive = true AND ur.user.id IN :userIds")
     List<Object[]> findActiveRoleNamesByUserIds(@Param("userIds") java.util.Collection<Long> userIds);
 
+    /** [userId, role code] pairs (ADMIN, MANAGER, RMG, ASSOCIATE) for many users at once (Admin Users page). */
+    @Query("SELECT ur.user.id, r.code FROM UserRole ur JOIN ur.role r WHERE ur.isActive = true AND ur.user.id IN :userIds")
+    List<Object[]> findActiveRoleCodesByUserIds(@Param("userIds") java.util.Collection<Long> userIds);
+
+    /** [role code, number of distinct accounts holding it] — the Users page's per-role totals. */
+    @Query("SELECT r.code, COUNT(DISTINCT ur.user.id) FROM UserRole ur JOIN ur.role r WHERE ur.isActive = true GROUP BY r.code")
+    List<Object[]> countAccountsPerRoleCode();
+
     @Query("SELECT ur FROM UserRole ur WHERE ur.user.id = :userId AND ur.role.id = :roleId")
     Optional<UserRole> findByUserIdAndRoleId(@Param("userId") Long userId, @Param("roleId") Long roleId);
 

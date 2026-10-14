@@ -30,6 +30,7 @@ public class AuthenticationService {
     private final PasswordHistoryRepository passwordHistoryRepository;
     private final UserRoleRepository userRoleRepository;
     private final FailedLoginAttemptRepository failedLoginAttemptRepository;
+    private final com.rightFit.repository.LoginEventRepository loginEventRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
@@ -412,6 +413,8 @@ public class AuthenticationService {
 
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
+        loginEventRepository.save(com.rightFit.entity.LoginEvent.builder()
+                .user(user).signedInAt(user.getLastLogin()).build());
 
         log.info("Login successful for user: {}", user.getEmail());
 
