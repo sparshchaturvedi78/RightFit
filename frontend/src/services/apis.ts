@@ -159,6 +159,9 @@ export const ADMIN_AUDIT_API = {
   dateRange: '/api/admin/audit/date-range',
   export: '/api/admin/audit/export',
   filter: '/api/admin/audit/filter',
+  actions: '/api/admin/audit/actions',
+  dailyCounts: '/api/admin/audit/daily-counts',
+  summary: '/api/admin/audit/summary',
 }
 
 // ---------------------------------------------------------------------------
@@ -224,6 +227,10 @@ export const ADMIN_DASHBOARD_API = {
 export const ADMIN_REPORT_API = {
   types: '/api/admin/reports',
   byType: (type: string) => `/api/admin/reports/${type}`,
+  filters: (type: string) => `/api/admin/reports/${type}/filters`,
+  csv: (type: string) => `/api/admin/reports/${type}/csv`,
+  xlsx: (type: string) => `/api/admin/reports/${type}/xlsx`,
+  departments: '/api/admin/reports/departments',
 }
 
 // ---------------------------------------------------------------------------

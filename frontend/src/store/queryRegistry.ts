@@ -4,6 +4,8 @@ import { adminProjectService, type ProjectListFilters } from '../services/admin/
 import { adminRmgService, type RmgListFilters } from '../services/admin/rmg.service'
 import { adminUserAccountService, type UserAccountFilters } from '../services/admin/userAccount.service'
 import { adminSkillCatalogService, type LevelBand } from '../services/admin/skillCatalog.service'
+import { adminAuditService, type AuditFilters } from '../services/admin/audit.service'
+import { adminReportService, type ReportFilters } from '../services/admin/report.service'
 
 /**
  * Parameterised page data (lists with search / filters / paging) kept in the Redux store, one entry per distinct
@@ -20,6 +22,15 @@ export const QUERY_FETCHERS = {
   rmgs: (params: RmgListFilters) => adminRmgService.list(params),
   /** One page of login accounts for a role lane, search or sign-in state (Users page). */
   userAccounts: (params: UserAccountFilters) => adminUserAccountService.list(params),
+  /** Audit log: one page of entries for the filters, and the entries per day for the same filters. */
+  auditEntries: (params: AuditFilters) => adminAuditService.filterList(params),
+  auditDays: (params: AuditFilters) => adminAuditService.dailyCounts(params),
+  auditSummary: (params: AuditFilters) => adminAuditService.summary(params),
+  /** Reports: the rows of one report for its filters. */
+  /** Which filters a report supports (date, department). */
+  reportFilters: (params: { type: string }) => adminReportService.filtersFor(params.type),
+  reportRows: (params: { type: string } & ReportFilters) =>
+    adminReportService.get(params.type, { from: params.from, to: params.to, department: params.department }),
   /** One page of a skill's active associates, optionally one proficiency band — Skills page detail. */
   skillHolders: (params: { skillId: number; level: LevelBand; page: number; size: number }) =>
     adminSkillCatalogService.holders(params.skillId, params.level, params.page, params.size),

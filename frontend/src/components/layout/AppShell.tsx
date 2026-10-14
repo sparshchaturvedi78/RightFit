@@ -121,7 +121,7 @@ export default function AppShell({ groups, roleLabel }: AppShellProps) {
 
       <div className="lg:pl-72">
         <header className="sticky top-0 z-20 bg-linear-to-b from-slate-50 from-80% to-transparent px-4 pt-3 pb-5 sm:px-6 lg:px-5 dark:from-ink-950">
-          <div className="flex h-16 items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white/75 px-3 shadow-[0_8px_30px_-18px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:px-4 dark:border-white/6 dark:bg-ink-950/60 dark:shadow-black/30">
+          <div className="flex h-16 items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:px-4 dark:border-white/7 dark:bg-ink-925 dark:shadow-black/40">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"

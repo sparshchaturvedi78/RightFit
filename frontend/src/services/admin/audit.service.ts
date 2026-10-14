@@ -7,6 +7,9 @@ export interface AuditLogDTO {
   auditId: string
   userId?: number
   performedByEmail?: string
+  /** The performer's name and employee ID, when the entry is linked to an employee. */
+  performedByName?: string
+  performedByEmployeeId?: string
   action: string
   entityType: string
   entityId?: number
@@ -69,4 +72,39 @@ async function exportCsv(filters: Omit<AuditFilters, 'page' | 'size'> = {}): Pro
   return data
 }
 
-export const adminAuditService = { list, byEntity, byAction, byDateRange, filter, exportCsv }
+/** The Audit log page: entries for the filters, one page at a time (filters are required: start and end date). */
+async function filterList(filters: AuditFilters): Promise<PageResponse<AuditLogDTO>> {
+  const { data } = await httpClient.get<PageResponse<AuditLogDTO>>(ADMIN_AUDIT_API.filter, { params: filters })
+  return data
+}
+
+/** Every action name that has been logged, for the action search. */
+async function actions(): Promise<string[]> {
+  const { data } = await httpClient.get<string[]>(ADMIN_AUDIT_API.actions)
+  return data
+}
+
+/** Entries per day for the same filters. */
+async function dailyCounts(filters: AuditFilters): Promise<{ date: string; count: number }[]> {
+  const { data } = await httpClient.get<{ date: string; count: number }[]>(ADMIN_AUDIT_API.dailyCounts, { params: filters })
+  return data
+}
+
+/** Header numbers for the same filters: people involved and the most common action. */
+async function summary(filters: AuditFilters): Promise<{ people: number; topAction: string | null }> {
+  const { data } = await httpClient.get<{ people: number; topAction: string | null }>(ADMIN_AUDIT_API.summary, { params: filters })
+  return data
+}
+
+export const adminAuditService = {
+  filterList,
+  actions,
+  dailyCounts,
+  summary,
+  exportCsv,
+  list,
+  byEntity,
+  byAction,
+  byDateRange,
+  filter,
+}

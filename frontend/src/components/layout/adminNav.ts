@@ -1,5 +1,4 @@
 import {
-  Award,
   ArrowLeftRight,
   BarChart3,
   FolderKanban,
@@ -37,28 +36,27 @@ export const ADMIN_NAV: NavGroup[] = [
       { label: 'Employees', to: '/admin/employees', icon: Users, ready: true },
       { label: 'Projects', to: '/admin/projects', icon: FolderKanban, ready: true },
       { label: 'RMG', to: '/admin/rmg', icon: UsersRound, ready: true },
-      { label: 'Assignments', to: '/admin/assignments', icon: ArrowLeftRight, ready: true },
     ],
   },
   {
     title: 'Access control',
     items: [
       { label: 'Users', to: '/admin/users', icon: UserCog, ready: true },
+      { label: 'Assignments', to: '/admin/assignments', icon: ArrowLeftRight, ready: true },
     ],
   },
   {
     title: 'Catalogs & policy',
     items: [
       { label: 'Skills', to: '/admin/skills', icon: Sparkles, ready: true },
-      { label: 'Certifications', to: '/admin/certifications', icon: Award, ready: false },
-      { label: 'Bench policy', to: '/admin/bench-configuration', icon: Gauge, ready: false },
+      { label: 'Bench policy', to: '/admin/bench-configuration', icon: Gauge, ready: true },
     ],
   },
   {
     title: 'Insights',
     items: [
-      { label: 'Audit log', to: '/admin/audit', icon: ScrollText, ready: false },
-      { label: 'Reports', to: '/admin/reports', icon: BarChart3, ready: false },
+      { label: 'Audit log', to: '/admin/audit', icon: ScrollText, ready: true },
+      { label: 'Reports', to: '/admin/reports', icon: BarChart3, ready: true },
     ],
   },
 ]

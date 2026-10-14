@@ -10,7 +10,12 @@ import RmgPage from './pages/admin/rmg/RmgPage'
 import AssignmentsPage from './pages/admin/assignments/AssignmentsPage'
 import UsersPage from './pages/admin/users/UsersPage'
 import SkillsPage from './pages/admin/skills/SkillsPage'
+import BenchPolicyPage from './pages/admin/bench/BenchPolicyPage'
+import AuditPage from './pages/admin/audit/AuditPage'
+import ReportsPage from './pages/admin/reports/ReportsPage'
 import AdminLayout from './pages/admin/AdminLayout'
+import AppShell from './components/layout/AppShell'
+import { MANAGER_NAV, RMG_NAV } from './components/layout/roleNav'
 
 function App() {
   return (
@@ -34,6 +39,30 @@ function App() {
         <Route path="assignments" element={<AssignmentsPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="skills" element={<SkillsPage />} />
+        <Route path="bench-configuration" element={<BenchPolicyPage />} />
+        <Route path="audit" element={<AuditPage />} />
+        <Route path="reports" element={<ReportsPage />} />
+      </Route>
+      {/* Reports for Manager and RMG: the same page, narrowed to their own projects / associates by the server. */}
+      <Route
+        path="/manager"
+        element={
+          <ProtectedRoute allowedRoles={['MANAGER']}>
+            <AppShell groups={MANAGER_NAV} roleLabel="Manager" />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="reports" element={<ReportsPage narrowed />} />
+      </Route>
+      <Route
+        path="/rmg"
+        element={
+          <ProtectedRoute allowedRoles={['RMG']}>
+            <AppShell groups={RMG_NAV} roleLabel="RMG" />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="reports" element={<ReportsPage narrowed />} />
       </Route>
       <Route
         path="/manager/dashboard"

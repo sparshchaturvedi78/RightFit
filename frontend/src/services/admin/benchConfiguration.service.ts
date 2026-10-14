@@ -11,10 +11,10 @@ export interface BenchConfigurationDTO {
   isActive: boolean
 }
 
+/** Red starts the day after amber ends, so the server works out the red threshold. */
 export interface CreateBenchConfigurationRequest {
   greenMaxDays: number
   amberMaxDays: number
-  redThresholdDays: number
   effectiveFrom?: string
 }
 
