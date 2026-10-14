@@ -159,7 +159,8 @@ public final class AssociateProfileDtos {
     public static class CreateSkillRequest {
         @NotBlank(message = "Skill name is required")
         private String skillName;
-        private String category;
+        @jakarta.validation.constraints.NotNull(message = "Pick the category this skill belongs to")
+        private Long categoryId;
         private String description;
     }
 
@@ -169,7 +170,7 @@ public final class AssociateProfileDtos {
     @Builder
     public static class UpdateSkillRequest {
         private String skillName;
-        private String category;
+        private Long categoryId;
         private String description;
     }
 
@@ -182,8 +183,11 @@ public final class AssociateProfileDtos {
         private Long id;
         private String skillName;
         private String category;
+        private Long categoryId;
         private String description;
         private Boolean isActive;
+        /** Active people who hold the skill (Admin catalog only). */
+        private Long holderCount;
     }
 
     @Data

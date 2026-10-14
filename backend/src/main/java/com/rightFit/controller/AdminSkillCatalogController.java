@@ -50,4 +50,22 @@ public class AdminSkillCatalogController {
         log.info("Retiring skill catalog entry: {}", id);
         return ResponseEntity.ok(skillCatalogService.retire(id));
     }
+
+    @PutMapping("/{id}/restore")
+    @PreAuthorize("hasPermission(null, 'SKILL_CATALOG_MANAGE')")
+    public ResponseEntity<SkillDTO> restore(@PathVariable Long id) {
+        log.info("Restoring skill catalog entry: {}", id);
+        return ResponseEntity.ok(skillCatalogService.setSkillActive(id, true));
+    }
+
+    /** One skill's associates, one page at a time. level: HIGH, MEDIUM or LOW (omit for everyone). */
+    @GetMapping("/{id}/holders")
+    @PreAuthorize("hasPermission(null, 'SKILL_CATALOG_READ')")
+    public ResponseEntity<com.rightFit.dto.SkillCatalogDtos.SkillHoldersDTO> holders(
+            @PathVariable Long id,
+            @RequestParam(required = false) String level,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(skillCatalogService.holders(id, level, page, size));
+    }
 }

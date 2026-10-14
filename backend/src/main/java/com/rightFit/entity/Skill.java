@@ -24,8 +24,10 @@ public class Skill {
     @Column(name = "skill_name", nullable = false, unique = true)
     private String skillName;
 
-    @Column(name = "category")
-    private String category;
+    /** The category an Admin put this skill under. Null only for skills that predate categories. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private SkillCategory category;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
@@ -42,6 +44,15 @@ public class Skill {
 
     @OneToMany(mappedBy = "skill", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<EmployeeSkill> employeeSkills;
+
+    /** The category's name, or null. Kept as a String so the places that show it need no change. */
+    public String getCategory() {
+        return category != null ? category.getName() : null;
+    }
+
+    public Long getCategoryId() {
+        return category != null ? category.getId() : null;
+    }
 
     @PrePersist
     protected void onCreate() {
