@@ -2,6 +2,7 @@ package com.rightFit.repository;
 
 import com.rightFit.entity.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -46,6 +47,7 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
 
     void deleteByUserId(Long userId);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM UserRole ur WHERE ur.user.id = :userId AND ur.role.id = :roleId")
     void deleteByUserIdAndRoleId(@Param("userId") Long userId, @Param("roleId") Long roleId);
 }

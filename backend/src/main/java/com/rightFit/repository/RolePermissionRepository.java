@@ -2,6 +2,7 @@ package com.rightFit.repository;
 
 import com.rightFit.entity.RolePermission;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -23,6 +24,7 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
             @Param("roleId") Long roleId,
             @Param("permissionId") Long permissionId);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM RolePermission rp WHERE rp.role.id = :roleId AND rp.permission.id = :permissionId")
     void deleteByRoleIdAndPermissionId(
             @Param("roleId") Long roleId,

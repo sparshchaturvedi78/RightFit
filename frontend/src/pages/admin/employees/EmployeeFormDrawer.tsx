@@ -233,10 +233,11 @@ function FormBody({
   const [pickedRoleId, setPickedRoleId] = useState<string | null>(null)
   const editRoleId = pickedRoleId ?? originalRoleId
   const roleChanged = mode === 'edit' && pickedRoleId !== null && pickedRoleId !== originalRoleId
-  const fromCode = (currentRoles[0]?.code ?? '').toUpperCase()
   const toCode = (systemRoles.find((r) => String(r.id) === editRoleId)?.code ?? '').toUpperCase()
-  // A new RMG reports to an Admin; anyone coming from Admin or RMG into Manager / Associate needs an RMG above them.
-  const needsLead = roleChanged && toCode !== 'ADMIN' && (toCode === 'RMG' || fromCode === 'ADMIN' || fromCode === 'RMG')
+  // Any change to a non-Admin role asks for the reporting line (the server requires one unless the current
+  // lead already fits the new role). It is required only when the person has no current RMG to keep.
+  const needsLead = roleChanged && toCode !== 'ADMIN'
+  const leadRequired = needsLead && !employee?.rmgId
   const [errors, setErrors] = useState<Errors>({})
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -253,7 +254,7 @@ function FormBody({
     ev.preventDefault()
     const found = validate(form, mode, !newAdmin && !newRmg)
     if (newRmg && !reportsTo) found.rmgId = 'Choose the Admin this RMG reports to'
-    if (needsLead && !reportsTo) found.rmgId = toCode === 'RMG' ? 'Choose the Admin this RMG reports to' : 'Choose the RMG they report to'
+    if (leadRequired && !reportsTo) found.rmgId = toCode === 'RMG' ? 'Choose the Admin this RMG reports to' : 'Choose the RMG they report to'
     setErrors(found)
     if (Object.keys(found).length > 0) return
     setServerError(null)
@@ -437,6 +438,11 @@ function FormBody({
                   }
                   error={errors.rmgId}
                 />
+                <p className="mt-2 text-xs text-ink-500 dark:text-slate-500">
+                  {employee?.rmgName
+                    ? `Currently reports to ${employee.rmgName}. Leave this empty to keep them there, or choose someone else.`
+                    : 'They have no one above them yet, so choose who they report to.'}
+                </p>
               </div>
             )}
           </>
