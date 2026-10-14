@@ -23,6 +23,9 @@ public class AssignmentPreviewDTO {
 
     private String departingRole;
 
+    /** ACTIVE / INACTIVE — handovers are usually for someone who has left, but can be done before they go. */
+    private String departingStatus;
+
     private List<ProjectDTO> projects;
 
     private int projectCount;
@@ -39,5 +42,20 @@ public class AssignmentPreviewDTO {
 
     private int employeeCount;
 
+    /** RMG handover: the active people reporting to the departing RMG, with what the picker shows. */
+    private List<PersonDTO> people;
+
     private String message;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PersonDTO {
+        private Long id;
+        private String employeeId;
+        private String name;
+        private String designation;
+        private String grade;
+    }
 }

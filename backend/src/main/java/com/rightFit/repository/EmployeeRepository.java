@@ -78,6 +78,30 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     long countByEmploymentStatusAndRmgManagerId(String status, Long rmgId);
 
+    /**
+     * Admin RMG page: [id, employeeId, firstName, lastName, email, employmentStatus] of every RMG — anyone holding the
+     * RMG role (deactivating an RMG deactivates the role but keeps it), plus any non-Admin someone still reports to.
+     */
+    @Query("SELECT e.id, e.employeeId, e.firstName, e.lastName, e.email, e.employmentStatus FROM Employee e WHERE " +
+            "EXISTS (SELECT 1 FROM UserRole ur WHERE ur.user = e.user AND ur.role.code = 'RMG') OR " +
+            "(EXISTS (SELECT 1 FROM Employee s WHERE s.rmgManager = e) AND NOT EXISTS " +
+            "   (SELECT 1 FROM UserRole ua WHERE ua.user = e.user AND ua.isActive = true AND ua.role.code = 'ADMIN'))")
+    List<Object[]> findRmgRows();
+
+    /** [rmgId, employeeId] of every ACTIVE employee who reports to someone — team sizes for the RMG page. */
+    @Query("SELECT e.rmgManager.id, e.id FROM Employee e WHERE e.employmentStatus = 'ACTIVE' AND e.rmgManager IS NOT NULL")
+    List<Object[]> findActiveReportingPairs();
+
+    /** [rmgId, active report count] for RMGs who have left but whom ACTIVE employees still report to. */
+    @Query("SELECT e.rmgManager.id, COUNT(e) FROM Employee e WHERE e.employmentStatus = 'ACTIVE' " +
+            "AND e.rmgManager.employmentStatus <> 'ACTIVE' GROUP BY e.rmgManager.id")
+    List<Object[]> countActiveReportsOfInactiveRmgs();
+
+    /** One page of RMGs with what their rows show, in a single query. */
+    @EntityGraph(attributePaths = {"department", "location", "rmgManager"})
+    @Query("SELECT e FROM Employee e WHERE e.id IN :ids")
+    List<Employee> findWithDetailsByIdIn(@Param("ids") java.util.Collection<Long> ids);
+
     /** Filter dropdown on the Admin Employees page. */
     @Query("SELECT DISTINCT e.designation FROM Employee e WHERE e.designation IS NOT NULL ORDER BY e.designation")
     List<String> findDistinctDesignations();

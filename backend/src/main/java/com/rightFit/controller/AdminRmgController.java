@@ -1,6 +1,8 @@
 package com.rightFit.controller;
 
 import com.rightFit.dto.RmgDetailDTO;
+import com.rightFit.dto.RmgPageDTO;
+import com.rightFit.dto.RmgTeamDTO;
 import com.rightFit.dto.EmployeeDTO;
 import com.rightFit.service.RmgDashboardService;
 import com.rightFit.entity.Employee;
@@ -31,6 +33,32 @@ public class AdminRmgController {
         log.info("Fetching RMG dashboard");
         List<RmgDetailDTO> rmgs = rmgDashboardService.getAllRmgs();
         return ResponseEntity.ok(rmgs);
+    }
+
+    /** Admin RMG page: searchable, filterable, paged RMG list with team sizes and the header numbers. */
+    @GetMapping
+    @PreAuthorize("hasPermission(null, 'RMG_VIEW')")
+    public ResponseEntity<RmgPageDTO> getRmgs(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String team,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "ASC") String sortDirection,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(rmgDashboardService.getRmgPage(q, status, team, sortBy, sortDirection, page, size));
+    }
+
+    /** One page of the active associates reporting to an RMG, optionally one workforce bucket only. */
+    @GetMapping("/{rmgId}/team")
+    @PreAuthorize("hasPermission(null, 'RMG_VIEW')")
+    public ResponseEntity<RmgTeamDTO> getRmgTeam(
+            @PathVariable String rmgId,
+            @RequestParam(required = false) String workforce,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(rmgDashboardService.getRmgTeam(rmgId, workforce, q, page, size));
     }
 
     @GetMapping("/{rmgId}")

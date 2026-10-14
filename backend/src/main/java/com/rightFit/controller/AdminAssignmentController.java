@@ -1,6 +1,7 @@
 package com.rightFit.controller;
 
 import com.rightFit.dto.AssignmentPreviewDTO;
+import com.rightFit.dto.PendingHandoversDTO;
 import com.rightFit.dto.ReplaceManagerRequest;
 import com.rightFit.dto.ReplaceRmgRequest;
 import com.rightFit.dto.ReplacementResultDTO;
@@ -22,6 +23,13 @@ import jakarta.validation.Valid;
 public class AdminAssignmentController {
 
     private final AssignmentReplacementService assignmentReplacementService;
+
+    /** People who have left but still hold work: inactive managers of active projects, inactive RMGs with reports. */
+    @GetMapping("/pending")
+    @PreAuthorize("hasPermission(null, 'ASSIGNMENT_VIEW')")
+    public ResponseEntity<PendingHandoversDTO> getPendingHandovers() {
+        return ResponseEntity.ok(assignmentReplacementService.getPendingHandovers());
+    }
 
     @GetMapping("/departing/manager/{managerId}")
     @PreAuthorize("hasPermission(null, 'ASSIGNMENT_VIEW')")
