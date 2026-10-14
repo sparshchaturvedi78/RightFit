@@ -121,6 +121,9 @@ export default function EmployeesPage() {
   function afterChange() {
     dispatch(invalidateQueries('employees'))
     dispatch(invalidateQueries('employeeProjects'))
+    // Adding, deactivating, re-roling or moving someone changes RMG team sizes.
+    dispatch(invalidateQueries('rmgs'))
+    dispatch(invalidateQueries('rmgTeam'))
     STALE_AFTER_CHANGE.forEach((key) => void dispatch(loadResource({ key, force: true })))
   }
 

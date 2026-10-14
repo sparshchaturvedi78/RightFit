@@ -17,6 +17,9 @@
   --color-brand-900: #14532d;
 
   --color-ink-950: #060a08;
+  /* Dark-mode surface for the sidebar, menus, dropdowns and drawers: the same near-black as the top bar's
+     buttons (white/5 over ink-950), but solid so nothing shows through. */
+  --color-ink-925: #121614;
   --color-ink-900: #0b1220;
   --color-ink-800: #111827;
   --color-ink-700: #334155;

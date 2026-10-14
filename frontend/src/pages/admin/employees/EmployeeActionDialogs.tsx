@@ -1,5 +1,6 @@
 import { CheckCircle2, Search, TriangleAlert, UserX } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { Button, Field, FormError, Input, Textarea } from '../../../components/ui/form'
 import { Modal } from '../../../components/ui/Overlay'
 import { useToast } from '../../../hooks/useToast'
@@ -70,7 +71,14 @@ function StatusForm({
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             {fullName(employee)} is a {(employee.roles ?? []).filter(isLeadershipRole).join(' / ')}. People or projects
-            that depend on them will need a replacement — handle that under Assignment Replacement afterwards.
+            that depend on them will need a new owner —{' '}
+            <Link
+              to={`/admin/assignments?${hasRole(employee, 'RMG') ? 'type=rmg&' : ''}who=${encodeURIComponent(employee.employeeId)}`}
+              className="font-semibold underline underline-offset-2 hover:no-underline"
+            >
+              hand their work over on Assignments
+            </Link>
+            , before or after deactivating.
           </p>
         </div>
       )}

@@ -29,7 +29,7 @@ function ToastCard({ toast }: { toast: Toast }) {
       exit={{ opacity: 0, y: -12, scale: 0.96 }}
       transition={{ duration: 0.2 }}
       role="status"
-      className="pointer-events-auto flex w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl shadow-slate-900/10 dark:border-white/10 dark:bg-ink-900 dark:shadow-black/50"
+      className="pointer-events-auto flex w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl shadow-slate-900/10 dark:border-white/10 dark:bg-ink-925 dark:shadow-black/50"
     >
       <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${ring}`}>
         <Icon className="h-4 w-4" />

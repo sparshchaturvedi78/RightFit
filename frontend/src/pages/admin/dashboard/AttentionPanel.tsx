@@ -115,7 +115,7 @@ export default function AttentionPanel({ state }: { state: AsyncResult<AdminDash
                   hint="Projects whose manager is now inactive"
                   count={d.pendingManagerReplacements}
                   urgent={d.pendingManagerReplacements > 0}
-                  to="/admin/projects?mgr=INACTIVE"
+                  to="/admin/assignments"
                 />
                 <AttentionRow
                   icon={<ShieldAlert className="h-4 w-4" />}
@@ -123,6 +123,7 @@ export default function AttentionPanel({ state }: { state: AsyncResult<AdminDash
                   hint="Associates whose RMG is now inactive"
                   count={d.pendingRmgReplacements}
                   urgent={d.pendingRmgReplacements > 0}
+                  to="/admin/assignments?type=rmg"
                 />
                 <AttentionRow
                   icon={<Bell className="h-4 w-4" />}
