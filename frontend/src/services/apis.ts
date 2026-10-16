@@ -320,6 +320,7 @@ export const INTERVIEW_API = {
 // Manager — Team & allocations — ManagerTeamController (/api/manager)
 // ---------------------------------------------------------------------------
 export const MANAGER_TEAM_API = {
+  people: '/api/manager/people',
   team: (projectId: string) => `/api/manager/projects/${projectId}/team`,
   removeMember: (projectId: string, employeeId: string) => `/api/manager/projects/${projectId}/team/${employeeId}`,
   allocations: (projectId: string) => `/api/manager/projects/${projectId}/allocations`,
@@ -346,6 +347,9 @@ export const MANAGER_DASHBOARD_API = {
   get: '/api/manager/dashboard',
   report: (report: string) => `/api/manager/reports/${report}`,
   requirementHistory: (requirementId: string) => `/api/manager/requirements/${requirementId}/history`,
+  projectRequirementCards: (projectId: string) => `/api/manager/projects/${projectId}/requirement-cards`,
+  allRequirementCards: '/api/manager/requirement-cards',
+  requirementCard: (requirementId: string) => `/api/manager/requirements/${requirementId}/card`,
 }
 
 // ---------------------------------------------------------------------------

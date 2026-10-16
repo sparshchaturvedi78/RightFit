@@ -15,7 +15,14 @@ import AuditPage from './pages/admin/audit/AuditPage'
 import ReportsPage from './pages/admin/reports/ReportsPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AppShell from './components/layout/AppShell'
-import { MANAGER_NAV, RMG_NAV } from './components/layout/roleNav'
+import { RMG_NAV } from './components/layout/roleNav'
+import ManagerLayout from './pages/manager/ManagerLayout'
+import ManagerDashboardPage from './pages/manager/dashboard/ManagerDashboardPage'
+import ManagerProjectsPage from './pages/manager/projects/ProjectsPage'
+import ManagerProjectPage from './pages/manager/projects/ProjectPage'
+import ManagerPeoplePage from './pages/manager/people/PeoplePage'
+import ManagerRequirementsPage from './pages/manager/requirements/RequirementsPage'
+import ManagerRequirementPage from './pages/manager/requirements/RequirementPage'
 
 function App() {
   return (
@@ -43,17 +50,25 @@ function App() {
         <Route path="audit" element={<AuditPage />} />
         <Route path="reports" element={<ReportsPage />} />
       </Route>
-      {/* Reports for Manager and RMG: the same page, narrowed to their own projects / associates by the server. */}
+      {/* Manager: the same shell as the Admin. Reports is the shared page, narrowed to their own projects by the server. */}
       <Route
         path="/manager"
         element={
           <ProtectedRoute allowedRoles={['MANAGER']}>
-            <AppShell groups={MANAGER_NAV} roleLabel="Manager" />
+            <ManagerLayout />
           </ProtectedRoute>
         }
       >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<ManagerDashboardPage />} />
+        <Route path="projects" element={<ManagerProjectsPage />} />
+        <Route path="projects/:projectId" element={<ManagerProjectPage />} />
+        <Route path="people" element={<ManagerPeoplePage />} />
+        <Route path="requirements" element={<ManagerRequirementsPage />} />
+        <Route path="requirements/:requirementId" element={<ManagerRequirementPage />} />
         <Route path="reports" element={<ReportsPage narrowed />} />
       </Route>
+      {/* RMG: reports only for now (narrowed to their own associates by the server). */}
       <Route
         path="/rmg"
         element={
@@ -64,14 +79,6 @@ function App() {
       >
         <Route path="reports" element={<ReportsPage narrowed />} />
       </Route>
-      <Route
-        path="/manager/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={['MANAGER']}>
-            <DashboardPlaceholderPage role="MANAGER" />
-          </ProtectedRoute>
-        }
-      />
       <Route
         path="/rmg/dashboard"
         element={

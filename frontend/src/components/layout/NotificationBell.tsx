@@ -1,6 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { Bell, CheckCheck, Inbox, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/auth'
+import { notificationTarget } from '../../utils/notificationTarget'
 import { useDismiss } from '../../hooks/useDismiss'
 import { store, useAppDispatch, useAppSelector } from '../../store'
 import { markAllNotificationsRead, markNotificationRead, syncNotifications } from '../../store/notificationsSlice'
@@ -30,8 +33,10 @@ function useNotificationAutoRefresh() {
   }, [dispatch])
 }
 
-function NotificationList() {
+function NotificationList({ onOpen }: { onOpen: () => void }) {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const { items, syncing, error, status } = useAppSelector((s) => s.notifications)
 
   const refresh = () => void dispatch(syncNotifications({ manual: true }))
@@ -66,7 +71,14 @@ function NotificationList() {
           <li key={n.id}>
             <button
               type="button"
-              onClick={() => !n.isRead && void dispatch(markNotificationRead(n.id))}
+              onClick={() => {
+                if (!n.isRead) void dispatch(markNotificationRead(n.id))
+                const target = notificationTarget(n, user?.roles)
+                if (target) {
+                  onOpen()
+                  navigate(target)
+                }
+              }}
               className="flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
             >
               <span
@@ -148,7 +160,7 @@ export default function NotificationBell() {
                 <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
               </button>
             </div>
-            <NotificationList />
+            <NotificationList onOpen={close} />
           </motion.div>
         )}
       </AnimatePresence>
