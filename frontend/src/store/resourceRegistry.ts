@@ -7,6 +7,9 @@ import { adminSkillCatalogService } from '../services/admin/skillCatalog.service
 import { adminBenchConfigurationService } from '../services/admin/benchConfiguration.service'
 import { adminAuditService } from '../services/admin/audit.service'
 import { adminReportService } from '../services/admin/report.service'
+import { managerDashboardService } from '../services/manager/dashboard.service'
+import { interviewService } from '../services/interview.service'
+import { managerProjectService } from '../services/manager/project.service'
 
 /** Every page-level dataset kept in the Redux store, and how to load it. Add new pages here. */
 export const RESOURCE_FETCHERS = {
@@ -29,6 +32,11 @@ export const RESOURCE_FETCHERS = {
   'admin/audit-actions': () => adminAuditService.actions(),
   // Department names for the Reports filter. Reports permission, so Manager and RMG can load it.
   'admin/report-departments': () => adminReportService.departments(),
+  // Manager dashboard: the summary, and the manager's interviews (week board, agenda).
+  'manager/dashboard': () => managerDashboardService.get(),
+  'manager/interviews': () => interviewService.mine(),
+  // Projects page: the projects the manager has claimed, and the ones still waiting to be claimed.
+  'manager/projects': () => managerProjectService.myProjects(),
 } as const
 
 export type ResourceKey = keyof typeof RESOURCE_FETCHERS

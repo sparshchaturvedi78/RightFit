@@ -1,18 +1,35 @@
-import { BarChart3, LayoutDashboard } from 'lucide-react'
+import { BarChart3, CalendarClock, ClipboardCheck, ClipboardList, FolderKanban, LayoutDashboard, Users, UsersRound } from 'lucide-react'
 import type { NavGroup } from './adminNav'
 
-/** Manager sidebar. The dashboard is still a placeholder, so it shows as "Soon" until it ships. */
+/** Manager sidebar. Pages that aren't built yet show as "Soon" (flip `ready` when each ships). */
 export const MANAGER_NAV: NavGroup[] = [
   {
     title: 'Overview',
+    items: [{ label: 'Dashboard', to: '/manager/dashboard', icon: LayoutDashboard, ready: true }],
+  },
+  {
+    title: 'Projects & people',
     items: [
-      { label: 'Dashboard', to: '/manager/dashboard', icon: LayoutDashboard, ready: false },
-      { label: 'Reports', to: '/manager/reports', icon: BarChart3, ready: true },
+      { label: 'Projects', to: '/manager/projects', icon: FolderKanban, ready: true },
+      { label: 'My people', to: '/manager/people', icon: UsersRound, ready: true },
+      { label: 'Employee directory', to: '/manager/employees', icon: Users, ready: false },
     ],
+  },
+  {
+    title: 'Hiring',
+    items: [
+      { label: 'Requirements', to: '/manager/requirements', icon: ClipboardList, ready: true },
+      { label: 'Interviews', to: '/manager/interviews', icon: CalendarClock, ready: false },
+      { label: 'Allocation requests', to: '/manager/allocation-requests', icon: ClipboardCheck, ready: false },
+    ],
+  },
+  {
+    title: 'Insights',
+    items: [{ label: 'Reports', to: '/manager/reports', icon: BarChart3, ready: true }],
   },
 ]
 
-/** RMG sidebar. Same shape as the Manager one; the dashboard is still a placeholder. */
+/** RMG sidebar. The dashboard is still a placeholder, so it shows as "Soon". */
 export const RMG_NAV: NavGroup[] = [
   {
     title: 'Overview',

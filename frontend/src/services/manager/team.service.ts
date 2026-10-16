@@ -40,6 +40,8 @@ export interface TeamMemberDTO {
   allocationStartDate?: string
   allocationEndDate?: string
   requirementId?: string
+  /** ACTIVE, or INACTIVE for someone who has left. */
+  employmentStatus?: string
 }
 
 export interface TeamDTO {
@@ -49,6 +51,27 @@ export interface TeamDTO {
   memberCount: number
   totalHoursPerDay?: number
   members: TeamMemberDTO[]
+}
+
+/** One project a person works on. `hoursPerDay` is null when they are on the team with no hours booked. */
+export interface PersonProjectDTO {
+  projectId: string
+  projectName: string
+  role?: string
+  hoursPerDay?: number | null
+  since?: string
+}
+
+/** Someone on the manager's projects, with every project they work on and how much of their day is booked. */
+export interface PersonDTO {
+  employeeId: string
+  name: string
+  designation?: string
+  grade?: string
+  workingHoursPerDay?: number
+  allocatedHoursPerDay?: number
+  availableHoursPerDay?: number
+  projects: PersonProjectDTO[]
 }
 
 export interface AddTeamMemberRequest {
@@ -86,6 +109,12 @@ export interface SplitEntry {
 export interface SplitAllocationRequest {
   allocations: SplitEntry[]
   reason: string
+}
+
+/** Everyone on the manager's claimed projects. */
+async function people(): Promise<PersonDTO[]> {
+  const { data } = await httpClient.get<PersonDTO[]>(MANAGER_TEAM_API.people)
+  return data
 }
 
 async function getTeam(projectId: string): Promise<TeamDTO> {
@@ -133,6 +162,7 @@ async function splitAllocation(employeeId: string, payload: SplitAllocationReque
 }
 
 export const managerTeamService = {
+  people,
   getTeam,
   addMember,
   removeMember,

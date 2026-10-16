@@ -6,6 +6,11 @@ import { adminUserAccountService, type UserAccountFilters } from '../services/ad
 import { adminSkillCatalogService, type LevelBand } from '../services/admin/skillCatalog.service'
 import { adminAuditService, type AuditFilters } from '../services/admin/audit.service'
 import { adminReportService, type ReportFilters } from '../services/admin/report.service'
+import { managerDashboardService } from '../services/manager/dashboard.service'
+import { managerTeamService } from '../services/manager/team.service'
+import { managerEmployeeService } from '../services/manager/employee.service'
+import { managerRequirementService } from '../services/manager/requirement.service'
+import { managerRequirementAssignmentService } from '../services/manager/requirementAssignment.service'
 
 /**
  * Parameterised page data (lists with search / filters / paging) kept in the Redux store, one entry per distinct
@@ -31,6 +36,21 @@ export const QUERY_FETCHERS = {
   reportFilters: (params: { type: string }) => adminReportService.filtersFor(params.type),
   reportRows: (params: { type: string } & ReportFilters) =>
     adminReportService.get(params.type, { from: params.from, to: params.to, department: params.department }),
+  /** Manager: a project's requirements with pipeline and responsibility holders, and its team. */
+  managerProjectRequirements: (params: { projectId: string }) => managerDashboardService.projectRequirementCards(params.projectId),
+  managerProjectTeam: (params: { projectId: string }) => managerTeamService.getTeam(params.projectId),
+  /** Manager: every requirement across their projects (no parameters; the empty object only gives it a store key). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  managerAllRequirements: (_params: Record<string, never>) => managerDashboardService.allRequirementCards(),
+  /** Manager: everyone on their projects (no parameters; the empty object only gives it a store key). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  managerPeople: (_params: Record<string, never>) => managerTeamService.people(),
+  /** Manager: one employee's profile (skills, certifications, availability). */
+  managerEmployee: (params: { employeeId: string }) => managerEmployeeService.byId(params.employeeId),
+  /** Manager: one requirement's details, its pipeline card, and who holds each responsibility. */
+  managerRequirement: (params: { requirementId: string }) => managerRequirementService.byId(params.requirementId),
+  managerRequirementCard: (params: { requirementId: string }) => managerDashboardService.requirementCard(params.requirementId),
+  managerRequirementAssignments: (params: { requirementId: string }) => managerRequirementAssignmentService.list(params.requirementId),
   /** One page of a skill's active associates, optionally one proficiency band — Skills page detail. */
   skillHolders: (params: { skillId: number; level: LevelBand; page: number; size: number }) =>
     adminSkillCatalogService.holders(params.skillId, params.level, params.page, params.size),
