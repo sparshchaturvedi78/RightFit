@@ -36,6 +36,7 @@ public class RequirementAssignmentService {
     private final EmployeeRepository employeeRepository;
     private final RequirementAccessGuard accessGuard;
     private final AuditLogService auditLogService;
+    private final ProjectMembershipService projectMembershipService;
 
     public RequirementAssignmentDTO assignResponsibility(String requirementId, AssignResponsibilityRequest request) {
         ProjectRequirement requirement = loadOwned(requirementId);
@@ -52,6 +53,10 @@ public class RequirementAssignmentService {
         }
 
         String type = request.getResponsibilityType();
+        if (!projectMembershipService.peopleOfProject(requirement.getProject()).contains(employee.getId())) {
+            throw new BusinessRuleException(CandidateWorkflowService.name(employee) + " is not on the "
+                    + requirement.getProject().getProjectName() + " team. Only the project's team and its manager can be assigned.");
+        }
         if (accessGuard.isAdminAccount(employee)) {
             throw new BusinessRuleException("Admin accounts do not take part in candidate selection, so "
                     + employee.getEmployeeId() + " cannot be assigned as " + type);

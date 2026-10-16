@@ -5,6 +5,8 @@ import com.rightFit.dto.AllocationDtos.AllocationDTO;
 import com.rightFit.dto.AllocationDtos.AllocationEventDTO;
 import com.rightFit.dto.AllocationDtos.CapacityDTO;
 import com.rightFit.dto.AllocationDtos.MoveAllocationRequest;
+import com.rightFit.dto.AllocationDtos.PersonDTO;
+import com.rightFit.dto.AllocationDtos.PersonProjectDTO;
 import com.rightFit.dto.AllocationDtos.SplitAllocationRequest;
 import com.rightFit.dto.AllocationDtos.SplitEntry;
 import com.rightFit.dto.AllocationDtos.TeamDTO;
@@ -57,6 +59,7 @@ public class TeamManagementService {
     private final RequirementAccessGuard accessGuard;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
+    private final ProjectMembershipService projectMembershipService;
 
     @Transactional(readOnly = true)
     public TeamDTO getTeam(String projectId) {
@@ -73,6 +76,7 @@ public class TeamManagementService {
                             .employeeId(m.getEmployee().getEmployeeId())
                             .name(CandidateWorkflowService.name(m.getEmployee()))
                             .designation(m.getEmployee().getDesignation())
+                            .employmentStatus(m.getEmployee().getEmploymentStatus())
                             .role(m.getRole())
                             .joinedAt(m.getJoinedAt())
                             .allocationId(a != null ? a.getAllocationId() : null)
@@ -81,7 +85,22 @@ public class TeamManagementService {
                             .allocationEndDate(a != null ? a.getEndDate() : null)
                             .requirementId(a != null && a.getRequirement() != null ? a.getRequirement().getRequirementId() : null)
                             .build();
-                }).toList();
+                }).collect(Collectors.toCollection(ArrayList::new));
+        // The manager is on the team too, even when no membership row says so.
+        if (project.getManager() != null && members.stream().noneMatch(x -> x.getEmployeeId().equals(project.getManager().getEmployeeId()))) {
+            Employee mgr = project.getManager();
+            Allocation a = activeByEmployee.get(mgr.getId());
+            members.add(0, TeamMemberDTO.builder()
+                    .employeeId(mgr.getEmployeeId())
+                    .name(CandidateWorkflowService.name(mgr))
+                    .designation(mgr.getDesignation())
+                    .employmentStatus(mgr.getEmploymentStatus())
+                    .role("PROJECT_MANAGER")
+                    .joinedAt(project.getCreatedAt())
+                    .allocationId(a != null ? a.getAllocationId() : null)
+                    .hoursPerDay(a != null ? a.getHoursPerDay() : null)
+                    .build());
+        }
         BigDecimal total = members.stream().map(TeamMemberDTO::getHoursPerDay)
                 .filter(h -> h != null).reduce(BigDecimal.ZERO, BigDecimal::add);
         return TeamDTO.builder()
@@ -100,6 +119,7 @@ public class TeamManagementService {
         assertProjectOpen(project);
 
         Employee employee = loadEmployee(request.getEmployeeId());
+        assertOnOneOfMyProjects(employee);
         if (!"ACTIVE".equals(employee.getEmploymentStatus()) || !"AVAILABLE".equals(employee.getAvailabilityStatus())) {
             throw new BusinessRuleException("Employee " + employee.getEmployeeId() + " is not available for allocation");
         }
@@ -116,6 +136,57 @@ public class TeamManagementService {
                 employee.getEmployeeId() + " added to " + projectId + " (" + allocation.getAllocationId() + ")");
         return getTeam(projectId).getMembers().stream()
                 .filter(m -> m.getEmployeeId().equals(employee.getEmployeeId())).findFirst().orElseThrow();
+    }
+
+    /**
+     * A manager can link someone to another of their projects only when that person is already on one of their
+     * projects. People first join a project through an allocation request the RMG approves. Admin is not limited.
+     */
+    private void assertOnOneOfMyProjects(Employee employee) {
+        if (accessGuard.isAdmin()) {
+            return;
+        }
+        Employee me = accessGuard.currentEmployee();
+        Set<Long> mine = new HashSet<>();
+        for (Project p : projectRepository.findByManagerId(me.getId())) {
+            mine.addAll(projectMembershipService.peopleOfProject(p));
+        }
+        if (!mine.contains(employee.getId())) {
+            throw new BusinessRuleException(CandidateWorkflowService.name(employee) + " is not on any of your projects. "
+                    + "People join a project through an allocation request the RMG approves. Once they are on one of "
+                    + "your projects you can link them to your other projects.");
+        }
+    }
+
+    /** Everyone on the manager's claimed, open projects (the manager excluded), with every project each works on. */
+    @Transactional(readOnly = true)
+    public List<PersonDTO> people() {
+        Employee me = accessGuard.currentEmployee();
+        Map<String, PersonDTO> byEmployee = new java.util.LinkedHashMap<>();
+        for (Project p : projectRepository.findByManagerId(me.getId())) {
+            if (!Boolean.TRUE.equals(p.getManagerClaimed()) || "CLOSED".equals(p.getStatus())) {
+                continue;
+            }
+            for (TeamMemberDTO m : getTeam(p.getProjectId()).getMembers()) {
+                // The manager is not 'their own people'; someone who has left can't be linked to anything.
+                if (m.getEmployeeId().equals(me.getEmployeeId()) || !"ACTIVE".equals(m.getEmploymentStatus())) {
+                    continue;
+                }
+                PersonDTO person = byEmployee.computeIfAbsent(m.getEmployeeId(), id -> PersonDTO.builder()
+                        .employeeId(id).name(m.getName()).designation(m.getDesignation()).projects(new ArrayList<>()).build());
+                person.getProjects().add(PersonProjectDTO.builder()
+                        .projectId(p.getProjectId()).projectName(p.getProjectName()).role(m.getRole())
+                        .hoursPerDay(m.getHoursPerDay()).since(m.getJoinedAt()).build());
+            }
+        }
+        for (PersonDTO person : byEmployee.values()) {
+            CapacityDTO c = capacity(person.getEmployeeId());
+            person.setWorkingHoursPerDay(c.getWorkingHoursPerDay());
+            person.setAllocatedHoursPerDay(c.getAllocatedHoursPerDay());
+            person.setAvailableHoursPerDay(c.getAvailableHoursPerDay());
+            person.setGrade(loadEmployee(person.getEmployeeId()).getGrade());
+        }
+        return byEmployee.values().stream().sorted(Comparator.comparing(PersonDTO::getName, String.CASE_INSENSITIVE_ORDER)).toList();
     }
 
     public void removeMember(String projectId, String employeeId, String reason) {

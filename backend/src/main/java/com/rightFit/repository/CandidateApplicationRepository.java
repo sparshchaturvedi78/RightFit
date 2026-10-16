@@ -30,6 +30,11 @@ public interface CandidateApplicationRepository extends JpaRepository<CandidateA
             "WHERE c.requirement.project.manager.id = :managerId AND c.archived = false GROUP BY c.status")
     List<Object[]> countByStatusForManager(@Param("managerId") Long managerId);
 
+    /** Candidates of a manager's projects in one status, longest waiting first (e.g. those waiting for the manager's decision). */
+    @Query("SELECT c FROM CandidateApplication c WHERE c.requirement.project.manager.id = :managerId " +
+            "AND c.status = :status AND c.archived = false ORDER BY c.updatedAt ASC")
+    List<CandidateApplication> findForManagerByStatus(@Param("managerId") Long managerId, @Param("status") String status);
+
     @Query("SELECT c.status, COUNT(c) FROM CandidateApplication c WHERE c.archived = false GROUP BY c.status")
     List<Object[]> countByStatusAll();
 

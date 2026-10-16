@@ -1,5 +1,6 @@
 package com.rightFit.service;
 
+import com.rightFit.entity.Project;
 import com.rightFit.repository.AllocationRepository;
 import com.rightFit.repository.ProjectMemberRepository;
 import com.rightFit.repository.ProjectRepository;
@@ -37,6 +38,22 @@ public class ProjectMembershipService {
         result.addAll(allocationRepository.findEmployeeIdsInActiveProjects(employeeIds));
         result.addAll(projectRepository.findManagerIdsOfActiveProjects(employeeIds));
         return result;
+    }
+
+    /**
+     * Everyone who belongs to one project: its active team members, anyone with an active allocation on it, and its
+     * manager. Only these people can hold a responsibility (sourcer, interviewer, coordinator) on its requirements.
+     */
+    public Set<Long> peopleOfProject(Project project) {
+        Set<Long> ids = new HashSet<>();
+        projectMemberRepository.findByProjectIdAndIsActiveTrueOrderByJoinedAtAsc(project.getId())
+                .forEach(m -> ids.add(m.getEmployee().getId()));
+        allocationRepository.findByProjectIdAndStatus(project.getId(), "ACTIVE")
+                .forEach(a -> ids.add(a.getEmployee().getId()));
+        if (project.getManager() != null) {
+            ids.add(project.getManager().getId());
+        }
+        return ids;
     }
 
     /** Everyone in the organization who is in an active project. */

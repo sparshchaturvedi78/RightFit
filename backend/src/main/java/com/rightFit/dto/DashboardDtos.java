@@ -30,6 +30,46 @@ public final class DashboardDtos {
         private int activeMembers;
         private BigDecimal allocatedHoursPerDay;
         private long openRequirements;
+        /** Candidates still in the process across the project's requirements. */
+        private long candidates;
+    }
+
+    /** One open requirement on the Manager dashboard: where its candidates are, and who owns each step. */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class RequirementCardDTO {
+        private String requirementId;
+        private String projectId;
+        private String projectName;
+        private String positionTitle;
+        private String status;
+        private String priority;
+        private LocalDateTime createdAt;
+        /** Candidates still in the process (not rejected, declined or withdrawn). */
+        private int candidates;
+        /** Candidates per stage: identified, shortlisted, invited, interviewing, selected. */
+        private Map<String, Long> stages;
+        private List<String> sourcers;
+        private List<String> interviewers;
+        private List<String> coordinators;
+    }
+
+    /** A candidate waiting for the manager's decision. */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class DecisionCardDTO {
+        private String applicationId;
+        private String employeeId;
+        private String employeeName;
+        private String requirementId;
+        private String positionTitle;
+        private String projectName;
+        /** Since when the candidate has been waiting. */
+        private LocalDateTime waitingSince;
     }
 
     @Data
@@ -50,6 +90,10 @@ public final class DashboardDtos {
         private BigDecimal totalAllocatedHoursPerDay;
         private long unreadNotifications;
         private List<ProjectStaffingDTO> projectStaffing;
+        /** The manager's open requirements (draft, published, on hold), newest first, at most a handful. */
+        private List<RequirementCardDTO> openRequirements;
+        /** Candidates waiting for the manager's decision, longest waiting first, at most a handful. */
+        private List<DecisionCardDTO> decisionQueue;
     }
 
     @Data

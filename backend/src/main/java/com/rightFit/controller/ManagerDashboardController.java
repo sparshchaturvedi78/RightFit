@@ -17,6 +17,28 @@ public class ManagerDashboardController {
 
     private final ManagerDashboardService dashboardService;
 
+    /** The project's requirements (any status) with their pipeline and who holds each responsibility. */
+    @GetMapping("/projects/{projectId}/requirement-cards")
+    @PreAuthorize("hasPermission(null, 'REQUIREMENT_READ')")
+    public ResponseEntity<java.util.List<com.rightFit.dto.DashboardDtos.RequirementCardDTO>> projectRequirementCards(
+            @PathVariable String projectId) {
+        return ResponseEntity.ok(dashboardService.projectRequirementCards(projectId));
+    }
+
+    /** Every requirement across the manager's claimed projects, as cards. */
+    @GetMapping("/requirement-cards")
+    @PreAuthorize("hasPermission(null, 'REQUIREMENT_READ')")
+    public ResponseEntity<java.util.List<com.rightFit.dto.DashboardDtos.RequirementCardDTO>> allRequirementCards() {
+        return ResponseEntity.ok(dashboardService.allRequirementCards());
+    }
+
+    /** One requirement with its pipeline and who holds each responsibility. */
+    @GetMapping("/requirements/{requirementId}/card")
+    @PreAuthorize("hasPermission(null, 'REQUIREMENT_READ')")
+    public ResponseEntity<com.rightFit.dto.DashboardDtos.RequirementCardDTO> requirementCard(@PathVariable String requirementId) {
+        return ResponseEntity.ok(dashboardService.requirementCard(requirementId));
+    }
+
     @GetMapping("/dashboard")
     @PreAuthorize("hasPermission(null, 'MANAGER_DASHBOARD_READ')")
     public ResponseEntity<ManagerDashboardDTO> dashboard() {
