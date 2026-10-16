@@ -143,6 +143,8 @@ public final class AllocationDtos {
         private LocalDate allocationStartDate;
         private LocalDate allocationEndDate;
         private String requirementId;
+        /** ACTIVE, or INACTIVE for someone who has left (they are still listed so the history makes sense). */
+        private String employmentStatus;
     }
 
     @Data
@@ -213,5 +215,34 @@ public final class AllocationDtos {
         private BigDecimal availableHoursPerDay;
         private String allocationStatus;
         private List<AllocationDTO> activeAllocations;
+    }
+
+    /** One person on the manager's projects, with every project they work on and how much of their day is booked. */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PersonDTO {
+        private String employeeId;
+        private String name;
+        private String designation;
+        private String grade;
+        private BigDecimal workingHoursPerDay;
+        private BigDecimal allocatedHoursPerDay;
+        private BigDecimal availableHoursPerDay;
+        private List<PersonProjectDTO> projects;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PersonProjectDTO {
+        private String projectId;
+        private String projectName;
+        private String role;
+        /** Null when they are on the team but have no hours booked on this project. */
+        private BigDecimal hoursPerDay;
+        private LocalDateTime since;
     }
 }

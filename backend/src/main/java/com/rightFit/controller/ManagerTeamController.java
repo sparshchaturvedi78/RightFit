@@ -28,6 +28,13 @@ public class ManagerTeamController {
 
     private final TeamManagementService teamService;
 
+    /** Everyone on the manager's projects, with every project each person works on. */
+    @GetMapping("/people")
+    @PreAuthorize("hasPermission(null, 'TEAM_READ')")
+    public ResponseEntity<java.util.List<com.rightFit.dto.AllocationDtos.PersonDTO>> people() {
+        return ResponseEntity.ok(teamService.people());
+    }
+
     @GetMapping("/projects/{projectId}/team")
     @PreAuthorize("hasPermission(null, 'TEAM_READ')")
     public ResponseEntity<TeamDTO> getTeam(@PathVariable String projectId) {

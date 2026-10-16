@@ -1,9 +1,11 @@
 package com.rightFit.service;
 
 import com.rightFit.dto.AuditLogDTO;
+import com.rightFit.dto.DashboardDtos.DecisionCardDTO;
 import com.rightFit.dto.DashboardDtos.ManagerDashboardDTO;
 import com.rightFit.dto.DashboardDtos.ProjectStaffingDTO;
 import com.rightFit.dto.DashboardDtos.ReportDTO;
+import com.rightFit.dto.DashboardDtos.RequirementCardDTO;
 import com.rightFit.entity.Allocation;
 import com.rightFit.entity.AuditLog;
 import com.rightFit.entity.CandidateApplication;
@@ -24,6 +26,7 @@ import com.rightFit.repository.NotificationRepository;
 import com.rightFit.repository.ProjectMemberRepository;
 import com.rightFit.repository.ProjectRepository;
 import com.rightFit.repository.ProjectRequirementRepository;
+import com.rightFit.repository.RequirementAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -54,7 +57,36 @@ public class ManagerDashboardService {
     private final ProjectMemberRepository projectMemberRepository;
     private final NotificationRepository notificationRepository;
     private final AuditLogRepository auditLogRepository;
+    private final RequirementAssignmentRepository assignmentRepository;
     private final RequirementAccessGuard accessGuard;
+
+    /** Active team members on a project, counting its manager (who is on the team too) and leaving out anyone who has left. */
+    private int teamSize(Project p) {
+        List<com.rightFit.entity.ProjectMember> members = projectMemberRepository
+                .findByProjectIdAndIsActiveTrueOrderByJoinedAtAsc(p.getId()).stream()
+                .filter(m -> "ACTIVE".equals(m.getEmployee().getEmploymentStatus())).toList();
+        Employee mgr = p.getManager();
+        boolean managerListed = mgr != null && members.stream().anyMatch(m -> m.getEmployee().getId().equals(mgr.getId()));
+        boolean addManager = mgr != null && "ACTIVE".equals(mgr.getEmploymentStatus()) && !managerListed;
+        return members.size() + (addManager ? 1 : 0);
+    }
+
+    /** How many open requirements the dashboard lists. */
+    private static final int DASHBOARD_REQUIREMENTS = 6;
+
+    /** Dashboard stage for each candidate status; statuses not listed (rejected, declined, withdrawn, on hold) are out of the process. */
+    private static final Map<String, String> STAGE_OF = Map.ofEntries(
+            Map.entry(CandidateStatus.IDENTIFIED, "identified"),
+            Map.entry(CandidateStatus.SHORTLISTED, "shortlisted"),
+            Map.entry(CandidateStatus.INVITATION_SENT, "invited"),
+            Map.entry(CandidateStatus.ACCEPTED, "invited"),
+            Map.entry(CandidateStatus.INTERVIEW, "interviewing"),
+            Map.entry(CandidateStatus.INTERVIEW_COMPLETED, "interviewing"),
+            Map.entry(CandidateStatus.RECOMMENDED, "interviewing"),
+            Map.entry(CandidateStatus.MANAGER_REVIEW, "interviewing"),
+            Map.entry(CandidateStatus.SELECTED, "selected"),
+            Map.entry(CandidateStatus.ALLOCATION_REQUESTED, "selected"),
+            Map.entry(CandidateStatus.ALLOCATED, "selected"));
 
     public ManagerDashboardDTO dashboard() {
         Employee me = accessGuard.currentEmployee();
@@ -73,10 +105,11 @@ public class ManagerDashboardService {
                     .projectName(p.getProjectName())
                     .status(p.getStatus())
                     .claimed(p.getManagerClaimed())
-                    .activeMembers(projectMemberRepository
-                            .findByProjectIdAndIsActiveTrueOrderByJoinedAtAsc(p.getId()).size())
+                    .activeMembers(teamSize(p))
                     .allocatedHoursPerDay(hours)
                     .openRequirements(open)
+                    .candidates(candidateRepository.findByProjectId(p.getId()).stream()
+                            .filter(c -> STAGE_OF.containsKey(c.getStatus()) && !Boolean.TRUE.equals(c.getArchived())).count())
                     .build());
         }
 
@@ -96,7 +129,111 @@ public class ManagerDashboardService {
                 .totalAllocatedHoursPerDay(totalHours)
                 .unreadNotifications(notificationRepository.countByRecipientIdAndIsReadFalse(me.getId()))
                 .projectStaffing(staffing)
+                .openRequirements(openRequirementCards(me))
+                .decisionQueue(decisionQueue(me))
                 .build();
+    }
+
+    /** Candidates whose interviews are done and who now wait for the manager's decision, longest waiting first. */
+    private List<DecisionCardDTO> decisionQueue(Employee me) {
+        return candidateRepository.findForManagerByStatus(me.getId(), CandidateStatus.MANAGER_REVIEW).stream()
+                .limit(DASHBOARD_REQUIREMENTS)
+                .map(c -> DecisionCardDTO.builder()
+                        .applicationId(c.getApplicationId())
+                        .employeeId(c.getEmployee().getEmployeeId())
+                        .employeeName(CandidateWorkflowService.name(c.getEmployee()))
+                        .requirementId(c.getRequirement().getRequirementId())
+                        .positionTitle(c.getRequirement().getPositionTitle())
+                        .projectName(c.getRequirement().getProject().getProjectName())
+                        .waitingSince(c.getUpdatedAt())
+                        .build())
+                .toList();
+    }
+
+    /** The manager's open requirements, newest first, each with its pipeline stages and who holds each responsibility. */
+    private List<RequirementCardDTO> openRequirementCards(Employee me) {
+        List<String> open = List.of("PUBLISHED", "ON_HOLD", "DRAFT");
+        List<ProjectRequirement> requirements = requirementRepository.findByProjectManagerId(me.getId()).stream()
+                .filter(r -> open.contains(r.getStatus()))
+                .sorted((a, b) -> {
+                    int byStatus = Integer.compare(open.indexOf(a.getStatus()), open.indexOf(b.getStatus()));
+                    if (byStatus != 0) return byStatus;
+                    if (a.getCreatedAt() == null || b.getCreatedAt() == null) return 0;
+                    return b.getCreatedAt().compareTo(a.getCreatedAt());
+                })
+                .limit(DASHBOARD_REQUIREMENTS)
+                .toList();
+
+        return requirements.stream().map(this::toCard).toList();
+    }
+
+    /** One requirement with where its candidates are and who holds each responsibility. */
+    private RequirementCardDTO toCard(ProjectRequirement r) {
+        Map<String, Long> stages = new LinkedHashMap<>();
+        for (String stage : List.of("identified", "shortlisted", "invited", "interviewing", "selected")) {
+            stages.put(stage, 0L);
+        }
+        int inProcess = 0;
+        for (CandidateApplication c : candidateRepository.findByRequirementIdOrderByCreatedAtDesc(r.getId())) {
+            String stage = STAGE_OF.get(c.getStatus());
+            if (stage != null && !Boolean.TRUE.equals(c.getArchived())) {
+                stages.merge(stage, 1L, Long::sum);
+                inProcess++;
+            }
+        }
+        List<String> sourcers = new ArrayList<>(), interviewers = new ArrayList<>(), coordinators = new ArrayList<>();
+        for (var a : assignmentRepository.findByRequirementIdAndIsActiveTrue(r.getId())) {
+            String name = CandidateWorkflowService.name(a.getEmployee());
+            switch (a.getResponsibilityType()) {
+                case "SOURCER" -> sourcers.add(name);
+                case "INTERVIEWER" -> interviewers.add(name);
+                case "COORDINATOR" -> coordinators.add(name);
+                default -> { }
+            }
+        }
+        return RequirementCardDTO.builder()
+                .requirementId(r.getRequirementId())
+                .projectId(r.getProject().getProjectId())
+                .projectName(r.getProject().getProjectName())
+                .positionTitle(r.getPositionTitle())
+                .status(r.getStatus())
+                .priority(r.getPriority())
+                .createdAt(r.getCreatedAt())
+                .candidates(inProcess)
+                .stages(stages)
+                .sourcers(sourcers)
+                .interviewers(interviewers)
+                .coordinators(coordinators)
+                .build();
+    }
+
+    /** Every requirement across the manager's claimed projects (any status), newest first, as cards. */
+    public List<RequirementCardDTO> allRequirementCards() {
+        Employee me = accessGuard.currentEmployee();
+        return requirementRepository.findByProjectManagerId(me.getId()).stream()
+                .filter(r -> Boolean.TRUE.equals(r.getProject().getManagerClaimed()))
+                .sorted((a, b) -> a.getCreatedAt() == null || b.getCreatedAt() == null ? 0 : b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::toCard)
+                .toList();
+    }
+
+    /** One requirement as a card. The caller must be allowed to read it. */
+    public RequirementCardDTO requirementCard(String requirementId) {
+        ProjectRequirement requirement = requirementRepository.findByRequirementId(requirementId)
+                .orElseThrow(() -> new ResourceNotFoundException("Requirement", requirementId));
+        accessGuard.assertCanReadRequirement(requirement);
+        return toCard(requirement);
+    }
+
+    /** Every requirement of one project (any status), newest first, as cards. The caller must own the project (or be Admin). */
+    public List<RequirementCardDTO> projectRequirementCards(String projectId) {
+        Project project = projectRepository.findByProjectId(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+        accessGuard.assertOwnsProjectOrAdmin(project);
+        return requirementRepository.findByProjectId(project.getId()).stream()
+                .sorted((a, b) -> a.getCreatedAt() == null || b.getCreatedAt() == null ? 0 : b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::toCard)
+                .toList();
     }
 
     public ReportDTO report(String type) {

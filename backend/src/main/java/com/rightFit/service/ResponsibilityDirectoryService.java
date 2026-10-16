@@ -45,6 +45,7 @@ public class ResponsibilityDirectoryService {
     private final ProjectRequirementRepository requirementRepository;
     private final RequirementAssignmentRepository assignmentRepository;
     private final RequirementAccessGuard accessGuard;
+    private final ProjectMembershipService projectMembershipService;
 
     /**
      * "Who actually is a SOURCER / INTERVIEWER / COORDINATOR" - current active holders only, grouped by type.
@@ -107,7 +108,7 @@ public class ResponsibilityDirectoryService {
             }
         }
 
-        Page<Employee> page = employeeRepository.findAll(assignable(q), pageable);
+        Page<Employee> page = employeeRepository.findAll(assignable(q, projectMembershipService.peopleOfProject(project)), pageable);
         List<Long> ids = page.getContent().stream().map(Employee::getId).toList();
 
         Map<Long, int[]> overall = ids.isEmpty() ? Map.of() : tally(assignmentRepository.countWorkload(ids));
@@ -134,10 +135,14 @@ public class ResponsibilityDirectoryService {
                 .build());
     }
 
-    /** ACTIVE employees who can actually hold a responsibility: no Admin accounts, no RMG-only accounts. */
-    private Specification<Employee> assignable(String q) {
+    /**
+     * ACTIVE people who can actually hold a responsibility on this project: its team and its manager only, and no
+     * Admin accounts or RMG-only accounts.
+     */
+    private Specification<Employee> assignable(String q, Set<Long> projectPeople) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            predicates.add(projectPeople.isEmpty() ? cb.disjunction() : root.<Long>get("id").in(projectPeople));
             predicates.add(cb.equal(root.get("employmentStatus"), "ACTIVE"));
 
             Subquery<Long> admin = query.subquery(Long.class);
