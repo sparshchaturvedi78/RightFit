@@ -184,6 +184,20 @@ public final class CandidateDtos {
         private PreferenceDTO preferences;
         private List<String> currentProjects;
         private List<String> previousProjects;
+        /** Where this person stands on requirements the caller runs (profile only; omitted in search results). */
+        private List<DirectoryPipelineDTO> pipeline;
+
+        @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
+        @Builder
+        public static class DirectoryPipelineDTO {
+            private String applicationId;
+            private String requirementId;
+            private String positionTitle;
+            private String projectName;
+            private String status;
+        }
     }
 
     @Data

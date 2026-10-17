@@ -36,8 +36,8 @@ public class InvitationService {
 
     public InvitationDTO send(String applicationId, SendInvitationRequest request) {
         CandidateApplication candidate = workflow.find(applicationId);
-        // Sending invitations is a Manager action: strict ownership, no Admin bypass (BRD 4.2 / 39).
-        accessGuard.assertOwnsProject(candidate.getRequirement().getProject());
+        // Any of the requirement's people who run the hiring step can invite: owning Manager, Admin or assigned COORDINATOR.
+        accessGuard.assertCanCoordinate(candidate.getRequirement());
         accessGuard.assertRequirementOpen(candidate.getRequirement());
 
         if (!CandidateStatus.SHORTLISTED.equals(candidate.getStatus())) {

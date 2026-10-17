@@ -5,6 +5,7 @@ import com.rightFit.dto.CandidateDtos.PreferenceDTO;
 import com.rightFit.dto.CandidateDtos.ProjectLookupDTO;
 import com.rightFit.dto.CandidateDtos.SkillLevelDTO;
 import com.rightFit.entity.Allocation;
+import com.rightFit.entity.CandidateApplication;
 import com.rightFit.entity.Employee;
 import com.rightFit.entity.EmployeeCertification;
 import com.rightFit.entity.EmployeePreference;
@@ -14,9 +15,12 @@ import com.rightFit.entity.UserRole;
 import com.rightFit.exception.ProjectAccessDeniedException;
 import com.rightFit.exception.ResourceNotFoundException;
 import com.rightFit.repository.AllocationRepository;
+import com.rightFit.repository.CandidateApplicationRepository;
 import com.rightFit.repository.EmployeeRepository;
 import com.rightFit.repository.ProjectRepository;
 import com.rightFit.repository.RequirementAssignmentRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -35,6 +39,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Manager Phase 4: employee search and candidate discovery (BRD 10, 26). Never exposes salary. */
 @Service
@@ -47,7 +52,7 @@ public class CandidateSearchService {
                            String grade, String domain, String technology, String availabilityStatus,
                            String poolStatus, String allocationStatus, boolean availableOnly,
                            String preferredTechnology, String preferredDomain, String preferredWorkMode,
-                           String preferredLocation) {
+                           String preferredLocation, boolean excludeMyTeam) {
     }
 
     private final EmployeeRepository employeeRepository;
@@ -55,13 +60,29 @@ public class CandidateSearchService {
     private final ProjectRepository projectRepository;
     private final RequirementAssignmentRepository assignmentRepository;
     private final RequirementAccessGuard accessGuard;
+    private final ProjectMembershipService membershipService;
+    private final CandidateApplicationRepository candidateRepository;
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * With excludeMyTeam, a manager's directory leaves out their own team and anyone already in one of their
+     * live pipelines: those people are handled on the requirement, not found again here.
+     */
     public Page<EmployeeCandidateDTO> search(Criteria criteria, Pageable pageable) {
         assertMaySearch();
-        return employeeRepository.findAll(toSpecification(criteria), pageable).map(this::toDTO);
+        Employee caller = criteria.excludeMyTeam() ? accessGuard.currentEmployee() : null;
+        Set<Long> myTeam = caller != null ? peopleOnMyProjects(caller) : Set.of();
+        return employeeRepository.findAll(toSpecification(criteria, myTeam, caller), pageable).map(this::toDTO);
     }
 
+    /** Everyone on the caller's own projects, including the caller. Used to find people outside the team. */
+    private Set<Long> peopleOnMyProjects(Employee caller) {
+        return projectRepository.findByManagerId(caller.getId()).stream()
+                .flatMap(project -> membershipService.peopleOfProject(project).stream())
+                .collect(Collectors.toSet());
+    }
+
+    /** One person's profile, plus where they stand on the requirements this manager runs (every requirement for an Admin). */
     public EmployeeCandidateDTO getProfile(String employeeId) {
         assertMaySearch();
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
@@ -69,7 +90,20 @@ public class CandidateSearchService {
         if (accessGuard.isAdminAccount(employee)) {
             throw new ResourceNotFoundException("Employee", employeeId);
         }
-        return toDTO(employee);
+        EmployeeCandidateDTO dto = toDTO(employee);
+        Employee caller = accessGuard.isAdmin() ? null : accessGuard.currentEmployee();
+        dto.setPipeline(candidateRepository.findByEmployeeIdOrderByCreatedAtDesc(employee.getId()).stream()
+                .filter(c -> caller == null || (c.getRequirement().getProject().getManager() != null
+                        && c.getRequirement().getProject().getManager().getId().equals(caller.getId())))
+                .map(c -> EmployeeCandidateDTO.DirectoryPipelineDTO.builder()
+                        .applicationId(c.getApplicationId())
+                        .requirementId(c.getRequirement().getRequirementId())
+                        .positionTitle(c.getRequirement().getPositionTitle())
+                        .projectName(c.getRequirement().getProject().getProjectName())
+                        .status(c.getStatus())
+                        .build())
+                .toList());
+        return dto;
     }
 
     public List<ProjectLookupDTO> lookupProjects(String projectId) {
@@ -88,6 +122,18 @@ public class CandidateSearchService {
         return found;
     }
 
+    /** An open candidate application for this person on one of the caller's requirements (terminal outcomes do not count). */
+    private Subquery<Long> liveInMyPipeline(CriteriaQuery<?> query, CriteriaBuilder cb, Root<Employee> root, Employee caller) {
+        Subquery<Long> sq = query.subquery(Long.class);
+        Root<CandidateApplication> app = sq.from(CandidateApplication.class);
+        sq.select(app.<Long>get("id")).where(
+                cb.equal(app.get("employee"), root),
+                cb.equal(app.get("requirement").get("project").get("manager").get("id"), caller.getId()),
+                cb.not(app.get("status").in(CandidateStatus.TERMINAL)),
+                cb.or(cb.isNull(app.get("archived")), cb.isFalse(app.<Boolean>get("archived"))));
+        return sq;
+    }
+
     /** Admin, RMG and Managers may search; anyone else needs an assigned SOURCER responsibility (BRD 39). */
     private void assertMaySearch() {
         Set<String> codes = accessGuard.roleCodes();
@@ -101,10 +147,16 @@ public class CandidateSearchService {
         }
     }
 
-    private Specification<Employee> toSpecification(Criteria c) {
+    private Specification<Employee> toSpecification(Criteria c, Set<Long> myTeam, Employee caller) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("employmentStatus"), "ACTIVE"));
+            if (!myTeam.isEmpty()) {
+                predicates.add(cb.not(root.get("id").in(myTeam)));
+            }
+            if (caller != null) {
+                predicates.add(cb.not(cb.exists(liveInMyPipeline(query, cb, root, caller))));
+            }
 
             // Admin accounts are platform administrators, never candidates.
             Subquery<Long> adminSq = query.subquery(Long.class);

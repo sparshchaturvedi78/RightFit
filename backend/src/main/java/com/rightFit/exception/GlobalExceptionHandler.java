@@ -58,6 +58,18 @@ public class GlobalExceptionHandler {
         return buildError(ex, request, HttpStatus.BAD_REQUEST);
     }
 
+    /** 409 with the clashing interviews and free times, so the screen can offer them. Same message key as other errors. */
+    @ExceptionHandler(InterviewConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleInterviewConflict(InterviewConflictException ex) {
+        log.warn("Interview clash: {}", ex.getConflicts());
+        Map<String, Object> body = new HashMap<>();
+        body.put("errorCode", ex.getErrorCode());
+        body.put("message", ex.getMessage());
+        body.put("conflicts", ex.getConflicts());
+        body.put("suggestions", ex.getSuggestions());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     private ResponseEntity<ErrorResponseDto> buildError(RbacException ex, WebRequest request, HttpStatus status) {
         ErrorResponseDto errorResponse = ErrorResponseDto.builder()
                 .errorCode(ex.getErrorCode())

@@ -11,6 +11,7 @@ import com.rightFit.entity.Interview;
 import com.rightFit.entity.InterviewFeedback;
 import com.rightFit.entity.ProjectRequirement;
 import com.rightFit.exception.BusinessRuleException;
+import com.rightFit.exception.InterviewConflictException;
 import com.rightFit.exception.ProjectAccessDeniedException;
 import com.rightFit.exception.ResourceNotFoundException;
 import com.rightFit.repository.EmployeeRepository;
@@ -22,7 +23,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -36,6 +41,10 @@ import java.util.List;
 public class InterviewService {
 
     private static final List<String> OPEN = List.of("SCHEDULED", "ACCEPTED");
+    private static final LocalTime DAY_START = LocalTime.of(9, 0);
+    private static final LocalTime DAY_END = LocalTime.of(18, 0);
+    private static final int SUGGESTIONS = 6;
+    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("EEE d MMM, HH:mm");
 
     private final InterviewRepository interviewRepository;
     private final InterviewFeedbackRepository feedbackRepository;
@@ -53,6 +62,14 @@ public class InterviewService {
 
         Employee interviewer = resolveInterviewer(requirement, request.getInterviewerEmployeeId());
         Employee actor = accessGuard.currentEmployee();
+
+        // Check the slot before anything changes: the interviewer and the candidate must both be free at that time.
+        int minutes = request.getDurationMinutes() != null ? request.getDurationMinutes() : 60;
+        List<String> clashes = clashesFor(interviewer, candidate.getEmployee(), request.getScheduledAt(), minutes);
+        if (!clashes.isEmpty()) {
+            throw new InterviewConflictException(clashes,
+                    suggestSlots(interviewer, candidate.getEmployee(), request.getScheduledAt(), minutes));
+        }
 
         if (!CandidateStatus.INTERVIEW.equals(candidate.getStatus())) {
             workflow.transition(candidate, CandidateStatus.INTERVIEW, actor, "Interview scheduled");
@@ -257,6 +274,79 @@ public class InterviewService {
                     + "of " + requirement.getRequirementId() + " (RMG cannot interview)");
         }
         return interviewer;
+    }
+
+    /** Interviews of the interviewer, or of the candidate in any requirement, that overlap the requested slot. */
+    private List<String> clashesFor(Employee interviewer, Employee candidate, LocalDateTime start, int minutes) {
+        List<String> clashes = new ArrayList<>();
+        for (Interview i : interviewRepository.findByInterviewerIdOrderByScheduledAtDesc(interviewer.getId())) {
+            if (overlaps(i, start, minutes)) {
+                clashes.add(CandidateWorkflowService.name(interviewer) + " is already interviewing at "
+                        + i.getScheduledAt().format(WHEN) + " (" + i.getInterviewId() + ")");
+            }
+        }
+        for (Interview i : interviewRepository.findByEmployeeIdOrderByScheduledAtDesc(candidate.getId())) {
+            if (overlaps(i, start, minutes)) {
+                clashes.add(CandidateWorkflowService.name(candidate) + " already has an interview at "
+                        + i.getScheduledAt().format(WHEN) + " (" + i.getInterviewId() + ")");
+            }
+        }
+        return clashes;
+    }
+
+    /**
+     * Free times after the requested one for both people: weekdays 09:00 to 18:00, half-hour steps, next two weeks.
+     * Up to six, so the manager can pick one straight away.
+     */
+    private List<LocalDateTime> suggestSlots(Employee interviewer, Employee candidate, LocalDateTime requested, int minutes) {
+        List<Interview> busy = new ArrayList<>(interviewRepository.findByInterviewerIdOrderByScheduledAtDesc(interviewer.getId()));
+        busy.addAll(interviewRepository.findByEmployeeIdOrderByScheduledAtDesc(candidate.getId()));
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime t = roundUpToHalfHour(requested.isAfter(now) ? requested : now);
+        LocalDateTime limit = t.plusDays(14);
+        List<LocalDateTime> out = new ArrayList<>();
+        while (out.size() < SUGGESTIONS && t.isBefore(limit)) {
+            DayOfWeek day = t.getDayOfWeek();
+            if (day == DayOfWeek.SATURDAY) {
+                t = t.toLocalDate().plusDays(2).atTime(DAY_START);
+                continue;
+            }
+            if (day == DayOfWeek.SUNDAY) {
+                t = t.toLocalDate().plusDays(1).atTime(DAY_START);
+                continue;
+            }
+            if (t.toLocalTime().isBefore(DAY_START)) {
+                t = t.toLocalDate().atTime(DAY_START);
+                continue;
+            }
+            LocalDateTime end = t.plusMinutes(minutes);
+            if (!end.toLocalDate().equals(t.toLocalDate()) || end.toLocalTime().isAfter(DAY_END)) {
+                t = t.toLocalDate().plusDays(1).atTime(DAY_START);
+                continue;
+            }
+            LocalDateTime slot = t;
+            if (busy.stream().noneMatch(i -> overlaps(i, slot, minutes))) {
+                out.add(t);
+            }
+            t = t.plusMinutes(30);
+        }
+        return out;
+    }
+
+    private boolean overlaps(Interview i, LocalDateTime start, int minutes) {
+        if (!OPEN.contains(i.getStatus()) || i.getScheduledAt() == null) {
+            return false;
+        }
+        LocalDateTime busyStart = i.getScheduledAt();
+        LocalDateTime busyEnd = busyStart.plusMinutes(i.getDurationMinutes() != null ? i.getDurationMinutes() : 60);
+        return busyStart.isBefore(start.plusMinutes(minutes)) && start.isBefore(busyEnd);
+    }
+
+    private static LocalDateTime roundUpToHalfHour(LocalDateTime t) {
+        LocalDateTime whole = t.withSecond(0).withNano(0);
+        int minute = whole.getMinute();
+        return minute == 0 || minute == 30 ? whole : whole.plusMinutes(30 - (minute % 30));
     }
 
     private Interview find(String interviewId) {
