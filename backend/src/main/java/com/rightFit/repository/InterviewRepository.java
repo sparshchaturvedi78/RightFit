@@ -38,6 +38,10 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
             "AND i.status IN ('SCHEDULED', 'ACCEPTED') AND i.scheduledAt >= :from")
     long countUpcomingForEmployee(@Param("employeeId") Long employeeId, @Param("from") LocalDateTime from);
 
+    /** Every interview on a requirement the manager runs, newest first. */
+    @Query("SELECT i FROM Interview i WHERE i.requirement.project.manager.id = :managerId ORDER BY i.scheduledAt DESC")
+    List<Interview> findByProjectManagerId(@Param("managerId") Long managerId);
+
     /** Admin Dashboard: upcoming interviews organization-wide, soonest first. */
     @Query("SELECT i FROM Interview i WHERE i.status IN ('SCHEDULED', 'ACCEPTED') AND i.scheduledAt >= :from " +
             "ORDER BY i.scheduledAt ASC")

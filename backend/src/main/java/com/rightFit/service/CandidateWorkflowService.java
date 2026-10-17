@@ -7,6 +7,7 @@ import com.rightFit.entity.CandidateStatusHistory;
 import com.rightFit.entity.Employee;
 import com.rightFit.entity.Interview;
 import com.rightFit.entity.Invitation;
+import com.rightFit.entity.ProjectRequirement;
 import com.rightFit.exception.InvalidStateTransitionException;
 import com.rightFit.exception.ResourceNotFoundException;
 import com.rightFit.repository.CandidateApplicationRepository;
@@ -34,6 +35,7 @@ public class CandidateWorkflowService {
     private final InvitationRepository invitationRepository;
     private final InterviewRepository interviewRepository;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
 
     public CandidateApplication find(String applicationId) {
         return candidateRepository.findByApplicationId(applicationId)
@@ -146,6 +148,52 @@ public class CandidateWorkflowService {
                 .createdAt(c.getCreatedAt())
                 .updatedAt(c.getUpdatedAt())
                 .build();
+    }
+
+    /** A candidate still in the process: not allocated, declined, rejected or withdrawn, and not archived. */
+    private static boolean live(CandidateApplication c) {
+        return !CandidateStatus.TERMINAL.contains(c.getStatus()) && !Boolean.TRUE.equals(c.getArchived());
+    }
+
+    /** Someone on the requirement has gone into allocation: everyone else still in the process waits on hold. */
+    public void holdOthers(ProjectRequirement requirement, CandidateApplication keep, Employee actor) {
+        for (CandidateApplication c : candidateRepository.findByRequirementIdOrderByCreatedAtDesc(requirement.getId())) {
+            if (c.getId().equals(keep.getId()) || !live(c) || CandidateStatus.ON_HOLD.equals(c.getStatus())) {
+                continue;
+            }
+            String reason = "On hold while " + name(keep.getEmployee()) + " is in allocation";
+            forceTransition(c, CandidateStatus.ON_HOLD, actor, reason);
+            notificationService.notify(c.getEmployee(), "CANDIDATE_ON_HOLD", "On hold for " + requirement.getRequirementId(),
+                    reason, "CANDIDATE", c.getApplicationId());
+        }
+    }
+
+    /** The requirement is filled by someone else: everyone else still in the process is released. */
+    public void releaseOthers(ProjectRequirement requirement, CandidateApplication filledBy, Employee actor) {
+        String reason = "Released: " + requirement.getRequirementId() + " was filled by " + name(filledBy.getEmployee());
+        for (CandidateApplication c : candidateRepository.findByRequirementIdOrderByCreatedAtDesc(requirement.getId())) {
+            if (c.getId().equals(filledBy.getId()) || !live(c)) {
+                continue;
+            }
+            forceTransition(c, CandidateStatus.WITHDRAWN, actor, reason);
+            cancelOpenItems(c, reason);
+            notificationService.notify(c.getEmployee(), "CANDIDATE_RELEASED", "Update on " + requirement.getPositionTitle(),
+                    reason, "CANDIDATE", c.getApplicationId());
+        }
+    }
+
+    /** The allocation fell through: candidates who were held go back to the stage they were in. */
+    public void resumeHeld(ProjectRequirement requirement, Employee actor, String reason) {
+        for (CandidateApplication c : candidateRepository.findByRequirementIdOrderByCreatedAtDesc(requirement.getId())) {
+            if (!CandidateStatus.ON_HOLD.equals(c.getStatus())) {
+                continue;
+            }
+            String back = c.getPreviousStatus() == null || CandidateStatus.ON_HOLD.equals(c.getPreviousStatus())
+                    ? CandidateStatus.IDENTIFIED : c.getPreviousStatus();
+            forceTransition(c, back, actor, reason);
+            notificationService.notify(c.getEmployee(), "CANDIDATE_RESUMED", "Back in the process for " + requirement.getRequirementId(),
+                    reason, "CANDIDATE", c.getApplicationId());
+        }
     }
 
     public static String name(Employee employee) {

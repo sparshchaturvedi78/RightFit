@@ -88,7 +88,9 @@ public class AllocationApprovalService {
         requestRepository.save(request);
 
         workflow.transition(candidate, CandidateStatus.ALLOCATED, rmg, "Allocation " + allocation.getAllocationId());
-        requirement.setStatus("ALLOCATED");
+        // One requirement, one resource: the filled requirement closes and everyone else is released.
+        workflow.releaseOthers(requirement, candidate, rmg);
+        requirement.setStatus("CLOSED");
         requirementRepository.save(requirement);
 
         auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "ALLOCATION_APPROVED", "ALLOCATION_REQUEST",
@@ -121,7 +123,14 @@ public class AllocationApprovalService {
 
         CandidateApplication candidate = request.getCandidateApplication();
         if (CandidateStatus.ALLOCATION_REQUESTED.equals(candidate.getStatus())) {
-            workflow.transition(candidate, CandidateStatus.SELECTED, rmg, "Allocation rejected: " + reason);
+            // The person leaves the selection pipeline; everyone held for this requirement resumes.
+            workflow.forceTransition(candidate, CandidateStatus.REJECTED, rmg, "Allocation rejected by RMG: " + reason);
+            candidate.setRejectionReasonCode("OTHER");
+            candidate.setRejectionComment(reason);
+            candidate.setRejectedAt(LocalDateTime.now());
+            workflow.cancelOpenItems(candidate, "Allocation rejected");
+            workflow.resumeHeld(request.getRequirement(), rmg, "Resumed: allocation rejected for "
+                    + CandidateWorkflowService.name(request.getEmployee()));
         }
         // FR-036: rejection returns the employee to Available (subject to other active states)
         allocationService.refreshEmployee(request.getEmployee(), "RELEASE");

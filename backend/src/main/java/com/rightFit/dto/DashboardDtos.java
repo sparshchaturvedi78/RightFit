@@ -94,6 +94,33 @@ public final class DashboardDtos {
         private List<RequirementCardDTO> openRequirements;
         /** Candidates waiting for the manager's decision, longest waiting first, at most a handful. */
         private List<DecisionCardDTO> decisionQueue;
+        /** Who is in between for each requirement, so the manager sees every live candidate and where each one stands. */
+        private List<SelectionGroupDTO> selectionProcess;
+    }
+
+    /** One requirement and the people currently in its selection process. */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SelectionGroupDTO {
+        private String requirementId;
+        private String positionTitle;
+        private String projectName;
+        private String requirementStatus;
+        private List<SelectionPersonDTO> people;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SelectionPersonDTO {
+        private String applicationId;
+        private String employeeId;
+        private String employeeName;
+        private String status;
+        private LocalDateTime updatedAt;
     }
 
     @Data
