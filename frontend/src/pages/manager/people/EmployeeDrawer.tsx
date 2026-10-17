@@ -94,20 +94,22 @@ function Loaded({ employeeId, onClose, projects, onChanged }: { employeeId: stri
                           {[x.role ? humanize(x.role) : null, x.hoursPerDay != null ? `${x.hoursPerDay} hours a day` : 'No hours booked', x.since ? `since ${formatDay(x.since.slice(0, 10))}` : null].filter(Boolean).join(' · ')}
                         </small>
                       </span>
-                      {person.projects.length < projects.length && (
-                        <Button variant="secondary" className="px-3 py-1.5" icon={<ArrowLeftRight className="h-4 w-4" />} onClick={() => setMovingFrom(x.projectId)}>
-                          Move
-                        </Button>
-                      )}
-                      {x.role !== 'PROJECT_MANAGER' && (
-                        <button
-                          type="button"
-                          onClick={() => setRemoving({ projectId: x.projectId, projectName: x.projectName })}
-                          className="rounded-xl px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
-                        >
-                          Remove
-                        </button>
-                      )}
+                      <div className="flex shrink-0 items-center gap-2">
+                        {person.projects.length < projects.length && (
+                          <Button variant="secondary" className="h-9 px-3 text-xs" icon={<ArrowLeftRight className="h-3.5 w-3.5" />} onClick={() => setMovingFrom(x.projectId)}>
+                            Move
+                          </Button>
+                        )}
+                        {x.role !== 'PROJECT_MANAGER' && (
+                          <button
+                            type="button"
+                            onClick={() => setRemoving({ projectId: x.projectId, projectName: x.projectName })}
+                            className="inline-flex h-9 items-center rounded-xl border border-rose-500/30 px-3 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/10 dark:text-rose-400"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>

@@ -26,6 +26,11 @@ const STAGE_OF_STATUS: Record<string, PipelineStage> = {
   ALLOCATED: 'selected',
 }
 
+/** The pipeline stage a candidate status sits in, or undefined when the candidate is out of the process. */
+export function stageOfStatus(status: string): PipelineStage | undefined {
+  return STAGE_OF_STATUS[status]
+}
+
 /** Candidates per stage, from the dashboard's status counts. */
 export function stageTotals(pipeline: Record<string, number>): Record<PipelineStage, number> {
   const totals: Record<PipelineStage, number> = { identified: 0, shortlisted: 0, invited: 0, interviewing: 0, selected: 0 }

@@ -23,6 +23,7 @@ import ManagerProjectPage from './pages/manager/projects/ProjectPage'
 import ManagerPeoplePage from './pages/manager/people/PeoplePage'
 import ManagerRequirementsPage from './pages/manager/requirements/RequirementsPage'
 import ManagerRequirementPage from './pages/manager/requirements/RequirementPage'
+import ManagerDirectoryPage from './pages/manager/directory/DirectoryPage'
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
         <Route path="projects" element={<ManagerProjectsPage />} />
         <Route path="projects/:projectId" element={<ManagerProjectPage />} />
         <Route path="people" element={<ManagerPeoplePage />} />
+        <Route path="employees" element={<ManagerDirectoryPage />} />
         <Route path="requirements" element={<ManagerRequirementsPage />} />
         <Route path="requirements/:requirementId" element={<ManagerRequirementPage />} />
         <Route path="reports" element={<ReportsPage narrowed />} />
