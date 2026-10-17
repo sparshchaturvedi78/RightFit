@@ -6,6 +6,8 @@ import com.rightFit.dto.DashboardDtos.ManagerDashboardDTO;
 import com.rightFit.dto.DashboardDtos.ProjectStaffingDTO;
 import com.rightFit.dto.DashboardDtos.ReportDTO;
 import com.rightFit.dto.DashboardDtos.RequirementCardDTO;
+import com.rightFit.dto.DashboardDtos.SelectionGroupDTO;
+import com.rightFit.dto.DashboardDtos.SelectionPersonDTO;
 import com.rightFit.entity.Allocation;
 import com.rightFit.entity.AuditLog;
 import com.rightFit.entity.CandidateApplication;
@@ -131,7 +133,31 @@ public class ManagerDashboardService {
                 .projectStaffing(staffing)
                 .openRequirements(openRequirementCards(me))
                 .decisionQueue(decisionQueue(me))
+                .selectionProcess(selectionProcess(me))
                 .build();
+    }
+
+    /** Every live candidate on the manager's requirements, grouped by requirement, in the order they were last moved. */
+    private List<SelectionGroupDTO> selectionProcess(Employee me) {
+        Map<Long, SelectionGroupDTO> groups = new LinkedHashMap<>();
+        for (CandidateApplication c : candidateRepository.findOpenForManager(me.getId())) {
+            ProjectRequirement r = c.getRequirement();
+            SelectionGroupDTO group = groups.computeIfAbsent(r.getId(), id -> SelectionGroupDTO.builder()
+                    .requirementId(r.getRequirementId())
+                    .positionTitle(r.getPositionTitle())
+                    .projectName(r.getProject().getProjectName())
+                    .requirementStatus(r.getStatus())
+                    .people(new ArrayList<>())
+                    .build());
+            group.getPeople().add(SelectionPersonDTO.builder()
+                    .applicationId(c.getApplicationId())
+                    .employeeId(c.getEmployee().getEmployeeId())
+                    .employeeName(CandidateWorkflowService.name(c.getEmployee()))
+                    .status(c.getStatus())
+                    .updatedAt(c.getUpdatedAt())
+                    .build());
+        }
+        return new ArrayList<>(groups.values());
     }
 
     /** Candidates whose interviews are done and who now wait for the manager's decision, longest waiting first. */

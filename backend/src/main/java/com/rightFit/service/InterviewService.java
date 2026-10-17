@@ -123,6 +123,17 @@ public class InterviewService {
         return toDTO(interview, true);
     }
 
+    /** Admin sees every interview; a manager sees the interviews on requirements they run. */
+    @Transactional(readOnly = true)
+    public List<InterviewDTO> listForManager() {
+        accessGuard.assertNotRmgOnly();
+        List<Interview> interviews = accessGuard.isAdmin()
+                ? interviewRepository.findAll().stream()
+                        .sorted(java.util.Comparator.comparing(Interview::getScheduledAt).reversed()).toList()
+                : interviewRepository.findByProjectManagerId(accessGuard.currentEmployee().getId());
+        return interviews.stream().map(i -> toDTO(i, false)).toList();
+    }
+
     @Transactional(readOnly = true)
     public List<InterviewDTO> assignedToMe() {
         accessGuard.assertNotRmgOnly();
@@ -274,6 +285,22 @@ public class InterviewService {
                     + "of " + requirement.getRequirementId() + " (RMG cannot interview)");
         }
         return interviewer;
+    }
+
+    /** Free times from now for the candidate's next interview, with the manager as interviewer. Booking nothing. */
+    @Transactional(readOnly = true)
+    public List<LocalDateTime> suggestSlotsFor(String applicationId, int minutes) {
+        if (minutes < 15 || minutes > 480) {
+            throw new BusinessRuleException("Duration must be between 15 and 480 minutes");
+        }
+        CandidateApplication candidate = workflow.find(applicationId);
+        ProjectRequirement requirement = candidate.getRequirement();
+        accessGuard.assertCanCoordinate(requirement);
+        Employee interviewer = requirement.getProject().getManager();
+        if (interviewer == null) {
+            throw new BusinessRuleException("The project has no manager to interview");
+        }
+        return suggestSlots(interviewer, candidate.getEmployee(), LocalDateTime.now(), minutes);
     }
 
     /** Interviews of the interviewer, or of the candidate in any requirement, that overlap the requested slot. */

@@ -30,10 +30,24 @@ public class ManagerInterviewController {
         return ResponseEntity.status(HttpStatus.CREATED).body(interviewService.schedule(applicationId, request));
     }
 
+    /** Free times for the next interview, so the manager can offer one that will not clash. */
+    @GetMapping("/api/manager/candidates/{applicationId}/interview-slots")
+    @PreAuthorize("hasPermission(null, 'INTERVIEW_SCHEDULE')")
+    public ResponseEntity<List<java.time.LocalDateTime>> suggestSlots(@PathVariable String applicationId,
+                                                                     @RequestParam(defaultValue = "60") int durationMinutes) {
+        return ResponseEntity.ok(interviewService.suggestSlotsFor(applicationId, durationMinutes));
+    }
+
     @GetMapping("/api/manager/candidates/{applicationId}/interviews")
     @PreAuthorize("hasPermission(null, 'INTERVIEW_READ')")
     public ResponseEntity<List<InterviewDTO>> listForCandidate(@PathVariable String applicationId) {
         return ResponseEntity.ok(interviewService.listForCandidate(applicationId));
+    }
+
+    @GetMapping("/api/manager/interviews")
+    @PreAuthorize("hasPermission(null, 'INTERVIEW_READ')")
+    public ResponseEntity<List<InterviewDTO>> listForManager() {
+        return ResponseEntity.ok(interviewService.listForManager());
     }
 
     @GetMapping("/api/manager/interviews/mine")

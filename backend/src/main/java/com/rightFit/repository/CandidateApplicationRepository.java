@@ -35,6 +35,12 @@ public interface CandidateApplicationRepository extends JpaRepository<CandidateA
             "AND c.status = :status AND c.archived = false ORDER BY c.updatedAt ASC")
     List<CandidateApplication> findForManagerByStatus(@Param("managerId") Long managerId, @Param("status") String status);
 
+    /** Everyone still in a manager's selection process (not allocated, declined, rejected or withdrawn), by requirement. */
+    @Query("SELECT c FROM CandidateApplication c WHERE c.requirement.project.manager.id = :managerId " +
+            "AND c.archived = false AND c.status NOT IN ('ALLOCATED', 'DECLINED', 'REJECTED', 'WITHDRAWN') " +
+            "ORDER BY c.requirement.requirementId ASC, c.updatedAt ASC")
+    List<CandidateApplication> findOpenForManager(@Param("managerId") Long managerId);
+
     @Query("SELECT c.status, COUNT(c) FROM CandidateApplication c WHERE c.archived = false GROUP BY c.status")
     List<Object[]> countByStatusAll();
 

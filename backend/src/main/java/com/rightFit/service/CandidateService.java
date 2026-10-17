@@ -210,11 +210,21 @@ public class CandidateService {
         if (accessGuard.isAdminAccount(employee)) {
             throw new BusinessRuleException("Admin accounts are not part of the candidate pool");
         }
-        candidateRepository.findByRequirementIdAndEmployeeId(requirement.getId(), employee.getId()).ifPresent(existing -> {
-            throw new DuplicateEntityException("Employee " + employee.getEmployeeId() + " ("
-                    + CandidateWorkflowService.name(employee) + ") is already in the pipeline of "
-                    + requirement.getRequirementId() + " as " + existing.getApplicationId() + " - " + describe(existing));
-        });
+        // One row per person per requirement (DB constraint). A withdrawn, rejected or declined entry is reopened
+        // rather than duplicated; anyone live or allocated is still a duplicate.
+        var existing = candidateRepository.findByRequirementIdAndEmployeeId(requirement.getId(), employee.getId());
+        if (existing.isPresent()) {
+            CandidateApplication previous = existing.get();
+            boolean reopenable = CandidateStatus.WITHDRAWN.equals(previous.getStatus())
+                    || CandidateStatus.REJECTED.equals(previous.getStatus())
+                    || CandidateStatus.DECLINED.equals(previous.getStatus());
+            if (!reopenable) {
+                throw new DuplicateEntityException("Employee " + employee.getEmployeeId() + " ("
+                        + CandidateWorkflowService.name(employee) + ") is already in the pipeline of "
+                        + requirement.getRequirementId() + " as " + previous.getApplicationId() + " - " + describe(previous));
+            }
+            return reopen(previous, actor, source, request.getNotes());
+        }
 
         CandidateApplication saved = candidateRepository.save(CandidateApplication.builder()
                 .applicationId("CAND-" + candidateRepository.nextCandidateSequence())
@@ -226,6 +236,31 @@ public class CandidateService {
                 .identifiedBy(actor)
                 .build());
         workflow.recordCreation(saved, actor, "Identified (" + source + ")");
+        return saved;
+    }
+
+    /** Puts a withdrawn, rejected or declined candidate back at IDENTIFIED, keeping the same application and its history. */
+    private CandidateApplication reopen(CandidateApplication c, Employee actor, String source, String notes) {
+        String from = c.getStatus();
+        c.setPreviousStatus(from);
+        c.setStatus(CandidateStatus.IDENTIFIED);
+        c.setSource(source);
+        c.setNotes(notes);
+        c.setIdentifiedBy(actor);
+        c.setIdentifiedAt(LocalDateTime.now());
+        c.setShortlistedBy(null);
+        c.setShortlistedAt(null);
+        c.setDecision(null);
+        c.setDecisionBy(null);
+        c.setDecisionAt(null);
+        c.setDecisionReason(null);
+        c.setRejectionReasonCode(null);
+        c.setRejectionComment(null);
+        c.setRejectedAt(null);
+        c.setArchived(false);
+        c.setArchivedAt(null);
+        CandidateApplication saved = candidateRepository.save(c);
+        workflow.recordCreation(saved, actor, "Identified again (was " + from + ")");
         return saved;
     }
 

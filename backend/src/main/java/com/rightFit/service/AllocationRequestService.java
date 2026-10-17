@@ -89,6 +89,7 @@ public class AllocationRequestService {
 
         workflow.transition(candidate, CandidateStatus.ALLOCATION_REQUESTED, manager,
                 "Allocation request " + saved.getRequestId());
+        workflow.holdOthers(requirement, candidate, manager);
         allocationService.refreshEmployee(employee, "RELEASE");
 
         notificationService.notifyRmgOf(employee, "ALLOCATION_REQUESTED",
