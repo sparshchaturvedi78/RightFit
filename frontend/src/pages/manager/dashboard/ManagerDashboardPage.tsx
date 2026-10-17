@@ -13,7 +13,7 @@ import ManagerLink from '../ManagerLink'
 import NewRequirementPanel from '../projects/NewRequirementPanel'
 import { isoDay, STAGES, stageTotals, workWeek } from '../managerUi'
 import AgendaPanel from './AgendaPanel'
-import DecisionsPanel from './DecisionsPanel'
+import SelectionProcessPanel from './SelectionProcessPanel'
 import ProjectsPanel from './ProjectsPanel'
 import RequirementsPanel from './RequirementsPanel'
 import WeekBoard from './WeekBoard'
@@ -149,7 +149,7 @@ export default function ManagerDashboardPage() {
         <ProjectsPanel state={dashboard} />
       </Reveal>
       <Reveal delay={0.05}>
-        <DecisionsPanel state={dashboard} now={now} />
+        <SelectionProcessPanel state={dashboard} now={now} />
       </Reveal>
 
       <NewRequirementPanel

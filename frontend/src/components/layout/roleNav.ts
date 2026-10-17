@@ -19,8 +19,8 @@ export const MANAGER_NAV: NavGroup[] = [
     title: 'Hiring',
     items: [
       { label: 'Requirements', to: '/manager/requirements', icon: ClipboardList, ready: true },
-      { label: 'Interviews', to: '/manager/interviews', icon: CalendarClock, ready: false },
-      { label: 'Allocation requests', to: '/manager/allocation-requests', icon: ClipboardCheck, ready: false },
+      { label: 'Interviews', to: '/manager/interviews', icon: CalendarClock, ready: true },
+      { label: 'Allocation requests', to: '/manager/allocation-requests', icon: ClipboardCheck, ready: true },
     ],
   },
   {

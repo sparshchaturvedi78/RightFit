@@ -50,8 +50,8 @@ async function managerById(requestId: string): Promise<AllocationRequestDTO> {
   return data
 }
 
-async function managerCancel(requestId: string): Promise<AllocationRequestDTO> {
-  const { data } = await httpClient.put<AllocationRequestDTO>(ALLOCATION_API.managerCancel(requestId))
+async function managerCancel(requestId: string, reason: string): Promise<AllocationRequestDTO> {
+  const { data } = await httpClient.put<AllocationRequestDTO>(ALLOCATION_API.managerCancel(requestId), { reason })
   return data
 }
 

@@ -13,13 +13,22 @@ import { useAppDispatch } from '../../../store'
 import { invalidateQueries } from '../../../store/queriesSlice'
 import { humanize, timeAgo } from '../../../utils/format'
 import { STAGES, stageOfStatus } from '../managerUi'
+import AllocationRequestDialog from './AllocationRequestDialog'
+import DecisionDialog from './DecisionDialog'
 import ScheduleInterviewDialog from './ScheduleInterviewDialog'
 
 /** Statuses a candidate can no longer move on from. */
 const OUT = 'out'
 const TERMINAL = new Set(['ALLOCATED', 'DECLINED', 'REJECTED', 'WITHDRAWN'])
 
-const TABS: { key: string; label: string }[] = [...STAGES.map((s) => ({ key: s.key, label: s.label })), { key: OUT, label: 'Out of process' }]
+const HOLD = 'hold'
+/** Stages where the manager can select or reject: the interviews are done and the feedback is in. */
+const DECIDABLE = new Set(['INTERVIEW_COMPLETED', 'RECOMMENDED', 'MANAGER_REVIEW'])
+const TABS: { key: string; label: string }[] = [
+  ...STAGES.map((s) => ({ key: s.key, label: s.label })),
+  { key: HOLD, label: 'On hold' },
+  { key: OUT, label: 'Out of process' },
+]
 
 /**
  * Everyone in one requirement's pipeline, one stage at a time. The manager can shortlist identified people and
@@ -34,9 +43,11 @@ export default function CandidatesPanel({ requirementId, status }: { requirement
   const [withdrawing, setWithdrawing] = useState<CandidateDTO | null>(null)
   const [inviting, setInviting] = useState<CandidateDTO | null>(null)
   const [scheduling, setScheduling] = useState<CandidateDTO | null>(null)
+  const [requesting, setRequesting] = useState<CandidateDTO | null>(null)
+  const [deciding, setDeciding] = useState<{ candidate: CandidateDTO; decision: 'SELECT' | 'REJECT' } | null>(null)
 
   const all = list.data ?? []
-  const stageOf = (c: CandidateDTO) => stageOfStatus(c.status) ?? OUT
+  const stageOf = (c: CandidateDTO) => (c.status === 'ON_HOLD' ? HOLD : (stageOfStatus(c.status) ?? OUT))
   const counts = Object.fromEntries(TABS.map((t) => [t.key, all.filter((c) => stageOf(c) === t.key).length]))
   const shown = all.filter((c) => stageOf(c) === tab)
 
@@ -45,6 +56,7 @@ export default function CandidatesPanel({ requirementId, status }: { requirement
     dispatch(invalidateQueries('managerCandidates'))
     dispatch(invalidateQueries('managerRequirementCard'))
     dispatch(invalidateQueries('managerDirectory'))
+    dispatch(invalidateQueries('managerAllocations'))
   }
 
   async function shortlist(c: CandidateDTO) {
@@ -131,6 +143,21 @@ export default function CandidatesPanel({ requirementId, status }: { requirement
                         Send invite
                       </Button>
                     )}
+                    {c.status === 'SELECTED' && (
+                      <Button variant="primary" onClick={() => setRequesting(c)}>
+                        Request allocation
+                      </Button>
+                    )}
+                    {DECIDABLE.has(c.status) && (
+                      <>
+                        <Button variant="secondary" onClick={() => setDeciding({ candidate: c, decision: 'REJECT' })}>
+                          Reject
+                        </Button>
+                        <Button variant="primary" onClick={() => setDeciding({ candidate: c, decision: 'SELECT' })}>
+                          Select
+                        </Button>
+                      </>
+                    )}
                     {c.status === 'ACCEPTED' && (
                       <Button variant="primary" onClick={() => setScheduling(c)}>
                         Book interview
@@ -147,6 +174,29 @@ export default function CandidatesPanel({ requirementId, status }: { requirement
             </ul>
           )}
         </>
+      )}
+
+      {requesting && (
+        <AllocationRequestDialog
+          candidate={requesting}
+          onClose={() => setRequesting(null)}
+          onDone={() => {
+            setRequesting(null)
+            changed()
+          }}
+        />
+      )}
+
+      {deciding && (
+        <DecisionDialog
+          candidate={deciding.candidate}
+          decision={deciding.decision}
+          onClose={() => setDeciding(null)}
+          onDone={() => {
+            setDeciding(null)
+            changed()
+          }}
+        />
       )}
 
       {scheduling && (
