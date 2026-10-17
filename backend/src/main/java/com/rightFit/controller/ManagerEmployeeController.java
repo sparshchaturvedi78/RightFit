@@ -54,6 +54,7 @@ public class ManagerEmployeeController {
             @RequestParam(required = false) String preferredDomain,
             @RequestParam(required = false) String preferredWorkMode,
             @RequestParam(required = false) String preferredLocation,
+            @RequestParam(defaultValue = "false") boolean excludeMyTeam,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "employeeId") String sortBy,
@@ -64,7 +65,7 @@ public class ManagerEmployeeController {
         CandidateSearchService.Criteria criteria = new CandidateSearchService.Criteria(q, employeeId, name, skills,
                 minProficiency, minExperience, maxExperience, location, certification, grade, domain, technology,
                 availabilityStatus, poolStatus, allocationStatus, availableOnly, preferredTechnology,
-                preferredDomain, preferredWorkMode, preferredLocation);
+                preferredDomain, preferredWorkMode, preferredLocation, excludeMyTeam);
         return ResponseEntity.ok(searchService.search(criteria, PageRequest.of(page, size, Sort.by(direction, sortField))));
     }
 

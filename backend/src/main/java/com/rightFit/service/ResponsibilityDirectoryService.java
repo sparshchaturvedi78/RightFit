@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -108,7 +109,12 @@ public class ResponsibilityDirectoryService {
             }
         }
 
-        Page<Employee> page = employeeRepository.findAll(assignable(q, projectMembershipService.peopleOfProject(project)), pageable);
+        // The manager runs the project and can do every responsibility without being picked, so they are never a choice.
+        Set<Long> people = new HashSet<>(projectMembershipService.peopleOfProject(project));
+        if (project.getManager() != null) {
+            people.remove(project.getManager().getId());
+        }
+        Page<Employee> page = employeeRepository.findAll(assignable(q, people), pageable);
         List<Long> ids = page.getContent().stream().map(Employee::getId).toList();
 
         Map<Long, int[]> overall = ids.isEmpty() ? Map.of() : tally(assignmentRepository.countWorkload(ids));
