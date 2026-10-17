@@ -24,6 +24,8 @@ import ManagerPeoplePage from './pages/manager/people/PeoplePage'
 import ManagerRequirementsPage from './pages/manager/requirements/RequirementsPage'
 import ManagerRequirementPage from './pages/manager/requirements/RequirementPage'
 import ManagerDirectoryPage from './pages/manager/directory/DirectoryPage'
+import ManagerInterviewsPage from './pages/manager/interviews/InterviewsPage'
+import ManagerAllocationRequestsPage from './pages/manager/allocations/AllocationRequestsPage'
 
 function App() {
   return (
@@ -66,6 +68,10 @@ function App() {
         <Route path="projects/:projectId" element={<ManagerProjectPage />} />
         <Route path="people" element={<ManagerPeoplePage />} />
         <Route path="employees" element={<ManagerDirectoryPage />} />
+        <Route path="interviews" element={<ManagerInterviewsPage />} />
+        <Route path="interviews/:interviewId" element={<ManagerInterviewsPage />} />
+        <Route path="allocation-requests" element={<ManagerAllocationRequestsPage />} />
+        <Route path="allocation-requests/:requestId" element={<ManagerAllocationRequestsPage />} />
         <Route path="requirements" element={<ManagerRequirementsPage />} />
         <Route path="requirements/:requirementId" element={<ManagerRequirementPage />} />
         <Route path="reports" element={<ReportsPage narrowed />} />

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../../components/ui/form'
 import { Modal } from '../../../components/ui/Overlay'
 import { useToast } from '../../../hooks/useToast'
@@ -40,7 +40,24 @@ export default function ScheduleInterviewDialog({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [clash, setClash] = useState<ClashBody | null>(null)
+  const [suggested, setSuggested] = useState<string[] | null>(null)
   const name = candidate.employeeName ?? candidate.employeeId
+
+  // Free times are worked out before the manager picks one, so a booking does not clash by default.
+  useEffect(() => {
+    let live = true
+    interviewService
+      .suggestSlots(candidate.applicationId, minutes)
+      .then((slots) => {
+        if (live) setSuggested(slots)
+      })
+      .catch(() => {
+        if (live) setSuggested([])
+      })
+    return () => {
+      live = false
+    }
+  }, [candidate.applicationId, minutes])
 
   async function book() {
     if (!when) {
@@ -129,6 +146,36 @@ export default function ScheduleInterviewDialog({
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
           />
         </label>
+
+        <div className="grid gap-2">
+          <span className="text-xs font-semibold text-ink-700 dark:text-slate-300">Free times that will not clash</span>
+          {suggested === null ? (
+            <span className="text-xs text-ink-500 dark:text-slate-400">Finding free times…</span>
+          ) : suggested.length === 0 ? (
+            <span className="text-xs text-ink-500 dark:text-slate-400">No free time in the next two weeks. Pick a later date.</span>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {suggested.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  aria-pressed={when === s.slice(0, 16)}
+                  onClick={() => {
+                    setWhen(s.slice(0, 16))
+                    setClash(null)
+                  }}
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    when === s.slice(0, 16)
+                      ? 'border-brand-500 bg-brand-500 text-white'
+                      : 'border-slate-200 text-ink-900 hover:border-brand-500/40 dark:border-white/10 dark:text-white'
+                  }`}
+                >
+                  {whenLabel(s)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {clash && (
           <div role="alert" className="grid gap-3 rounded-2xl bg-amber-500/10 p-4 text-sm">

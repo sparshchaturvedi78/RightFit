@@ -78,6 +78,18 @@ async function mine(): Promise<InterviewDTO[]> {
   return data
 }
 
+/** Free start times (ISO, local) for an interview of the given length, from now on. */
+async function suggestSlots(applicationId: string, durationMinutes: number): Promise<string[]> {
+  const { data } = await httpClient.get<string[]>(INTERVIEW_API.suggestSlots(applicationId), { params: { durationMinutes } })
+  return data
+}
+
+/** Every interview on the manager's requirements, newest first. */
+async function managerList(): Promise<InterviewDTO[]> {
+  const { data } = await httpClient.get<InterviewDTO[]>(INTERVIEW_API.managerList)
+  return data
+}
+
 async function byId(interviewId: string): Promise<InterviewDTO> {
   const { data } = await httpClient.get<InterviewDTO>(INTERVIEW_API.byId(interviewId))
   return data
@@ -108,6 +120,8 @@ export const interviewService = {
   schedule,
   listForApplication,
   mine,
+  managerList,
+  suggestSlots,
   byId,
   cancel,
   submitFeedback,

@@ -62,6 +62,23 @@ export interface ManagerDashboardDTO {
   projectStaffing: ProjectStaffingDTO[]
   openRequirements: RequirementCardDTO[]
   decisionQueue: DecisionCardDTO[]
+  selectionProcess?: SelectionGroupDTO[]
+}
+
+export interface SelectionPersonDTO {
+  applicationId: string
+  employeeId: string
+  employeeName: string
+  status: string
+  updatedAt?: string
+}
+
+export interface SelectionGroupDTO {
+  requirementId: string
+  positionTitle: string
+  projectName: string
+  requirementStatus: string
+  people: SelectionPersonDTO[]
 }
 
 async function get(): Promise<ManagerDashboardDTO> {

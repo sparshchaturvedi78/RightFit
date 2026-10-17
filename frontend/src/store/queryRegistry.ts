@@ -12,6 +12,8 @@ import { managerCandidateService } from '../services/manager/candidate.service'
 import { managerEmployeeService, type CandidateSearchFilters } from '../services/manager/employee.service'
 import { managerRequirementService } from '../services/manager/requirement.service'
 import { managerRequirementAssignmentService } from '../services/manager/requirementAssignment.service'
+import { allocationService } from '../services/allocation.service'
+import { interviewService } from '../services/interview.service'
 
 /**
  * Parameterised page data (lists with search / filters / paging) kept in the Redux store, one entry per distinct
@@ -48,6 +50,14 @@ export const QUERY_FETCHERS = {
   managerPeople: (_params: Record<string, never>) => managerTeamService.people(),
   /** Manager: one employee's profile (skills, certifications, availability). */
   managerEmployee: (params: { employeeId: string }) => managerEmployeeService.byId(params.employeeId),
+  /** Manager: every interview on their requirements (no parameters; the empty object only gives it a store key). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  managerInterviews: (_params: Record<string, never>) => interviewService.managerList(),
+  /** Manager: one interview with its feedback, for the detail panel. */
+  managerInterview: (params: { interviewId: string }) => interviewService.byId(params.interviewId),
+  /** Manager: every allocation request on their projects (no parameters; the empty object only gives it a store key). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  managerAllocations: (_params: Record<string, never>) => allocationService.managerList(),
   /** Manager: one page of the employee directory for the filters (people outside the manager's own projects). */
   managerDirectory: (params: CandidateSearchFilters) => managerEmployeeService.search(params),
   /** Manager: a requirement's candidates, every stage, newest first. */

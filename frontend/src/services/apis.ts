@@ -307,8 +307,12 @@ export const MANAGER_DECISION_API = {
 // ---------------------------------------------------------------------------
 export const INTERVIEW_API = {
   schedule: (applicationId: string) => `/api/manager/candidates/${applicationId}/interviews`,
+  /** Free times for the next interview, already checked against both people's calendars. */
+  suggestSlots: (applicationId: string) => `/api/manager/candidates/${applicationId}/interview-slots`,
   listForApplication: (applicationId: string) => `/api/manager/candidates/${applicationId}/interviews`,
   mine: '/api/manager/interviews/mine',
+  /** Every interview on the manager's requirements (Admin: all). */
+  managerList: '/api/manager/interviews',
   byId: (interviewId: string) => `/api/manager/interviews/${interviewId}`,
   cancel: (interviewId: string) => `/api/manager/interviews/${interviewId}/cancel`,
   feedback: (interviewId: string) => `/api/manager/interviews/${interviewId}/feedback`,
