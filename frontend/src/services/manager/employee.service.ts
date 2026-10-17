@@ -37,6 +37,8 @@ export interface EmployeeCandidateDTO {
   skills?: SkillLevelDTO[]
   certifications?: string[]
   preferences?: PreferenceDTO
+  /** Where this person stands on requirements the caller runs (profile only). */
+  pipeline?: { applicationId: string; requirementId: string; positionTitle?: string; projectName?: string; status: string }[]
   currentProjects?: string[]
   previousProjects?: string[]
 }
@@ -80,6 +82,8 @@ export interface CandidateSearchFilters {
   preferredDomain?: string
   preferredWorkMode?: string
   preferredLocation?: string
+  /** Leave out everyone on the caller's own projects (the directory is for finding people outside the team). */
+  excludeMyTeam?: boolean
   page?: number
   size?: number
   sortBy?: 'employeeId' | 'firstName' | 'lastName' | 'grade' | 'yearsOfExperience' | 'availabilityStatus' | 'poolStatus'

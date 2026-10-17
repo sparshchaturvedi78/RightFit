@@ -19,6 +19,7 @@ import NewRequirementPanel from '../projects/NewRequirementPanel'
 import ResponsibilityBoard from '../projects/ResponsibilityBoard'
 import { type PickedPerson } from '../projects/ResponsibilityPicker'
 import { PRIORITY_TAG, STAGES, STATUS_PILL } from '../managerUi'
+import CandidatesPanel from './CandidatesPanel'
 import StatusDialog from './StatusDialog'
 import { actionsFor, STATUS_ACTIONS, type StatusAction } from './statusActions'
 
@@ -235,10 +236,11 @@ export default function RequirementPage() {
                 ))}
               </div>
             )}
-            <p className="text-xs text-ink-500 dark:text-slate-400">The candidate list, invitations and interviews open from here as those pages arrive.</p>
           </section>
         </aside>
       </div>
+
+      <CandidatesPanel requirementId={r.requirementId} status={r.status} />
 
       <StatusDialog
         requirement={r}

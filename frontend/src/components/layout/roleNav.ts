@@ -12,7 +12,7 @@ export const MANAGER_NAV: NavGroup[] = [
     items: [
       { label: 'Projects', to: '/manager/projects', icon: FolderKanban, ready: true },
       { label: 'My people', to: '/manager/people', icon: UsersRound, ready: true },
-      { label: 'Employee directory', to: '/manager/employees', icon: Users, ready: false },
+      { label: 'Employee directory', to: '/manager/employees', icon: Users, ready: true },
     ],
   },
   {
