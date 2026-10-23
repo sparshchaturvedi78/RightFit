@@ -6,7 +6,8 @@ import { Modal } from '../../../components/ui/Overlay'
 import { useToast } from '../../../hooks/useToast'
 import { getApiErrorMessage } from '../../../services/httpClient'
 import { managerCandidateService } from '../../../services/manager/candidate.service'
-import { managerRequirementService, type RequirementDTO } from '../../../services/manager/requirement.service'
+import { associateWorkService } from '../../../services/associate/work.service'
+import { managerRequirementService } from '../../../services/manager/requirement.service'
 import { useAppDispatch } from '../../../store'
 import { invalidateQueries } from '../../../store/queriesSlice'
 import { PRIORITY_TAG } from '../managerUi'
@@ -15,16 +16,30 @@ import { PRIORITY_TAG } from '../managerUi'
  * Pick one of the manager's live (published) requirements and add the person to it as Identified.
  * Mounted only while a person is chosen, so each open starts with a clean list.
  */
+/** What the dialog needs to show one requirement a person can be added to. */
+interface Choice {
+  requirementId: string
+  positionTitle: string
+  projectName?: string
+  projectId?: string
+  priority?: string
+}
+
+/**
+ * `manager`: the manager's own live requirements. `sourcer`: the live requirements the signed-in associate sources for.
+ */
 export default function AddToRequirementDialog({
+  source = 'manager',
   person,
   onClose,
 }: {
+  source?: 'manager' | 'sourcer'
   person: { employeeId: string; name: string }
   onClose: () => void
 }) {
   const dispatch = useAppDispatch()
   const toast = useToast()
-  const [items, setItems] = useState<RequirementDTO[] | null>(null)
+  const [items, setItems] = useState<Choice[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -33,10 +48,19 @@ export default function AddToRequirementDialog({
 
   useEffect(() => {
     let live = true
-    managerRequirementService
-      .list({ status: 'PUBLISHED', size: 100, sortBy: 'requirementId', sortDirection: 'ASC' })
-      .then((page) => {
-        if (live) setItems(page.content)
+    const load: Promise<Choice[]> =
+      source === 'sourcer'
+        ? associateWorkService.duties().then((duties) =>
+            duties
+              .filter((d) => d.responsibility === 'SOURCER' && d.requirementStatus === 'PUBLISHED')
+              .map((d) => ({ requirementId: d.requirementId, positionTitle: d.positionTitle, projectName: d.projectName })),
+          )
+        : managerRequirementService
+            .list({ status: 'PUBLISHED', size: 100, sortBy: 'requirementId', sortDirection: 'ASC' })
+            .then((page) => page.content)
+    load
+      .then((rows) => {
+        if (live) setItems(rows)
       })
       .catch((err) => {
         if (live) setLoadError(getApiErrorMessage(err, 'Could not load requirements.'))
@@ -44,14 +68,14 @@ export default function AddToRequirementDialog({
     return () => {
       live = false
     }
-  }, [])
+  }, [source])
 
   const text = query.trim().toLowerCase()
   const shown = (items ?? []).filter(
     (r) => !text || [r.requirementId, r.positionTitle, r.projectName].some((v) => v?.toLowerCase().includes(text)),
   )
 
-  async function add(r: RequirementDTO) {
+  async function add(r: Choice) {
     setBusyId(r.requirementId)
     setRowError((cur) => ({ ...cur, [r.requirementId]: '' }))
     try {

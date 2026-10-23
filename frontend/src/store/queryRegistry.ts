@@ -13,6 +13,10 @@ import { managerEmployeeService, type CandidateSearchFilters } from '../services
 import { managerRequirementService } from '../services/manager/requirement.service'
 import { managerRequirementAssignmentService } from '../services/manager/requirementAssignment.service'
 import { allocationService } from '../services/allocation.service'
+import { associateDashboardService } from '../services/associate/dashboard.service'
+import { associateOpportunityService } from '../services/associate/opportunity.service'
+import { associateProfileService } from '../services/associate/profile.service'
+import { associateWorkService } from '../services/associate/work.service'
 import { interviewService } from '../services/interview.service'
 
 /**
@@ -58,6 +62,41 @@ export const QUERY_FETCHERS = {
   /** Manager: every allocation request on their projects (no parameters; the empty object only gives it a store key). */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   managerAllocations: (_params: Record<string, never>) => allocationService.managerList(),
+  /** Interviews on the requirements the signed-in person coordinates or interviews on. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  dutyInterviews: (_params: Record<string, never>) => interviewService.dutyInterviews(),
+  /** Interviews the signed-in person conducts (assigned as interviewer). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interviewsToTake: (_params: Record<string, never>) => interviewService.mine(),
+  /** Associate: their own dashboard numbers, duties, project, open work, training and profile (no parameters). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateDashboard: (_params: Record<string, never>) => associateDashboardService.get(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateDuties: (_params: Record<string, never>) => associateWorkService.duties(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateProjects: (_params: Record<string, never>) => associateWorkService.myProjects(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateRequirements: (_params: Record<string, never>) => associateWorkService.openRequirements(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateInvitations: (_params: Record<string, never>) => associateOpportunityService.myInvitations(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateOpportunities: (_params: Record<string, never>) => associateOpportunityService.myOpportunities(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateInterviews: (_params: Record<string, never>) => interviewService.associateList(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateTrainings: (_params: Record<string, never>) => associateWorkService.trainings(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateTrainingAssignments: (_params: Record<string, never>) => associateWorkService.trainingAssignments(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateProfile: (_params: Record<string, never>) => associateProfileService.getProfile(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateSkills: (_params: Record<string, never>) => associateProfileService.listSkills(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associatePreferences: (_params: Record<string, never>) => associateProfileService.getPreferences(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateCertifications: (_params: Record<string, never>) => associateProfileService.listCertifications(),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  associateAvailability: (_params: Record<string, never>) => associateProfileService.getAvailability(),
   /** Manager: one page of the employee directory for the filters (people outside the manager's own projects). */
   managerDirectory: (params: CandidateSearchFilters) => managerEmployeeService.search(params),
   /** Manager: a requirement's candidates, every stage, newest first. */

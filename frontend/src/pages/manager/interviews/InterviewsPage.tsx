@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { CalendarClock, Star } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { EmptyState, PanelError, Skeleton, TILE_SURFACE } from '../../../components/dashboard/Panel'
 import { Button } from '../../../components/ui/form'
 import RefreshButton from '../../../components/ui/RefreshButton'
@@ -12,7 +12,6 @@ import { interviewService, type InterviewDTO, type SubmitFeedbackRequest } from 
 import { useAppDispatch } from '../../../store'
 import { invalidateQueries } from '../../../store/queriesSlice'
 import { humanize, parseServerDate } from '../../../utils/format'
-import ManagerLink from '../ManagerLink'
 
 type Show = 'upcoming' | 'feedback' | 'past' | 'cancelled'
 type Range = 'week' | 'fortnight' | 'all'
@@ -50,11 +49,17 @@ function weekBounds(now: Date): [Date, Date] {
 }
 
 /** Every interview on the manager's requirements, grouped by day, with the open ones checked for clashes. */
-export default function InterviewsPage() {
+/**
+ * The interviews page. `manager`: every interview on the manager's requirements. `mine`: the interviews the signed-in
+ * person conducts (an INTERVIEWER duty), who can give feedback but not cancel.
+ */
+export default function InterviewsPage({ scope = 'manager' }: { scope?: 'manager' | 'mine' }) {
+  const basePath = scope === 'mine' ? '/associate/interviews-to-take' : '/manager/interviews'
+  const requirementPath = (id: string) => (scope === 'mine' ? `/associate/duties/${id}` : `/manager/requirements/${id}`)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const { interviewId } = useParams()
-  const list = useQuery('managerInterviews', {})
+  const list = useQuery(scope === 'mine' ? 'dutyInterviews' : 'managerInterviews', {})
   const [now] = useState(() => new Date())
   const [show, setShow] = useState<Show>('upcoming')
   const [range, setRange] = useState<Range>('week')
@@ -139,9 +144,11 @@ export default function InterviewsPage() {
       <motion.header initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] font-bold tracking-[0.14em] text-ink-500 uppercase dark:text-slate-400">Hiring</p>
-          <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-ink-900 dark:text-white">Interviews</h1>
+          <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-ink-900 dark:text-white">{scope === 'mine' ? 'Interviews to take' : 'Interviews'}</h1>
           <p className="mt-1 max-w-[62ch] text-sm text-ink-500 dark:text-slate-400">
-            Every interview across your requirements, in time order. Book them from a requirement; manage and give feedback here.
+            {scope === 'mine'
+              ? 'Interviews you are the interviewer for. Give feedback after each one; the manager decides.'
+              : 'Every interview across your requirements, in time order. Book them from a requirement; manage and give feedback here.'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -211,7 +218,7 @@ export default function InterviewsPage() {
                       key={i.interviewId}
                       type="button"
                       aria-current={current ? 'true' : undefined}
-                      onClick={() => navigate(`/manager/interviews/${i.interviewId}`)}
+                      onClick={() => navigate(`${basePath}/${i.interviewId}`)}
                       className={`${TILE_SURFACE} grid w-full grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3.5 text-left transition-shadow ${
                         current ? 'ring-2 ring-brand-500' : 'hover:shadow-md'
                       }`}
@@ -245,7 +252,17 @@ export default function InterviewsPage() {
 
         <aside className="lg:sticky lg:top-4" aria-label="Selected interview">
           {selected ? (
-            <InterviewDetail key={selected} interviewId={selected} now={now} onChanged={() => dispatch(invalidateQueries('managerInterviews'))} />
+            <InterviewDetail
+              key={selected}
+              interviewId={selected}
+              now={now}
+              canCancel={scope === 'manager'}
+              requirementPath={requirementPath}
+              onChanged={() => {
+                dispatch(invalidateQueries('managerInterviews'))
+                dispatch(invalidateQueries('dutyInterviews'))
+              }}
+            />
           ) : (
             <div className={`${TILE_SURFACE} p-6`}>
               <EmptyState icon={<CalendarClock className="h-5 w-5" />}>Pick an interview to see its details.</EmptyState>
@@ -257,7 +274,19 @@ export default function InterviewsPage() {
   )
 }
 
-function InterviewDetail({ interviewId, now, onChanged }: { interviewId: string; now: Date; onChanged: () => void }) {
+function InterviewDetail({
+  interviewId,
+  now,
+  canCancel,
+  requirementPath,
+  onChanged,
+}: {
+  interviewId: string
+  now: Date
+  canCancel: boolean
+  requirementPath: (id: string) => string
+  onChanged: () => void
+}) {
   const toast = useToast()
   const detail = useQuery('managerInterview', { interviewId })
   const [cancelling, setCancelling] = useState(false)
@@ -310,12 +339,14 @@ function InterviewDetail({ interviewId, now, onChanged }: { interviewId: string;
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_TONE[i.status] ?? STATUS_TONE.DECLINED}`}>{humanize(i.status)}</span>
       </div>
 
+      <LinkEditor key={i.interviewId} interviewId={i.interviewId} current={i.locationOrLink ?? ''} open={open} onChanged={onChanged} />
+
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <Fact label="Requirement">
           {i.requirementId && (
-            <ManagerLink to={`/manager/requirements/${i.requirementId}`} className="font-semibold text-ink-900 dark:text-white" hoverClassName="hover:text-brand-600 dark:hover:text-brand-400">
+            <Link to={requirementPath(i.requirementId)} className="font-semibold text-ink-900 hover:text-brand-600 dark:text-white dark:hover:text-brand-400">
               {i.requirementId}
-            </ManagerLink>
+            </Link>
           )}
         </Fact>
         <Fact label="When">{`${dayLabel(parseServerDate(i.scheduledAt))}, ${timeLabel(i.scheduledAt)} · ${i.durationMinutes ?? 60} min`}</Fact>
@@ -329,7 +360,7 @@ function InterviewDetail({ interviewId, now, onChanged }: { interviewId: string;
         </p>
       )}
 
-      {open && !past && (
+      {canCancel && open && !past && (
         <div className="grid gap-2">
           {cancelling ? (
             <>
@@ -496,4 +527,46 @@ function timeLabel(value: string): string {
 
 function dayLabel(d: Date): string {
   return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+/** The meeting link the candidate joins with. The interviewer or the coordinator sets it; the candidate is told when it changes. */
+function LinkEditor({ interviewId, current, open, onChanged }: { interviewId: string; current: string; open: boolean; onChanged: () => void }) {
+  const toast = useToast()
+  const [value, setValue] = useState(current)
+  const [busy, setBusy] = useState(false)
+  if (!open) {
+    return current ? <p className="text-sm text-ink-700 dark:text-slate-300">Link: <span className="break-all">{current}</span></p> : null
+  }
+
+  async function save() {
+    setBusy(true)
+    try {
+      await interviewService.setLink(interviewId, value)
+      toast.success(value.trim() ? 'Link shared with the candidate' : 'Link removed')
+      onChanged()
+    } catch (err) {
+      toast.error('Could not save the link', getApiErrorMessage(err, 'Try again.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="grid gap-2 rounded-2xl border border-dashed border-slate-200 p-3.5 dark:border-white/10">
+      <label className="grid gap-1 text-xs font-semibold text-ink-500 dark:text-slate-400">
+        Meeting link
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="https://meet.example.com/..."
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink-900 dark:border-white/10 dark:bg-white/5 dark:text-white"
+        />
+      </label>
+      <div className="flex justify-end">
+        <Button variant="secondary" loading={busy} disabled={value === current} onClick={() => void save()}>
+          Share link
+        </Button>
+      </div>
+    </div>
+  )
 }
