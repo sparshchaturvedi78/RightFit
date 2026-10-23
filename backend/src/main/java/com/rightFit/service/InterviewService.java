@@ -134,12 +134,54 @@ public class InterviewService {
         return interviews.stream().map(i -> toDTO(i, false)).toList();
     }
 
+    /**
+     * Interviews on the requirements the signed-in person coordinates or interviews on. Coordinators book and track them;
+     * interviewers conduct them and give feedback.
+     */
+    @Transactional(readOnly = true)
+    public List<InterviewDTO> dutyInterviews() {
+        accessGuard.assertNotRmgOnly();
+        Employee me = accessGuard.currentEmployee();
+        java.util.Set<Long> requirementIds = accessGuard.dutyRequirementIds(me);
+        if (requirementIds.isEmpty()) {
+            return List.of();
+        }
+        return interviewRepository.findByRequirementIds(requirementIds).stream()
+                .map(i -> toDTO(i, true)).toList();
+    }
+
     @Transactional(readOnly = true)
     public List<InterviewDTO> assignedToMe() {
         accessGuard.assertNotRmgOnly();
         Employee me = accessGuard.currentEmployee();
         return interviewRepository.findByInterviewerIdOrderByScheduledAtDesc(me.getId()).stream()
                 .map(i -> toDTO(i, true)).toList();
+    }
+
+    /**
+     * Sets or changes the meeting link on an open interview and tells the candidate. The interviewer can do this for
+     * their own interview; a coordinator on the requirement can do it for any interview there.
+     */
+    public InterviewDTO setLink(String interviewId, String link) {
+        Interview interview = find(interviewId);
+        Employee me = accessGuard.currentEmployee();
+        boolean mine = interview.getInterviewer() != null && interview.getInterviewer().getId().equals(me.getId());
+        if (!mine) {
+            accessGuard.assertCanCoordinate(interview.getRequirement());
+        }
+        if (!OPEN.contains(interview.getStatus())) {
+            throw new BusinessRuleException("Only an open interview can get a link (status " + interview.getStatus() + ")");
+        }
+        String clean = link == null || link.isBlank() ? null : link.trim();
+        interview.setLocationOrLink(clean);
+        interviewRepository.save(interview);
+        notificationService.notify(interview.getEmployee(), "INTERVIEW_LINK",
+                "Interview link for " + interview.getRequirement().getPositionTitle(),
+                clean == null ? "The link was removed. Your RMG will confirm the details." : "Join here: " + clean,
+                "INTERVIEW", interview.getInterviewId());
+        auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "INTERVIEW_LINK_SET", "INTERVIEW",
+                interview.getId(), null, null, interview.getInterviewId() + " link updated by " + me.getEmployeeId());
+        return toDTO(interview, true);
     }
 
     public InterviewDTO cancel(String interviewId, String reason) {

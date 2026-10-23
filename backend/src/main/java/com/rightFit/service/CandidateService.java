@@ -40,6 +40,53 @@ public class CandidateService {
     private final CandidateWorkflowService workflow;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
+    private final com.rightFit.repository.AllocationRepository allocationRepository;
+
+    /**
+     * An unallocated associate applies to a published requirement. They join its pipeline as IDENTIFIED, like
+     * someone a manager added, and the manager is told. Allocated associates are on a project and cannot apply.
+     */
+    public CandidateDTO selfApply(String requirementId) {
+        ProjectRequirement requirement = loadRequirement(requirementId);
+        accessGuard.assertRequirementOpen(requirement);
+        Employee me = accessGuard.currentEmployee();
+        if (!allocationRepository.findByEmployeeIdAndStatus(me.getId(), "ACTIVE").isEmpty()) {
+            throw new BusinessRuleException("You are on a project. Applying opens again when your allocation ends.");
+        }
+        if (accessGuard.isManagerOf(requirement.getProject(), me)) {
+            throw new BusinessRuleException("You manage this project");
+        }
+        IdentifyCandidateRequest request = new IdentifyCandidateRequest();
+        request.setEmployeeId(me.getEmployeeId());
+        request.setNotes("Applied by the associate");
+        CandidateApplication saved = createCandidate(requirement, request, me, "SELF_APPLIED");
+
+        auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "CANDIDATE_APPLIED", "CANDIDATE",
+                saved.getId(), null, CandidateStatus.IDENTIFIED, me.getEmployeeId() + " applied for " + requirementId);
+        notifyManagerIfOther(requirement, me, "CANDIDATE_APPLIED",
+                CandidateWorkflowService.name(me) + " applied for " + requirementId,
+                requirement.getPositionTitle(), saved);
+        return workflow.toDTO(saved);
+    }
+
+    /** The associate takes back their own application, before anyone has invited them. */
+    public CandidateDTO withdrawOwn(String applicationId) {
+        CandidateApplication candidate = workflow.find(applicationId);
+        Employee me = accessGuard.currentEmployee();
+        if (!candidate.getEmployee().getId().equals(me.getId())) {
+            throw com.rightFit.exception.ProjectAccessDeniedException.notYours("This application");
+        }
+        if (!List.of(CandidateStatus.IDENTIFIED, CandidateStatus.SHORTLISTED).contains(candidate.getStatus())) {
+            throw new BusinessRuleException("You can withdraw only before you are invited (status "
+                    + candidate.getStatus() + "). Decline the invitation instead.");
+        }
+        workflow.transition(candidate, CandidateStatus.WITHDRAWN, me, "Withdrawn by the associate");
+        workflow.cancelOpenItems(candidate, "Withdrawn by the associate");
+        notifyManagerIfOther(candidate.getRequirement(), me, "CANDIDATE_WITHDREW",
+                CandidateWorkflowService.name(me) + " withdrew from " + candidate.getRequirement().getRequirementId(),
+                candidate.getRequirement().getPositionTitle(), candidate);
+        return workflow.toDTO(candidate);
+    }
 
     public CandidateDTO identify(String requirementId, IdentifyCandidateRequest request) {
         ProjectRequirement requirement = loadRequirement(requirementId);

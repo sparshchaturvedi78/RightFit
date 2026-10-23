@@ -2,6 +2,8 @@ package com.rightFit.controller;
 
 import com.rightFit.dto.TrainingDtos.AssignTrainingRequest;
 import com.rightFit.dto.TrainingDtos.CreateTrainingProgramRequest;
+import com.rightFit.dto.TrainingDtos.InterestDecisionRequest;
+import com.rightFit.dto.TrainingDtos.OpenTrainingDTO;
 import com.rightFit.dto.TrainingDtos.TrainingAssignmentDTO;
 import com.rightFit.dto.TrainingDtos.TrainingProgramDTO;
 import com.rightFit.dto.TrainingDtos.UpdateTrainingAssignmentRequest;
@@ -72,6 +74,28 @@ public class RmgTrainingController {
     public ResponseEntity<TrainingAssignmentDTO> updateAssignment(@PathVariable String assignmentId,
                                                                   @RequestBody UpdateTrainingAssignmentRequest request) {
         return ResponseEntity.ok(trainingService.updateAssignment(assignmentId, request));
+    }
+
+    /** RMG approves or declines an associate's request to join a training. */
+    @PutMapping("/api/rmg/training-assignments/{assignmentId}/interest-decision")
+    @PreAuthorize("hasPermission(null, 'TRAINING_MANAGE')")
+    public ResponseEntity<TrainingAssignmentDTO> decideInterest(@PathVariable String assignmentId,
+                                                                @RequestBody InterestDecisionRequest request) {
+        return ResponseEntity.ok(trainingService.decideInterest(assignmentId, request));
+    }
+
+    /** Active trainings with the associate's own status on each. */
+    @GetMapping("/api/associate/trainings")
+    @PreAuthorize("hasPermission(null, 'TRAINING_READ_OWN')")
+    public ResponseEntity<List<OpenTrainingDTO>> openTrainings() {
+        return ResponseEntity.ok(trainingService.openTrainings());
+    }
+
+    /** The associate asks their RMG to join a training. */
+    @PostMapping("/api/associate/trainings/{programId}/interest")
+    @PreAuthorize("hasPermission(null, 'TRAINING_READ_OWN')")
+    public ResponseEntity<TrainingAssignmentDTO> requestInterest(@PathVariable String programId) {
+        return ResponseEntity.ok(trainingService.requestInterest(programId));
     }
 
     @GetMapping("/api/associate/training-assignments")

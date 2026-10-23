@@ -55,4 +55,7 @@ public interface ProjectRequirementRepository extends JpaRepository<ProjectRequi
     long countOpenDemandForSkill(@Param("skillName") String skillName);
 
     long countByStatus(String status);
+
+    /** Requirements in one status, newest first (associates browse PUBLISHED ones to apply). */
+    List<ProjectRequirement> findByStatusOrderByCreatedAtDesc(String status);
 }

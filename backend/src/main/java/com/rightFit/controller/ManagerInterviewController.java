@@ -1,5 +1,6 @@
 package com.rightFit.controller;
 
+import com.rightFit.dto.InterviewDtos;
 import com.rightFit.dto.InterviewDtos.InterviewDTO;
 import com.rightFit.dto.InterviewDtos.InterviewResponseRequest;
 import com.rightFit.dto.InterviewDtos.ScheduleInterviewRequest;
@@ -42,6 +43,21 @@ public class ManagerInterviewController {
     @PreAuthorize("hasPermission(null, 'INTERVIEW_READ')")
     public ResponseEntity<List<InterviewDTO>> listForCandidate(@PathVariable String applicationId) {
         return ResponseEntity.ok(interviewService.listForCandidate(applicationId));
+    }
+
+    /** Interviews on the requirements the caller coordinates or interviews on. */
+    @GetMapping("/api/associate/duty-interviews")
+    @PreAuthorize("hasPermission(null, 'INTERVIEW_READ')")
+    public ResponseEntity<List<InterviewDTO>> dutyInterviews() {
+        return ResponseEntity.ok(interviewService.dutyInterviews());
+    }
+
+    /** Sets or clears the meeting link on an open interview; the candidate is told. */
+    @PutMapping("/api/manager/interviews/{interviewId}/link")
+    @PreAuthorize("hasPermission(null, 'INTERVIEW_READ')")
+    public ResponseEntity<InterviewDTO> setLink(@PathVariable String interviewId,
+                                                @RequestBody InterviewDtos.SetLinkRequest request) {
+        return ResponseEntity.ok(interviewService.setLink(interviewId, request.getLocationOrLink()));
     }
 
     @GetMapping("/api/manager/interviews")

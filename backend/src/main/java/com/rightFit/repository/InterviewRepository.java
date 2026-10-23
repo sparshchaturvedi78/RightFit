@@ -25,6 +25,10 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
 
     List<Interview> findByCandidateApplicationIdAndStatusIn(Long candidateApplicationId, Collection<String> statuses);
 
+    /** Every interview on the given requirements, newest first (for the coordinators and interviewers on them). */
+    @Query("SELECT i FROM Interview i WHERE i.requirement.id IN :requirementIds ORDER BY i.scheduledAt DESC")
+    List<Interview> findByRequirementIds(@Param("requirementIds") Collection<Long> requirementIds);
+
     long countByCandidateApplicationId(Long candidateApplicationId);
 
     @Query(value = "SELECT nextval('interview_business_id_seq')", nativeQuery = true)

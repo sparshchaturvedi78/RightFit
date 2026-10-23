@@ -43,6 +43,15 @@ public final class InterviewDtos {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    public static class SetLinkRequest {
+        /** Meeting room or video link. Blank removes it. */
+        private String locationOrLink;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class InterviewResponseRequest {
         @NotBlank(message = "Response is required")
         @Pattern(regexp = "ACCEPT|DECLINE", message = "Response must be ACCEPT or DECLINE")
