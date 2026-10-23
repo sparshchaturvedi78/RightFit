@@ -2,6 +2,8 @@ package com.rightFit.service;
 
 import com.rightFit.dto.TrainingDtos.AssignTrainingRequest;
 import com.rightFit.dto.TrainingDtos.CreateTrainingProgramRequest;
+import com.rightFit.dto.TrainingDtos.InterestDecisionRequest;
+import com.rightFit.dto.TrainingDtos.OpenTrainingDTO;
 import com.rightFit.dto.TrainingDtos.TrainingAssignmentDTO;
 import com.rightFit.dto.TrainingDtos.TrainingProgramDTO;
 import com.rightFit.dto.TrainingDtos.UpdateTrainingAssignmentRequest;
@@ -13,6 +15,7 @@ import com.rightFit.entity.TrainingProgram;
 import com.rightFit.exception.BusinessRuleException;
 import com.rightFit.exception.ProjectAccessDeniedException;
 import com.rightFit.exception.ResourceNotFoundException;
+import com.rightFit.repository.AllocationRepository;
 import com.rightFit.repository.EmployeeRepository;
 import com.rightFit.repository.RejectionRepository;
 import com.rightFit.repository.TrainingAssignmentRepository;
@@ -40,6 +43,7 @@ public class TrainingService {
 
     private final TrainingProgramRepository programRepository;
     private final TrainingAssignmentRepository assignmentRepository;
+    private final AllocationRepository allocationRepository;
     private final EmployeeRepository employeeRepository;
     private final RejectionRepository rejectionRepository;
     private final RequirementAccessGuard accessGuard;
@@ -167,6 +171,96 @@ public class TrainingService {
         Employee employee = accessGuard.currentEmployee();
         return assignmentRepository.findByEmployeeIdOrderByAssignedAtDesc(employee.getId()).stream()
                 .map(this::toAssignmentDTO).toList();
+    }
+
+    /** Active trainings, each with the associate's latest assignment on it (if any), so they can ask to join. */
+    @Transactional(readOnly = true)
+    public List<OpenTrainingDTO> openTrainings() {
+        Employee me = accessGuard.currentEmployee();
+        java.util.Map<Long, TrainingAssignment> mine = new java.util.HashMap<>();
+        for (TrainingAssignment a : assignmentRepository.findByEmployeeIdOrderByAssignedAtDesc(me.getId())) {
+            mine.putIfAbsent(a.getTrainingProgram().getId(), a);
+        }
+        return programRepository.findByIsActiveTrueOrderByProgramNameAsc().stream().map(p -> {
+            TrainingAssignment a = mine.get(p.getId());
+            return OpenTrainingDTO.builder()
+                    .programId(p.getProgramId())
+                    .programName(p.getProgramName())
+                    .description(p.getDescription())
+                    .durationDays(p.getDurationDays())
+                    .trainingType(p.getTrainingType())
+                    .provider(p.getProvider())
+                    .requiredCertifications(p.getRequiredCertifications())
+                    .myAssignmentId(a != null ? a.getAssignmentId() : null)
+                    .myStatus(a != null ? a.getAssignmentStatus() : null)
+                    .build();
+        }).toList();
+    }
+
+    /**
+     * An unallocated associate asks to join a training. It waits as REQUESTED until their RMG decides;
+     * allocated associates are on a project and cannot take training.
+     */
+    public TrainingAssignmentDTO requestInterest(String programId) {
+        Employee me = accessGuard.currentEmployee();
+        if (!allocationRepository.findByEmployeeIdAndStatus(me.getId(), "ACTIVE").isEmpty()) {
+            throw new BusinessRuleException("You are on a project. Training opens again when your allocation ends.");
+        }
+        TrainingProgram program = findProgram(programId);
+        if (!Boolean.TRUE.equals(program.getIsActive())) {
+            throw new BusinessRuleException("'" + program.getProgramName() + "' is no longer offered");
+        }
+        boolean open = assignmentRepository.findByEmployeeIdOrderByAssignedAtDesc(me.getId()).stream()
+                .anyMatch(a -> a.getTrainingProgram().getId().equals(program.getId())
+                        && List.of("REQUESTED", "ASSIGNED", "IN_PROGRESS").contains(a.getAssignmentStatus()));
+        if (open) {
+            throw new BusinessRuleException("You already asked for, or are on, '" + program.getProgramName() + "'");
+        }
+
+        TrainingAssignment request = assignmentRepository.save(TrainingAssignment.builder()
+                .assignmentId("TA-" + assignmentRepository.nextAssignmentSequence())
+                .employee(me)
+                .trainingProgram(program)
+                .assignmentStatus("REQUESTED")
+                .assignedAt(LocalDateTime.now())
+                .build());
+        notificationService.notifyRmgOf(me, "TRAINING_INTEREST",
+                CandidateWorkflowService.name(me) + " asked to join " + program.getProgramName(),
+                "Approve or decline the request in Training.", "TRAINING_ASSIGNMENT", request.getAssignmentId());
+        auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "TRAINING_INTEREST", "TRAINING_ASSIGNMENT",
+                request.getId(), null, "REQUESTED", me.getEmployeeId() + " asked to join " + program.getProgramName());
+        return toAssignmentDTO(request);
+    }
+
+    /** The RMG approves (it becomes a normal ASSIGNED training) or declines an associate's request. */
+    public TrainingAssignmentDTO decideInterest(String assignmentId, InterestDecisionRequest decision) {
+        Employee rmg = requireRmgOrAdmin();
+        TrainingAssignment a = assignmentRepository.findByAssignmentId(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("TrainingAssignment", assignmentId));
+        if (!"REQUESTED".equals(a.getAssignmentStatus())) {
+            throw new BusinessRuleException("This request was already answered (" + a.getAssignmentStatus() + ")");
+        }
+        if (rmg != null && a.getEmployee().getRmgManager() != null && !a.getEmployee().getRmgManager().getId().equals(rmg.getId())) {
+            throw ProjectAccessDeniedException.notYours("This training request");
+        }
+        String program = a.getTrainingProgram().getProgramName();
+        if (decision.isApprove()) {
+            a.setAssignmentStatus("ASSIGNED");
+            a.setAssignedBy(rmg);
+            a.setAssignedAt(LocalDateTime.now());
+            a.setStartDate(decision.getStartDate());
+            a.setExpectedEndDate(decision.getExpectedEndDate());
+        } else {
+            a.setAssignmentStatus("DECLINED");
+        }
+        TrainingAssignment saved = assignmentRepository.save(a);
+        notificationService.notify(a.getEmployee(), "TRAINING_INTEREST_" + (decision.isApprove() ? "APPROVED" : "DECLINED"),
+                decision.isApprove() ? "You are in " + program : "Your request for " + program + " was declined",
+                decision.getComment() != null ? decision.getComment() : "Reach out to your RMG with questions.",
+                "TRAINING_ASSIGNMENT", saved.getAssignmentId());
+        auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "TRAINING_INTEREST_DECIDED", "TRAINING_ASSIGNMENT",
+                saved.getId(), "REQUESTED", saved.getAssignmentStatus(), decision.getComment());
+        return toAssignmentDTO(saved);
     }
 
     public TrainingAssignmentDTO updateAssignment(String assignmentId, UpdateTrainingAssignmentRequest request) {

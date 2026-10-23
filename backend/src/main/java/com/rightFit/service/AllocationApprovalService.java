@@ -90,6 +90,8 @@ public class AllocationApprovalService {
         workflow.transition(candidate, CandidateStatus.ALLOCATED, rmg, "Allocation " + allocation.getAllocationId());
         // One requirement, one resource: the filled requirement closes and everyone else is released.
         workflow.releaseOthers(requirement, candidate, rmg);
+        // The person is on a project now: their interviews and candidacies elsewhere end, and those managers hear why.
+        workflow.closeOtherCandidacies(candidate, rmg);
         requirement.setStatus("CLOSED");
         requirementRepository.save(requirement);
 

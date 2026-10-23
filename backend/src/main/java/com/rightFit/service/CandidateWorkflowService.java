@@ -182,6 +182,33 @@ public class CandidateWorkflowService {
         }
     }
 
+    /**
+     * The person was allocated: every other live candidacy they have, on any requirement, is closed. Each of those
+     * requirements' managers is told which project took them and who manages it.
+     */
+    public void closeOtherCandidacies(CandidateApplication allocated, Employee actor) {
+        Employee person = allocated.getEmployee();
+        com.rightFit.entity.Project project = allocated.getRequirement().getProject();
+        Employee pm = project.getManager();
+        String selectedFor = project.getProjectName()
+                + (pm != null ? " (manager " + name(pm) + ", " + pm.getEmployeeId() + ")" : "");
+        String reason = name(person) + " was selected for " + selectedFor;
+        for (CandidateApplication c : candidateRepository.findByEmployeeIdOrderByCreatedAtDesc(person.getId())) {
+            if (c.getId().equals(allocated.getId()) || !live(c)) {
+                continue;
+            }
+            forceTransition(c, CandidateStatus.WITHDRAWN, actor, reason);
+            cancelOpenItems(c, reason);
+            Employee otherManager = c.getRequirement().getProject().getManager();
+            if (otherManager != null) {
+                notificationService.notify(otherManager, "CANDIDATE_ALLOCATED_ELSEWHERE",
+                        name(person) + " was allocated to another project",
+                        reason + ". Their candidacy for " + c.getRequirement().getRequirementId() + " was closed.",
+                        "CANDIDATE", c.getApplicationId());
+            }
+        }
+    }
+
     /** The allocation fell through: candidates who were held go back to the stage they were in. */
     public void resumeHeld(ProjectRequirement requirement, Employee actor, String reason) {
         for (CandidateApplication c : candidateRepository.findByRequirementIdOrderByCreatedAtDesc(requirement.getId())) {

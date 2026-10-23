@@ -112,4 +112,34 @@ public final class TrainingDtos {
         private String assignedByName;
         private LocalDateTime assignedAt;
     }
+
+    /** A training an associate can see, with where they stand on it (none, REQUESTED, ASSIGNED, ...). */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class OpenTrainingDTO {
+        private String programId;
+        private String programName;
+        private String description;
+        private Integer durationDays;
+        private String trainingType;
+        private String provider;
+        private String requiredCertifications;
+        private String myAssignmentId;
+        private String myStatus;
+    }
+
+    /** The RMG's answer to an associate's request to join a training. */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class InterestDecisionRequest {
+        private boolean approve;
+        private String comment;
+        private LocalDate startDate;
+        private LocalDate expectedEndDate;
+    }
 }

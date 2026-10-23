@@ -14,6 +14,7 @@ import com.rightFit.security.SecurityContextUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import com.rightFit.entity.RequirementAssignment;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -176,6 +177,15 @@ public class RequirementAccessGuard {
     public boolean hasResponsibility(ProjectRequirement requirement, Employee employee, String type) {
         return assignmentRepository.existsByRequirementIdAndEmployeeIdAndResponsibilityTypeAndIsActiveTrue(
                 requirement.getId(), employee.getId(), type);
+    }
+
+    /** Requirements where the person is a COORDINATOR or an INTERVIEWER (the hiring duties that work on interviews). */
+    public Set<Long> dutyRequirementIds(Employee employee) {
+        return assignmentRepository.findByEmployeeIdAndIsActiveTrue(employee.getId()).stream()
+                .filter(a -> RequirementAssignment.COORDINATOR.equals(a.getResponsibilityType())
+                        || RequirementAssignment.INTERVIEWER.equals(a.getResponsibilityType()))
+                .map(a -> a.getRequirement().getId())
+                .collect(Collectors.toSet());
     }
 
     public boolean isManagerOf(Project project, Employee employee) {
