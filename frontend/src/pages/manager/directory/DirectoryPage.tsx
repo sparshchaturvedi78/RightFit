@@ -31,7 +31,8 @@ function num(value: string | null): number | undefined {
 }
 
 /** Everyone in the company who is not on the manager's own projects, filtered for finding people for a requirement. */
-export default function DirectoryPage() {
+/** `manager` for the People directory; `sourcer` for an associate who sources (adds people to their own requirements). */
+export default function DirectoryPage({ source = 'manager' }: { source?: 'manager' | 'sourcer' }) {
   const [params, setParams] = useSearchParams()
   const [skillText, setSkillText] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -296,7 +297,7 @@ export default function DirectoryPage() {
         />
       )}
 
-      {adding && <AddToRequirementDialog person={adding} onClose={() => setAdding(null)} />}
+      {adding && <AddToRequirementDialog source={source} person={adding} onClose={() => setAdding(null)} />}
     </div>
   )
 }

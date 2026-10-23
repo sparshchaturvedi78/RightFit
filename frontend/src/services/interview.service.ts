@@ -85,6 +85,18 @@ async function suggestSlots(applicationId: string, durationMinutes: number): Pro
 }
 
 /** Every interview on the manager's requirements, newest first. */
+/** Interviews on the requirements the signed-in person coordinates or interviews on. */
+async function dutyInterviews(): Promise<InterviewDTO[]> {
+  const { data } = await httpClient.get<InterviewDTO[]>(INTERVIEW_API.dutyInterviews)
+  return data
+}
+
+/** Sets or clears the meeting link on an open interview; the candidate is told. */
+async function setLink(interviewId: string, locationOrLink: string): Promise<InterviewDTO> {
+  const { data } = await httpClient.put<InterviewDTO>(INTERVIEW_API.setLink(interviewId), { locationOrLink })
+  return data
+}
+
 async function managerList(): Promise<InterviewDTO[]> {
   const { data } = await httpClient.get<InterviewDTO[]>(INTERVIEW_API.managerList)
   return data
@@ -121,6 +133,8 @@ export const interviewService = {
   listForApplication,
   mine,
   managerList,
+  dutyInterviews,
+  setLink,
   suggestSlots,
   byId,
   cancel,

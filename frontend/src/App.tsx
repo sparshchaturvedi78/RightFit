@@ -26,6 +26,19 @@ import ManagerRequirementPage from './pages/manager/requirements/RequirementPage
 import ManagerDirectoryPage from './pages/manager/directory/DirectoryPage'
 import ManagerInterviewsPage from './pages/manager/interviews/InterviewsPage'
 import ManagerAllocationRequestsPage from './pages/manager/allocations/AllocationRequestsPage'
+import ManagerDirectoryPageForAssociate from './pages/manager/directory/DirectoryPage'
+import AssociateLayout from './pages/associate/AssociateLayout'
+import AssociateDashboardPage from './pages/associate/AssociateDashboardPage'
+import MyTeamPage from './pages/associate/MyTeamPage'
+import AssociateProjectsPage from './pages/associate/AssociateProjectsPage'
+import InvitationsPage from './pages/associate/InvitationsPage'
+import AssociateInterviewsPage from './pages/associate/AssociateInterviewsPage'
+import TrainingPage from './pages/associate/TrainingPage'
+import ProfilePage from './pages/associate/ProfilePage'
+import CertificationsPage from './pages/associate/CertificationsPage'
+import AvailabilityPage from './pages/associate/AvailabilityPage'
+import DutiesPage from './pages/associate/DutiesPage'
+import DutyRequirementPage from './pages/associate/DutyRequirementPage'
 
 function App() {
   return (
@@ -95,14 +108,31 @@ function App() {
           </ProtectedRoute>
         }
       />
+      {/* Associate: the same shell; the sidebar follows their allocation and hiring duties. */}
       <Route
-        path="/associate/dashboard"
+        path="/associate"
         element={
           <ProtectedRoute allowedRoles={['ASSOCIATE']}>
-            <DashboardPlaceholderPage role="ASSOCIATE" />
+            <AssociateLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AssociateDashboardPage />} />
+        <Route path="team" element={<MyTeamPage />} />
+        <Route path="projects" element={<AssociateProjectsPage />} />
+        <Route path="invitations" element={<InvitationsPage />} />
+        <Route path="interviews" element={<AssociateInterviewsPage />} />
+        <Route path="training" element={<TrainingPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="certifications" element={<CertificationsPage />} />
+        <Route path="availability" element={<AvailabilityPage />} />
+        <Route path="duties" element={<DutiesPage />} />
+        <Route path="directory" element={<ManagerDirectoryPageForAssociate source="sourcer" />} />
+        <Route path="duties/:requirementId" element={<DutyRequirementPage />} />
+        <Route path="interviews-to-take" element={<ManagerInterviewsPage scope="mine" />} />
+        <Route path="interviews-to-take/:interviewId" element={<ManagerInterviewsPage scope="mine" />} />
+      </Route>
     </Routes>
   )
 }

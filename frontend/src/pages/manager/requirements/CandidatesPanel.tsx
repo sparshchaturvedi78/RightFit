@@ -34,7 +34,29 @@ const TABS: { key: string; label: string }[] = [
  * Everyone in one requirement's pipeline, one stage at a time. The manager can shortlist identified people and
  * withdraw anyone still in the process. Inviting and interviews are separate pages.
  */
-export default function CandidatesPanel({ requirementId, status }: { requirementId: string; status: string }) {
+/** What the viewer may do. A manager can do everything; a SOURCER only shortlists, a COORDINATOR invites and books. */
+export interface CandidateAbilities {
+  shortlist: boolean
+  invite: boolean
+  book: boolean
+  decide: boolean
+  allocate: boolean
+  withdraw: boolean
+}
+
+const EVERYTHING: CandidateAbilities = { shortlist: true, invite: true, book: true, decide: true, allocate: true, withdraw: true }
+
+export default function CandidatesPanel({
+  requirementId,
+  status,
+  can = EVERYTHING,
+  intro = 'Add people from the employee directory. Move them forward one step at a time.',
+}: {
+  requirementId: string
+  status: string
+  can?: CandidateAbilities
+  intro?: string
+}) {
   const dispatch = useAppDispatch()
   const toast = useToast()
   const list = useQuery('managerCandidates', { requirementId })
@@ -77,7 +99,7 @@ export default function CandidatesPanel({ requirementId, status }: { requirement
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold text-ink-900 dark:text-white">Candidates</h2>
-          <p className="mt-0.5 text-xs text-ink-500 dark:text-slate-400">Add people from the employee directory. Move them forward one step at a time.</p>
+          <p className="mt-0.5 text-xs text-ink-500 dark:text-slate-400">{intro}</p>
         </div>
         <RefreshButton onClick={list.refresh} loading={list.loading} />
       </div>
@@ -133,22 +155,22 @@ export default function CandidatesPanel({ requirementId, status }: { requirement
                     </p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
-                    {c.status === 'IDENTIFIED' && (
+                    {c.status === 'IDENTIFIED' && can.shortlist && (
                       <Button variant="primary" loading={busyId === c.applicationId} onClick={() => void shortlist(c)}>
                         Shortlist
                       </Button>
                     )}
-                    {c.status === 'SHORTLISTED' && (
+                    {c.status === 'SHORTLISTED' && can.invite && (
                       <Button variant="primary" onClick={() => setInviting(c)}>
                         Send invite
                       </Button>
                     )}
-                    {c.status === 'SELECTED' && (
+                    {c.status === 'SELECTED' && can.allocate && (
                       <Button variant="primary" onClick={() => setRequesting(c)}>
                         Request allocation
                       </Button>
                     )}
-                    {DECIDABLE.has(c.status) && (
+                    {DECIDABLE.has(c.status) && can.decide && (
                       <>
                         <Button variant="secondary" onClick={() => setDeciding({ candidate: c, decision: 'REJECT' })}>
                           Reject
@@ -158,12 +180,12 @@ export default function CandidatesPanel({ requirementId, status }: { requirement
                         </Button>
                       </>
                     )}
-                    {c.status === 'ACCEPTED' && (
+                    {c.status === 'ACCEPTED' && can.book && (
                       <Button variant="primary" onClick={() => setScheduling(c)}>
                         Book interview
                       </Button>
                     )}
-                    {!TERMINAL.has(c.status) && (
+                    {!TERMINAL.has(c.status) && can.withdraw && (
                       <Button variant="secondary" onClick={() => setWithdrawing(c)}>
                         Withdraw
                       </Button>

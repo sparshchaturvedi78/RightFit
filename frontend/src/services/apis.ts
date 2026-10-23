@@ -313,6 +313,9 @@ export const INTERVIEW_API = {
   mine: '/api/manager/interviews/mine',
   /** Every interview on the manager's requirements (Admin: all). */
   managerList: '/api/manager/interviews',
+  /** Interviews on the requirements the caller coordinates or interviews on. */
+  dutyInterviews: '/api/associate/duty-interviews',
+  setLink: (interviewId: string) => `/api/manager/interviews/${interviewId}/link`,
   byId: (interviewId: string) => `/api/manager/interviews/${interviewId}`,
   cancel: (interviewId: string) => `/api/manager/interviews/${interviewId}/cancel`,
   feedback: (interviewId: string) => `/api/manager/interviews/${interviewId}/feedback`,
@@ -475,4 +478,18 @@ export const ASSOCIATE_OPPORTUNITY_API = {
 // ---------------------------------------------------------------------------
 export const ASSOCIATE_DASHBOARD_API = {
   get: '/api/associate/dashboard',
+}
+
+// ---------------------------------------------------------------------------
+// Associate — Work — AssociateWorkController (/api/associate) and associate training (RmgTrainingController)
+// ---------------------------------------------------------------------------
+export const ASSOCIATE_WORK_API = {
+  requirements: '/api/associate/requirements',
+  apply: (requirementId: string) => `/api/associate/requirements/${requirementId}/apply`,
+  withdraw: (applicationId: string) => `/api/associate/applications/${applicationId}/withdraw`,
+  myProjects: '/api/associate/my-projects',
+  duties: '/api/associate/duties',
+  trainings: '/api/associate/trainings',
+  trainingInterest: (programId: string) => `/api/associate/trainings/${programId}/interest`,
+  trainingAssignments: '/api/associate/training-assignments',
 }
