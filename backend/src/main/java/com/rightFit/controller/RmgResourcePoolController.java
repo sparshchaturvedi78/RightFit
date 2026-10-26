@@ -2,6 +2,7 @@ package com.rightFit.controller;
 
 import com.rightFit.dto.PoolBenchDtos.PoolDetailDTO;
 import com.rightFit.dto.PoolBenchDtos.PoolEntryDTO;
+import com.rightFit.dto.RmgSelectionDtos.SelectionDTO;
 import com.rightFit.service.ResourcePoolGovernanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /** RMG Phase: Resource Pool visibility (BRD 22). Pool entry/exit happens automatically elsewhere. */
 @Slf4j
@@ -41,5 +44,11 @@ public class RmgResourcePoolController {
     public ResponseEntity<PoolDetailDTO> detail(@PathVariable String employeeId) {
         log.info("Fetching pool detail for {}", employeeId);
         return ResponseEntity.ok(poolService.detail(employeeId));
+    }
+
+    @GetMapping("/{employeeId}/selections")
+    @PreAuthorize("hasPermission(null, 'POOL_READ')")
+    public ResponseEntity<List<SelectionDTO>> selections(@PathVariable String employeeId) {
+        return ResponseEntity.ok(poolService.selections(employeeId));
     }
 }

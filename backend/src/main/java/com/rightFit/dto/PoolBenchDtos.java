@@ -29,6 +29,7 @@ public final class PoolBenchDtos {
         private String designation;
         private String grade;
         private String departmentName;
+        private String locationName;
         private LocalDateTime inPoolSince;
         private String entryReason;
     }

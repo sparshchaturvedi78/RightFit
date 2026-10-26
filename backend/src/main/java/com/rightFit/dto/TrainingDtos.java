@@ -1,8 +1,10 @@
 package com.rightFit.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,6 +34,9 @@ public final class TrainingDtos {
         private String provider;
         private BigDecimal cost;
         private String requiredCertifications;
+        @NotNull(message = "Say how many people the program can take")
+        @Min(value = 1, message = "A program needs at least one seat")
+        private Integer maxParticipants;
     }
 
     @Data
@@ -46,6 +51,8 @@ public final class TrainingDtos {
         private String provider;
         private BigDecimal cost;
         private String requiredCertifications;
+        @Min(value = 1, message = "A program needs at least one seat")
+        private Integer maxParticipants;
     }
 
     @Data
@@ -63,6 +70,10 @@ public final class TrainingDtos {
         private BigDecimal cost;
         private String requiredCertifications;
         private Boolean isActive;
+        /** Seats in the program; null when the program has no limit. */
+        private Integer maxParticipants;
+        /** People holding a seat right now (assigned or in progress). */
+        private Integer seatsTaken;
     }
 
     @Data

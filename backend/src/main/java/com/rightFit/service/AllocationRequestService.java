@@ -63,14 +63,12 @@ public class AllocationRequestService {
 
         LocalDate start = request.getStartDate() != null ? request.getStartDate()
                 : requirement.getAllocationStartDate() != null ? requirement.getAllocationStartDate() : LocalDate.now();
-        LocalDate end = request.getEndDate() != null ? request.getEndDate() : requirement.getAllocationEndDate();
-        if (end != null && end.isBefore(start)) {
-            throw new BusinessRuleException("Allocation end date must not be before the start date");
-        }
+        // A manager always asks for the employee's full working day, open ended: there is no end date in the system.
+        LocalDate end = null;
         if (employee.getAvailableFromDate() != null && start.isBefore(employee.getAvailableFromDate())) {
             throw new BusinessRuleException("Employee is only available from " + employee.getAvailableFromDate());
         }
-        BigDecimal hours = request.getHoursPerDay();
+        BigDecimal hours = allocationService.capacityOf(employee);
         allocationService.assertCapacity(employee, start, end, hours, null);
 
         Employee manager = accessGuard.currentEmployee();

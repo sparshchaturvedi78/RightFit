@@ -30,10 +30,9 @@ public final class AllocationDtos {
     public static class CreateAllocationRequestRequest {
         /** Defaults to the requirement's allocation start date, else today. */
         private LocalDate startDate;
+        /** Not used: allocations are open ended and always the full working day. Kept so older clients still work. */
         private LocalDate endDate;
-        @NotNull(message = "Hours per day is required")
-        @DecimalMin(value = "0.5", message = "Hours per day must be at least 0.5")
-        @DecimalMax(value = "24", message = "Hours per day must not exceed 24")
+        /** Not used: the full working day is requested. Kept so older clients still work. */
         private BigDecimal hoursPerDay;
     }
 

@@ -7,6 +7,7 @@ import com.rightFit.dto.CandidateDtos.SkillLevelDTO;
 import com.rightFit.entity.Allocation;
 import com.rightFit.entity.CandidateApplication;
 import com.rightFit.entity.Employee;
+import com.rightFit.entity.RequirementAssignment;
 import com.rightFit.entity.EmployeeCertification;
 import com.rightFit.entity.EmployeePreference;
 import com.rightFit.entity.EmployeeSkill;
@@ -65,19 +66,32 @@ public class CandidateSearchService {
     private final JdbcTemplate jdbcTemplate;
 
     /**
-     * With excludeMyTeam, a manager's directory leaves out their own team and anyone already in one of their
-     * live pipelines: those people are handled on the requirement, not found again here.
+     * The one directory rule for everyone who searches for people to allocate (managers and sourcers alike): a person
+     * is listed only if they are free to be allocated. Anyone already on a project in the caller's scope, anyone in an
+     * open selection there (on hold included), and anyone with an active allocation is left out, so the manager and
+     * the sourcer of the same project see the same people.
      */
     public Page<EmployeeCandidateDTO> search(Criteria criteria, Pageable pageable) {
         assertMaySearch();
-        Employee caller = criteria.excludeMyTeam() || criteria.forSourcing() ? accessGuard.currentEmployee() : null;
-        Set<Long> myTeam = criteria.excludeMyTeam() && caller != null ? peopleOnMyProjects(caller) : Set.of();
-        return employeeRepository.findAll(toSpecification(criteria, myTeam, caller), pageable).map(this::toDTO);
+        Employee caller = accessGuard.isAdmin() ? null : accessGuard.currentEmployee();
+        Set<Long> scope = caller != null ? scopeProjectIds(caller) : Set.of();
+        Set<Long> myTeam = scope.isEmpty() ? Set.of() : peopleOnProjects(scope);
+        return employeeRepository.findAll(toSpecification(criteria, myTeam, caller, scope), pageable).map(this::toDTO);
     }
 
-    /** Everyone on the caller's own projects, including the caller. Used to find people outside the team. */
-    private Set<Long> peopleOnMyProjects(Employee caller) {
-        return projectRepository.findByManagerId(caller.getId()).stream()
+    /** Projects the caller manages, plus the projects of requirements the caller sources for. */
+    private Set<Long> scopeProjectIds(Employee caller) {
+        Set<Long> ids = new java.util.HashSet<>();
+        projectRepository.findByManagerId(caller.getId()).forEach(p -> ids.add(p.getId()));
+        assignmentRepository.findByEmployeeIdAndIsActiveTrue(caller.getId()).stream()
+                .filter(a -> RequirementAssignment.SOURCER.equals(a.getResponsibilityType()))
+                .forEach(a -> ids.add(a.getRequirement().getProject().getId()));
+        return ids;
+    }
+
+    /** Everyone on the given projects, including their managers. */
+    private Set<Long> peopleOnProjects(Set<Long> projectIds) {
+        return projectRepository.findAllById(projectIds).stream()
                 .flatMap(project -> membershipService.peopleOfProject(project).stream())
                 .collect(Collectors.toSet());
     }
@@ -122,13 +136,14 @@ public class CandidateSearchService {
         return found;
     }
 
-    /** An open candidate application for this person on one of the caller's requirements (terminal outcomes do not count). */
-    private Subquery<Long> liveInMyPipeline(CriteriaQuery<?> query, CriteriaBuilder cb, Root<Employee> root, Employee caller) {
+    /** An open candidate application for this person on a requirement in the caller's scope (terminal outcomes, including on hold, count as open). */
+    private Subquery<Long> liveInMyPipeline(CriteriaQuery<?> query, CriteriaBuilder cb, Root<Employee> root, Set<Long> scope) {
         Subquery<Long> sq = query.subquery(Long.class);
         Root<CandidateApplication> app = sq.from(CandidateApplication.class);
         sq.select(app.<Long>get("id")).where(
                 cb.equal(app.get("employee"), root),
-                cb.equal(app.get("requirement").get("project").get("manager").get("id"), caller.getId()),
+                app.get("requirement").get("project").get("id").in(scope),
+                cb.not(app.get("status").in(CandidateStatus.TERMINAL)),
                 cb.not(app.get("status").in(CandidateStatus.TERMINAL)),
                 cb.or(cb.isNull(app.get("archived")), cb.isFalse(app.<Boolean>get("archived"))));
         return sq;
@@ -147,29 +162,32 @@ public class CandidateSearchService {
         }
     }
 
-    private Specification<Employee> toSpecification(Criteria c, Set<Long> myTeam, Employee caller) {
+    private Specification<Employee> toSpecification(Criteria c, Set<Long> myTeam, Employee caller, Set<Long> scope) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("employmentStatus"), "ACTIVE"));
             if (!myTeam.isEmpty()) {
                 predicates.add(cb.not(root.get("id").in(myTeam)));
             }
-            if (c.forSourcing() && caller != null) {
-                // Someone sourcing adds people from the company, never themselves, managers or anyone already allocated.
+            if (caller != null) {
+                // Never the caller themselves, and never anyone already allocated.
                 predicates.add(cb.notEqual(root.get("id"), caller.getId()));
                 Subquery<Long> busy = query.subquery(Long.class);
                 Root<Allocation> a = busy.from(Allocation.class);
                 busy.select(a.<Long>get("id")).where(cb.equal(a.get("employee"), root), cb.equal(a.get("status"), "ACTIVE"));
                 predicates.add(cb.not(cb.exists(busy)));
-                Subquery<Long> managerRole = query.subquery(Long.class);
-                Root<UserRole> mr = managerRole.from(UserRole.class);
-                managerRole.select(mr.<Long>get("id")).where(cb.equal(mr.get("user"), root.get("user")),
-                        cb.isTrue(mr.<Boolean>get("isActive")), cb.equal(mr.get("role").get("code"), RequirementAccessGuard.MANAGER));
-                predicates.add(cb.not(cb.exists(managerRole)));
             }
-            if (caller != null) {
-                predicates.add(cb.not(cb.exists(liveInMyPipeline(query, cb, root, caller))));
+            if (caller != null && !scope.isEmpty()) {
+                predicates.add(cb.not(cb.exists(liveInMyPipeline(query, cb, root, scope))));
             }
+
+            // Managers and RMGs are not part of the resource pool, so they are never offered as people to allocate.
+            Subquery<Long> managerRole = query.subquery(Long.class);
+            Root<UserRole> mr = managerRole.from(UserRole.class);
+            managerRole.select(mr.<Long>get("id")).where(cb.equal(mr.get("user"), root.get("user")),
+                    cb.isTrue(mr.<Boolean>get("isActive")),
+                    mr.get("role").get("code").in(RequirementAccessGuard.MANAGER, RequirementAccessGuard.RMG));
+            predicates.add(cb.not(cb.exists(managerRole)));
 
             // Admin accounts are platform administrators, never candidates.
             Subquery<Long> adminSq = query.subquery(Long.class);

@@ -14,6 +14,10 @@ public interface TrainingAssignmentRepository extends JpaRepository<TrainingAssi
 
     Optional<TrainingAssignment> findByAssignmentId(String assignmentId);
 
+    /** How many people hold a seat on a program: assignments in one of the given statuses. */
+    @Query("SELECT COUNT(a) FROM TrainingAssignment a WHERE a.trainingProgram.id = :programId AND a.assignmentStatus IN :statuses")
+    long countSeatsTaken(@Param("programId") Long programId, @Param("statuses") List<String> statuses);
+
     List<TrainingAssignment> findByEmployeeIdOrderByAssignedAtDesc(Long employeeId);
 
     List<TrainingAssignment> findByTrainingProgramIdOrderByAssignedAtDesc(Long trainingProgramId);
