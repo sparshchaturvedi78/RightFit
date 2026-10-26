@@ -217,3 +217,14 @@ body {
   }
   html { scroll-behavior: auto; }
 }
+
+/* Dark theme: native pickers and option lists follow the palette, so their text stays readable. */
+.dark select option {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark select {
+  color-scheme: dark;
+}

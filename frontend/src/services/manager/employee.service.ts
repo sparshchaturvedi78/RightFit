@@ -84,6 +84,8 @@ export interface CandidateSearchFilters {
   preferredLocation?: string
   /** Leave out everyone on the caller's own projects (the directory is for finding people outside the team). */
   excludeMyTeam?: boolean
+  /** Sourcing: leave out the caller, managers and anyone already allocated. */
+  forSourcing?: boolean
   page?: number
   size?: number
   sortBy?: 'employeeId' | 'firstName' | 'lastName' | 'grade' | 'yearsOfExperience' | 'availabilityStatus' | 'poolStatus'

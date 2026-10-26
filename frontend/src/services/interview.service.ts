@@ -33,6 +33,7 @@ export interface InterviewDTO {
   candidateResponseAt?: string
   candidateResponseComment?: string
   completedAt?: string
+  heldAt?: string
   cancelledReason?: string
   feedback?: FeedbackDTO
 }
@@ -79,8 +80,10 @@ async function mine(): Promise<InterviewDTO[]> {
 }
 
 /** Free start times (ISO, local) for an interview of the given length, from now on. */
-async function suggestSlots(applicationId: string, durationMinutes: number): Promise<string[]> {
-  const { data } = await httpClient.get<string[]>(INTERVIEW_API.suggestSlots(applicationId), { params: { durationMinutes } })
+async function suggestSlots(applicationId: string, durationMinutes: number, interviewerEmployeeId?: string): Promise<string[]> {
+  const { data } = await httpClient.get<string[]>(INTERVIEW_API.suggestSlots(applicationId), {
+    params: { durationMinutes, interviewerEmployeeId: interviewerEmployeeId || undefined },
+  })
   return data
 }
 
@@ -88,6 +91,25 @@ async function suggestSlots(applicationId: string, durationMinutes: number): Pro
 /** Interviews on the requirements the signed-in person coordinates or interviews on. */
 async function dutyInterviews(): Promise<InterviewDTO[]> {
   const { data } = await httpClient.get<InterviewDTO[]>(INTERVIEW_API.dutyInterviews)
+  return data
+}
+
+/** Moves an open interview to a new time, mode or room. */
+export interface RescheduleRequest {
+  scheduledAt: string
+  durationMinutes?: number
+  mode?: 'ONLINE' | 'IN_PERSON' | 'PHONE'
+  locationOrLink?: string
+}
+
+/** The interviewer or coordinator marks an interview as held, which opens its feedback. */
+async function markHeld(interviewId: string): Promise<InterviewDTO> {
+  const { data } = await httpClient.put<InterviewDTO>(INTERVIEW_API.markHeld(interviewId))
+  return data
+}
+
+async function reschedule(interviewId: string, payload: RescheduleRequest): Promise<InterviewDTO> {
+  const { data } = await httpClient.put<InterviewDTO>(INTERVIEW_API.reschedule(interviewId), payload)
   return data
 }
 
@@ -135,6 +157,8 @@ export const interviewService = {
   managerList,
   dutyInterviews,
   setLink,
+  reschedule,
+  markHeld,
   suggestSlots,
   byId,
   cancel,

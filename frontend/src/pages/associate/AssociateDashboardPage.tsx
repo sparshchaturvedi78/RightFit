@@ -88,7 +88,7 @@ function AllocatedView({ onRefresh, duties }: { onRefresh: () => void; duties: D
         />
       )}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-5">
+      <div className={`grid items-start gap-4 lg:gap-5 ${closed.length > 0 ? 'lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]' : ''}`}>
         <div className="grid gap-4 lg:gap-5">
           <Card title={projects.data && projects.data.length > 1 ? 'Your projects' : 'Your project'} action={<Link to="/associate/team" className="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400">See my team</Link>}>
             {!projects.data ? (
@@ -122,20 +122,18 @@ function AllocatedView({ onRefresh, duties }: { onRefresh: () => void; duties: D
           <DutiesCard duties={duties} />
         </div>
 
-        <Card title="Closed when you were allocated" note={since ? formatDay(p?.myStartDate) : undefined}>
-          {closed.length === 0 ? (
-            <p className="text-sm text-ink-500 dark:text-slate-400">Nothing else was open when you were allocated.</p>
-          ) : (
-            closed.map((o) => (
+        {closed.length > 0 && (
+          <Card title="Closed when you were allocated" note={since ? formatDay(p?.myStartDate) : undefined}>
+            {closed.map((o) => (
               <Row
                 key={o.applicationId}
                 title={`${o.requirementId ?? ''} · ${o.positionTitle ?? ''}`}
                 detail={`${o.projectName ?? ''} · closed, its manager was told`}
                 aside={<span className="rounded-full bg-amber-500/14 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">Closed</span>}
               />
-            ))
-          )}
-        </Card>
+            ))}
+          </Card>
+        )}
       </div>
     </div>
   )
@@ -145,25 +143,42 @@ function PoolView({ onRefresh }: { onRefresh: () => void }) {
   const invitations = useQuery('associateInvitations', {})
   const opportunities = useQuery('associateOpportunities', {})
   const interviews = useQuery('associateInterviews', {})
-  const requirements = useQuery('associateRequirements', {})
   const training = useQuery('associateTrainingAssignments', {})
+  const { duties } = useAssociateState()
   const [now] = useState(() => new Date())
 
   const pendingInvites = (invitations.data ?? []).filter((i) => OPEN_INVITE.includes(i.status))
   const toConfirm = (opportunities.data ?? []).filter((o) => o.status === 'SELECTED' && !o.confirmed)
   const toAnswer = (interviews.data ?? []).filter((i) => i.status === 'SCHEDULED' && parseServerDate(i.scheduledAt) >= now)
   const upcoming = (interviews.data ?? []).filter((i) => i.status === 'ACCEPTED' && parseServerDate(i.scheduledAt) >= now)
-  const openReqs = (requirements.data ?? []).filter((r) => !r.myStatus)
   const myTraining = (training.data ?? []).filter((t) => ['REQUESTED', 'ASSIGNED', 'IN_PROGRESS'].includes(t.assignmentStatus))
   const first = pendingInvites[0]
+
+  // Today: interviews on this date that still need an answer or are booked, as the candidate.
+  const todayKey = now.toDateString()
+  const interviewsToday = (interviews.data ?? []).filter(
+    (i) => (i.status === 'SCHEDULED' || i.status === 'ACCEPTED') && parseServerDate(i.scheduledAt).toDateString() === todayKey,
+  )
+  // Feedback: as an interviewer, the interviews that have started or been held and still need notes.
+  const interviewerDuties = (duties.data ?? []).filter((d) => d.responsibility === 'INTERVIEWER')
+  const feedbackToGive = interviewerDuties.reduce((n, d) => n + (d.feedbackDue || 0), 0)
+  // Requirements to check: hiring duties (sourcing, coordinating, feedback) with something waiting, plus invitations and selections.
+  const dutiesToCheck = (duties.data ?? []).filter((d) =>
+    d.responsibility === 'INTERVIEWER' ? Boolean(d.feedbackDue) : Boolean(d.toShortlist || d.toInvite || d.toBook),
+  )
+  const reqsToCheck = new Set([
+    ...pendingInvites.map((i) => i.requirementId),
+    ...toConfirm.map((o) => o.requirementId),
+    ...dutiesToCheck.map((d) => d.requirementId),
+  ])
 
   function refreshAll() {
     onRefresh()
     invitations.refresh()
     opportunities.refresh()
     interviews.refresh()
-    requirements.refresh()
     training.refresh()
+    duties.refresh()
   }
 
   return (
@@ -190,9 +205,9 @@ function PoolView({ onRefresh }: { onRefresh: () => void }) {
 
       <Strip
         cells={[
-          { label: 'Invitations waiting', value: String(pendingInvites.length) },
-          { label: 'Open requirements', value: String(openReqs.length) },
-          { label: 'Training', value: myTraining.length ? `${myTraining.length} active` : 'None' },
+          { label: 'Interviews today', value: String(interviewsToday.length) },
+          { label: 'Feedback to give', value: String(feedbackToGive) },
+          { label: 'Requirements to check', value: String(reqsToCheck.size) },
         ]}
       />
 
@@ -231,20 +246,62 @@ function PoolView({ onRefresh }: { onRefresh: () => void }) {
             )}
           </Card>
 
-          <Card title="Open requirements" action={<Link to="/associate/projects" className="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400">See all</Link>}>
-            {!requirements.data ? (
-              <Skeleton className="h-20 rounded-2xl" />
-            ) : openReqs.length === 0 ? (
-              <p className="text-sm text-ink-500 dark:text-slate-400">No open requirements right now.</p>
-            ) : (
-              openReqs.slice(0, 3).map((r) => (
-                <Row key={r.requirementId} title={`${r.requirementId} · ${r.positionTitle}`} detail={`${r.projectName}${r.allocationStartDate ? ` · from ${formatDay(r.allocationStartDate)}` : ''}`} />
-              ))
-            )}
-          </Card>
         </div>
 
         <div className="grid gap-4 lg:gap-5">
+          <Card title="Interviews today" note={interviewsToday.length ? `${interviewsToday.length}` : undefined}>
+            {interviewsToday.length === 0 ? (
+              <p className="text-sm text-ink-500 dark:text-slate-400">No interviews today.</p>
+            ) : (
+              interviewsToday.map((i) => (
+                <Row
+                  key={i.interviewId}
+                  title={<Link to="/associate/interviews" className="hover:text-brand-600 dark:hover:text-brand-400">{i.requirementId} · round {i.roundNumber ?? 1}</Link>}
+                  detail={`${i.interviewerName ? `with ${i.interviewerName}` : ''}${i.mode ? ` · ${humanize(i.mode)}` : ''}`}
+                  aside={
+                    i.status === 'SCHEDULED' ? (
+                      <Due>Accept or decline</Due>
+                    ) : (
+                      <span className="text-xs text-ink-500 tabular-nums dark:text-slate-400">{parseServerDate(i.scheduledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
+                    )
+                  }
+                />
+              ))
+            )}
+          </Card>
+
+          <Card title="Feedback to give" note={feedbackToGive ? `${feedbackToGive}` : undefined}>
+            {feedbackToGive === 0 ? (
+              <p className="text-sm text-ink-500 dark:text-slate-400">No feedback waiting from you.</p>
+            ) : (
+              interviewerDuties
+                .filter((d) => d.feedbackDue)
+                .map((d) => (
+                  <Row
+                    key={d.requirementId}
+                    title={<Link to="/associate/interviews-to-take" className="hover:text-brand-600 dark:hover:text-brand-400">{d.requirementId} · {d.positionTitle}</Link>}
+                    detail={`${d.projectName} · as interviewer`}
+                    aside={<Due>{d.feedbackDue} to write</Due>}
+                  />
+                ))
+            )}
+          </Card>
+
+          <Card title="Requirements to check" note={reqsToCheck.size ? `${reqsToCheck.size}` : undefined}>
+            {dutiesToCheck.length === 0 ? (
+              <p className="text-sm text-ink-500 dark:text-slate-400">Nothing waiting on your requirements.</p>
+            ) : (
+              dutiesToCheck.map((d) => (
+                <Row
+                  key={`${d.requirementId}-${d.responsibility}`}
+                  title={<Link to={`/associate/duties/${d.requirementId}`} className="hover:text-brand-600 dark:hover:text-brand-400">{d.requirementId} · {d.positionTitle}</Link>}
+                  detail={`${d.projectName} · ${DUTY_LABEL[d.responsibility]}`}
+                  aside={<Due>{d.responsibility === 'SOURCER' ? `${d.toShortlist} to shortlist` : [d.toInvite ? `${d.toInvite} to invite` : null, d.toBook ? `${d.toBook} to book` : null].filter(Boolean).join(' · ')}</Due>}
+                />
+              ))
+            )}
+          </Card>
+
           <Card title="Upcoming interviews" note={upcoming.length ? `${upcoming.length}` : undefined}>
             {upcoming.length === 0 ? (
               <p className="text-sm text-ink-500 dark:text-slate-400">No interviews booked.</p>

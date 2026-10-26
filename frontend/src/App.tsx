@@ -24,6 +24,7 @@ import ManagerPeoplePage from './pages/manager/people/PeoplePage'
 import ManagerRequirementsPage from './pages/manager/requirements/RequirementsPage'
 import ManagerRequirementPage from './pages/manager/requirements/RequirementPage'
 import ManagerDirectoryPage from './pages/manager/directory/DirectoryPage'
+import CandidateRedirectPage from './pages/manager/CandidateRedirectPage'
 import ManagerInterviewsPage from './pages/manager/interviews/InterviewsPage'
 import ManagerAllocationRequestsPage from './pages/manager/allocations/AllocationRequestsPage'
 import ManagerDirectoryPageForAssociate from './pages/manager/directory/DirectoryPage'
@@ -81,6 +82,7 @@ function App() {
         <Route path="projects/:projectId" element={<ManagerProjectPage />} />
         <Route path="people" element={<ManagerPeoplePage />} />
         <Route path="employees" element={<ManagerDirectoryPage />} />
+        <Route path="candidates/:applicationId" element={<CandidateRedirectPage />} />
         <Route path="interviews" element={<ManagerInterviewsPage />} />
         <Route path="interviews/:interviewId" element={<ManagerInterviewsPage />} />
         <Route path="allocation-requests" element={<ManagerAllocationRequestsPage />} />

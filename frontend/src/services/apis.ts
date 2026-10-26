@@ -316,6 +316,8 @@ export const INTERVIEW_API = {
   /** Interviews on the requirements the caller coordinates or interviews on. */
   dutyInterviews: '/api/associate/duty-interviews',
   setLink: (interviewId: string) => `/api/manager/interviews/${interviewId}/link`,
+  reschedule: (interviewId: string) => `/api/manager/interviews/${interviewId}/reschedule`,
+  markHeld: (interviewId: string) => `/api/manager/interviews/${interviewId}/held`,
   byId: (interviewId: string) => `/api/manager/interviews/${interviewId}`,
   cancel: (interviewId: string) => `/api/manager/interviews/${interviewId}/cancel`,
   feedback: (interviewId: string) => `/api/manager/interviews/${interviewId}/feedback`,

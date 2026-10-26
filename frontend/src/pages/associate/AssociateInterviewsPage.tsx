@@ -1,8 +1,8 @@
 import { CalendarClock } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { EmptyState, PanelError, Skeleton, TILE_SURFACE } from '../../components/dashboard/Panel'
 import { Button } from '../../components/ui/form'
-import { Modal } from '../../components/ui/Overlay'
+import { Drawer, Modal } from '../../components/ui/Overlay'
 import RefreshButton from '../../components/ui/RefreshButton'
 import { useQuery } from '../../hooks/useQuery'
 import { useToast } from '../../hooks/useToast'
@@ -23,6 +23,14 @@ export default function AssociateInterviewsPage() {
   const list = useQuery('associateInterviews', {})
   const [now] = useState(() => new Date())
   const [answering, setAnswering] = useState<{ interview: InterviewDTO; response: 'ACCEPT' | 'DECLINE' } | null>(null)
+  const [opened, setOpened] = useState<InterviewDTO | null>(null)
+
+  // The row title opens the details drawer, so every interview can be read in full.
+  const titleOf = (i: InterviewDTO) => (
+    <button type="button" onClick={() => setOpened(i)} className="text-left hover:text-brand-600 dark:hover:text-brand-400">
+      {i.requirementId} · round {i.roundNumber ?? 1}
+    </button>
+  )
 
   const all = list.data ?? []
   const future = (i: InterviewDTO) => parseServerDate(i.scheduledAt) >= now
@@ -58,8 +66,8 @@ export default function AssociateInterviewsPage() {
               toAnswer.map((i) => (
                 <Row
                   key={i.interviewId}
-                  title={`${i.requirementId} · round ${i.roundNumber ?? 1}`}
-                  detail={[when(i.scheduledAt), `${i.durationMinutes ?? 60} min`, i.interviewerName ? `with ${i.interviewerName}` : null, i.mode ? humanize(i.mode) : null].filter(Boolean).join(' · ')}
+                  title={titleOf(i)}
+                  detail={[when(i.scheduledAt),`${i.durationMinutes ?? 60} min`, i.interviewerName ? `with ${i.interviewerName}` : null, i.mode ? humanize(i.mode) : null].filter(Boolean).join(' · ')}
                   aside={
                     <div className="flex gap-2">
                       <Button variant="secondary" onClick={() => setAnswering({ interview: i, response: 'DECLINE' })}>
@@ -82,7 +90,7 @@ export default function AssociateInterviewsPage() {
               booked.map((i) => (
                 <Row
                   key={i.interviewId}
-                  title={`${i.requirementId} · round ${i.roundNumber ?? 1}`}
+                  title={titleOf(i)}
                   detail={[i.interviewerName ? `with ${i.interviewerName}` : null, i.mode ? humanize(i.mode) : null, i.locationOrLink].filter(Boolean).join(' · ')}
                   aside={<Due>{when(i.scheduledAt)}</Due>}
                 />
@@ -93,14 +101,55 @@ export default function AssociateInterviewsPage() {
           {past.length > 0 && (
             <Card title="Earlier" note={`${past.length}`}>
               {past.map((i) => (
-                <Row key={i.interviewId} title={`${i.requirementId} · round ${i.roundNumber ?? 1}`} detail={when(i.scheduledAt)} aside={<Tag>{humanize(i.status)}</Tag>} />
+                <Row key={i.interviewId} title={titleOf(i)} detail={when(i.scheduledAt)} aside={<Tag>{humanize(i.status)}</Tag>} />
               ))}
             </Card>
           )}
         </>
       )}
 
+      {opened && <InterviewDetails interview={opened} onClose={() => setOpened(null)} />}
       {answering && <AnswerDialog {...answering} onClose={() => setAnswering(null)} />}
+    </div>
+  )
+}
+
+/** Everything about one interview: when, who with, where, and its state. */
+function InterviewDetails({ interview: i, onClose }: { interview: InterviewDTO; onClose: () => void }) {
+  const link = i.locationOrLink ?? ''
+  return (
+    <Drawer open onClose={onClose} title={`${i.requirementId} · round ${i.roundNumber ?? 1}`} subtitle={humanize(i.status)}>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+        <Fact label="When">{when(i.scheduledAt)}</Fact>
+        <Fact label="Length">{i.durationMinutes ? `${i.durationMinutes} min` : undefined}</Fact>
+        <Fact label="Mode">{i.mode ? humanize(i.mode) : undefined}</Fact>
+        <Fact label="Interviewer">{i.interviewerName}</Fact>
+        <div className="col-span-2 min-w-0">
+          <dt className="text-[11px] font-bold tracking-widest text-ink-500 uppercase dark:text-slate-500">
+            {i.mode === 'IN_PERSON' ? 'Room' : 'Meeting link'}
+          </dt>
+          <dd className="mt-0.5 break-all text-ink-900 dark:text-white">
+            {!link ? (
+              <span className="text-ink-500 dark:text-slate-400">Not shared yet</span>
+            ) : /^https?:\/\//.test(link) ? (
+              <a href={link} target="_blank" rel="noreferrer" className="text-brand-600 underline underline-offset-2 dark:text-brand-400">
+                {link}
+              </a>
+            ) : (
+              link
+            )}
+          </dd>
+        </div>
+      </dl>
+    </Drawer>
+  )
+}
+
+function Fact({ label, children }: { label: string; children?: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] font-bold tracking-widest text-ink-500 uppercase dark:text-slate-500">{label}</dt>
+      <dd className="mt-0.5 text-ink-900 dark:text-white">{children || '—'}</dd>
     </div>
   )
 }

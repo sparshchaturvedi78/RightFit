@@ -119,7 +119,11 @@ export default function InvitationsPage() {
               {answered.map((i) => (
                 <Row
                   key={i.invitationId}
-                  title={`${i.requirementId} · from ${i.invitedByName ?? 'a manager'}`}
+                  title={
+                    <button type="button" onClick={() => setOpened(i.invitationId)} className="text-left hover:text-brand-600 dark:hover:text-brand-400">
+                      {i.requirementId} · from {i.invitedByName ?? 'a manager'}
+                    </button>
+                  }
                   detail={[i.respondedAt ? `answered ${timeAgo(i.respondedAt)}` : null, i.responseComment].filter(Boolean).join(' · ')}
                   aside={<Tag tone={i.status === 'ACCEPTED' ? 'ok' : 'muted'}>{humanize(i.status)}</Tag>}
                 />
