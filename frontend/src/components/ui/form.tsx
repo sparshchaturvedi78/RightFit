@@ -1,6 +1,6 @@
-import { ChevronDown, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { VARIANTS, type ButtonVariant } from './buttonVariants'
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react'
 
 const CONTROL =
   'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm transition-all outline-none placeholder:text-ink-500/50 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-ink-500 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:disabled:bg-white/3 dark:disabled:text-slate-500 dark:[color-scheme:dark]'
@@ -44,17 +44,6 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={`${CONTROL} min-h-24 resize-y ${props.className ?? ''}`} />
-}
-
-export function Select({ children, className = '', ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div className="relative">
-      <select {...props} className={`${CONTROL} cursor-pointer appearance-none pr-9 ${className}`}>
-        {children}
-      </select>
-      <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-ink-500 dark:text-slate-400" />
-    </div>
-  )
 }
 
 export function FormSection({ title, children }: { title: string; children: ReactNode }) {

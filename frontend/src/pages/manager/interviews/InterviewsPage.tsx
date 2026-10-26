@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { CalendarClock, Star } from 'lucide-react'
+import { Dropdown } from '../../../components/ui/Dropdown'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { EmptyState, PanelError, Skeleton, TILE_SURFACE } from '../../../components/dashboard/Panel'
@@ -251,7 +252,7 @@ export default function InterviewsPage({ scope = 'manager' }: { scope?: 'manager
         </section>
 
         <aside className="lg:sticky lg:top-4" aria-label="Selected interview">
-          {selected ? (
+          {selected && shown.some((i) => i.interviewId === selected) ? (
             <InterviewDetail
               key={selected}
               interviewId={selected}
@@ -445,16 +446,17 @@ function InterviewDetail({
             </fieldset>
             <label className="grid gap-1.5 text-sm">
               <span className="text-xs text-ink-500 dark:text-slate-400">Recommendation (advice only; you decide)</span>
-              <select
+              <Dropdown
+                ariaLabel="Recommendation"
                 value={recommendation}
-                onChange={(e) => setRecommendation(e.target.value as SubmitFeedbackRequest['recommendation'] | '')}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
-              >
-                <option value="">Choose</option>
-                <option value="SELECT">Select for the next step</option>
-                <option value="ON_HOLD">On hold</option>
-                <option value="REJECT">Reject</option>
-              </select>
+                onChange={(v) => setRecommendation(v as SubmitFeedbackRequest['recommendation'] | '')}
+                options={[
+                  { value: 'SELECT', label: 'Select for the next step' },
+                  { value: 'ON_HOLD', label: 'On hold' },
+                  { value: 'REJECT', label: 'Reject' },
+                ]}
+                placeholder="Choose"
+              />
             </label>
             <label className="grid gap-1.5 text-sm">
               <span className="text-xs text-ink-500 dark:text-slate-400">Notes (optional)</span>
@@ -630,28 +632,22 @@ function RescheduleForm({
           aria-label="New date and time"
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
         />
-        <select
-          value={minutes}
-          onChange={(e) => setMinutes(Number(e.target.value))}
-          aria-label="Length"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
-        >
-          {[30, 45, 60, 90].map((d) => (
-            <option key={d} value={d}>
-              {d} min
-            </option>
-          ))}
-        </select>
-        <select
+        <Dropdown
+          ariaLabel="Length"
+          value={String(minutes)}
+          onChange={(v) => setMinutes(Number(v))}
+          options={[30, 45, 60, 90].map((d) => ({ value: String(d), label: `${d} min` }))}
+        />
+        <Dropdown
+          ariaLabel="Mode"
           value={kind}
-          onChange={(e) => setKind(e.target.value)}
-          aria-label="Mode"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
-        >
-          <option value="ONLINE">Online</option>
-          <option value="IN_PERSON">In person</option>
-          <option value="PHONE">Phone</option>
-        </select>
+          onChange={setKind}
+          options={[
+            { value: 'ONLINE', label: 'Online' },
+            { value: 'IN_PERSON', label: 'In person' },
+            { value: 'PHONE', label: 'Phone' },
+          ]}
+        />
       </div>
       <div className="flex justify-end">
         <Button variant="secondary" loading={busy} disabled={!when} onClick={() => void move()}>

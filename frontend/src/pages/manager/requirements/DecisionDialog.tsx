@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Dropdown } from '../../../components/ui/Dropdown'
 import { Button } from '../../../components/ui/form'
 import { Modal } from '../../../components/ui/Overlay'
 import { useToast } from '../../../hooks/useToast'
@@ -80,14 +81,7 @@ export default function DecisionDialog({
         {!selecting && (
           <label className="grid gap-1.5 text-sm">
             <span className="font-semibold text-ink-900 dark:text-white">Reason</span>
-            <select value={reason} onChange={(e) => setReason(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5">
-              <option value="">Choose</option>
-              {REASONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+            <Dropdown ariaLabel="Reason" value={reason} onChange={setReason} placeholder="Choose" options={REASONS.map((r) => ({ value: r.value, label: r.label }))} />
           </label>
         )}
         <label className="grid gap-1.5 text-sm">

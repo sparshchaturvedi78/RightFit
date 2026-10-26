@@ -1,8 +1,9 @@
 import { motion } from 'motion/react'
 import { ClipboardCheck } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { EmptyState, PanelError, Skeleton, TILE_SURFACE } from '../../../components/dashboard/Panel'
+import { Dropdown } from '../../../components/ui/Dropdown'
 import { Drawer } from '../../../components/ui/Overlay'
 import { Button } from '../../../components/ui/form'
 import RefreshButton from '../../../components/ui/RefreshButton'
@@ -34,21 +35,13 @@ function stageOf(r: AllocationRequestDTO, now: Date): Stage {
   return 'closed'
 }
 
-/** Booked and asked hours against the working day. `over` means the request would push them past it. */
-function capacity(r: AllocationRequestDTO) {
-  const day = r.employeeWorkingHoursPerDay ?? 0
-  const booked = r.employeeAllocatedHoursPerDay ?? 0
-  const asked = r.requestedHoursPerDay ?? 0
-  const total = Math.max(day, booked + asked, 1)
-  return { day, booked, asked, total, over: day > 0 && booked + asked > day, overBy: Math.max(0, booked + asked - day) }
-}
-
-function pct(part: number, total: number): string {
-  return `${Math.min(100, (part / total) * 100)}%`
-}
-
 function dayLabel(value: string): string {
-  return parseServerDate(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  return parseServerDate(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/** An allocation is always the employee's full working day, from the start date, open ended. */
+function termLabel(r: AllocationRequestDTO): string {
+  return `From ${dayLabel(r.requestedStartDate)} · full working day · open ended`
 }
 
 export default function AllocationRequestsPage() {
@@ -56,19 +49,22 @@ export default function AllocationRequestsPage() {
   const navigate = useNavigate()
   const { requestId } = useParams()
   const list = useQuery('managerAllocations', {})
+  const requirements = useQuery('managerAllRequirements', {})
   const [now] = useState(() => new Date())
   const [project, setProject] = useState<string>('')
-  const [overOnly, setOverOnly] = useState(false)
   const [query, setQuery] = useState('')
 
   const all = useMemo(() => list.data ?? [], [list.data])
-  const projects = useMemo(() => [...new Set(all.map((r) => r.projectName))].sort(), [all])
+  // Only projects that still have an open (published) requirement are offered in the filter.
+  const openProjects = useMemo(
+    () => [...new Set((requirements.data ?? []).filter((r) => r.status === 'PUBLISHED').map((r) => r.projectName))].sort(),
+    [requirements.data],
+  )
   const text = query.trim().toLowerCase()
 
   const shown = all.filter(
     (r) =>
       (!project || r.projectName === project) &&
-      (!overOnly || capacity(r).over) &&
       (!text || [r.employeeName, r.requirementId, r.requestId, r.projectName].some((v) => v?.toLowerCase().includes(text))),
   )
 
@@ -100,25 +96,24 @@ export default function AllocationRequestsPage() {
               className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-ink-500/60 dark:placeholder:text-slate-500"
             />
           </label>
-          <RefreshButton onClick={list.refresh} loading={list.loading} />
+          <RefreshButton
+            onClick={() => {
+              list.refresh()
+              requirements.refresh()
+            }}
+            loading={list.loading}
+          />
         </div>
       </motion.header>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Project">
-          <Chip pressed={project === ''} onClick={() => setProject('')}>
-            All projects
-          </Chip>
-          {projects.map((p) => (
-            <Chip key={p} pressed={project === p} onClick={() => setProject(p)}>
-              {p}
-            </Chip>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Show only">
-          <Chip pressed={overOnly} onClick={() => setOverOnly((v) => !v)}>
-            Over capacity
-          </Chip>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-72">
+          <Dropdown
+            ariaLabel="Project"
+            value={project}
+            onChange={setProject}
+            options={[{ value: '', label: 'All projects' }, ...openProjects.map((p) => ({ value: p, label: p }))]}
+          />
         </div>
       </div>
 
@@ -157,9 +152,7 @@ export default function AllocationRequestsPage() {
       )}
 
       {all.some((r) => r.status === 'REJECTED' || r.status === 'CANCELLED') && (
-        <p className="text-xs text-ink-500 dark:text-slate-400">
-          Rejected and cancelled requests stay in the history, in the last column.
-        </p>
+        <p className="text-xs text-ink-500 dark:text-slate-400">Rejected and cancelled requests stay in the history, in the last column.</p>
       )}
 
       {requestId && (
@@ -178,13 +171,12 @@ export default function AllocationRequestsPage() {
 }
 
 function RequestCard({ request: r, current, onOpen }: { request: AllocationRequestDTO; current: boolean; onOpen: () => void }) {
-  const c = capacity(r)
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-current={current ? 'true' : undefined}
-      className={`${TILE_SURFACE} grid w-full gap-3 p-4 text-left transition-shadow ${current ? 'ring-2 ring-brand-500' : 'hover:shadow-md'}`}
+      className={`${TILE_SURFACE} grid w-full gap-2 p-4 text-left transition-shadow ${current ? 'ring-2 ring-brand-500' : 'hover:shadow-md'}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -195,25 +187,7 @@ function RequestCard({ request: r, current, onOpen }: { request: AllocationReque
         </div>
         <span className="shrink-0 text-[11px] font-bold tracking-wide text-ink-500 dark:text-slate-400">{r.requestId}</span>
       </div>
-
-      <span className="text-xs text-ink-700 dark:text-slate-300">
-        From {dayLabel(r.requestedStartDate)}
-        {r.requestedEndDate ? ` to ${dayLabel(r.requestedEndDate)}` : ' · open ended'} · {r.requestedHoursPerDay} h a day
-      </span>
-
-      {c.day > 0 && (
-        <div className="grid gap-1" role="img" aria-label={`${c.booked} hours booked, ${c.asked} asked, ${c.day} hour working day`}>
-          <div className="flex h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/8">
-            <i className="block h-full bg-slate-500" style={{ width: pct(c.booked, c.total) }} />
-            <i className="block h-full bg-sky-500" style={{ width: pct(c.asked, c.total) }} />
-            {c.over && <i className="block h-full bg-amber-500" style={{ width: pct(c.overBy, c.total) }} />}
-          </div>
-          <small className="text-[11px] text-ink-500 tabular-nums dark:text-slate-400">
-            {c.booked} booked + {c.asked} asked of {c.day} h
-          </small>
-          {c.over && <span className="w-fit rounded-full bg-amber-500/14 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">Over by {c.overBy} h</span>}
-        </div>
-      )}
+      <span className="text-xs text-ink-700 dark:text-slate-300">{termLabel(r)}</span>
     </button>
   )
 }
@@ -224,7 +198,6 @@ function RequestDetail({ request: r, now, onChanged }: { request: AllocationRequ
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const c = capacity(r)
   const stage = stageOf(r, now)
   const steps = [
     { label: 'Selected', done: true, now: false },
@@ -260,10 +233,7 @@ function RequestDetail({ request: r, now, onChanged }: { request: AllocationRequ
           </ManagerLink>{' '}
           · {r.projectName}
         </span>
-        <span>
-          {r.requestedHoursPerDay} h a day from {dayLabel(r.requestedStartDate)}
-          {r.requestedEndDate ? ` to ${dayLabel(r.requestedEndDate)}` : ', open ended'}
-        </span>
+        <span>{termLabel(r)}</span>
         <span className="text-xs text-ink-500 dark:text-slate-400">Sent {parseServerDate(r.submittedAt).toLocaleDateString()} by {r.submittedByName}</span>
       </div>
 
@@ -276,37 +246,8 @@ function RequestDetail({ request: r, now, onChanged }: { request: AllocationRequ
         ))}
       </ol>
 
-      <table className="w-full text-sm" aria-label="Capacity on the working day">
-        <tbody className="[&_td]:border-b [&_td]:border-slate-100 [&_td]:py-2.5 dark:[&_td]:border-white/6">
-          <tr>
-            <td className="text-ink-700 dark:text-slate-300">Booked now</td>
-            <td className="text-right font-semibold tabular-nums">{c.booked} h</td>
-          </tr>
-          <tr>
-            <td className="text-ink-700 dark:text-slate-300">Asked in this request</td>
-            <td className="text-right font-semibold tabular-nums">{c.asked} h</td>
-          </tr>
-          <tr>
-            <td className="text-ink-700 dark:text-slate-300">Working day</td>
-            <td className="text-right font-semibold tabular-nums">{c.day} h</td>
-          </tr>
-          <tr>
-            <td className="font-semibold text-ink-900 dark:text-white">{c.over ? 'Over the day by' : 'Still free after approval'}</td>
-            <td className={`text-right font-bold tabular-nums ${c.over ? 'text-amber-600 dark:text-amber-400' : ''}`}>{c.over ? `${c.overBy} h` : `${Math.max(0, c.day - c.booked - c.asked)} h`}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      {r.reviewComments && (
-        <p className="rounded-2xl bg-sky-500/8 px-3.5 py-2.5 text-sm text-ink-700 dark:text-slate-300">
-          RMG: {r.reviewComments}
-        </p>
-      )}
-      {r.rejectionReason && (
-        <p className="rounded-2xl bg-rose-500/8 px-3.5 py-2.5 text-sm text-ink-700 dark:text-slate-300">
-          Rejected: {r.rejectionReason}
-        </p>
-      )}
+      {r.reviewComments && <p className="rounded-2xl bg-sky-500/8 px-3.5 py-2.5 text-sm text-ink-700 dark:text-slate-300">RMG: {r.reviewComments}</p>}
+      {r.rejectionReason && <p className="rounded-2xl bg-rose-500/8 px-3.5 py-2.5 text-sm text-ink-700 dark:text-slate-300">Rejected: {r.rejectionReason}</p>}
 
       {r.status === 'SUBMITTED' && (
         <div className="grid gap-3">
@@ -343,22 +284,5 @@ function RequestDetail({ request: r, now, onChanged }: { request: AllocationRequ
 
       {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
     </div>
-  )
-}
-
-function Chip({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={onClick}
-      className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
-        pressed
-          ? 'border-brand-500/30 bg-brand-500/12 text-brand-700 dark:text-brand-300'
-          : 'border-slate-200 text-ink-500 hover:text-ink-900 dark:border-white/10 dark:text-slate-400 dark:hover:text-white'
-      }`}
-    >
-      {children}
-    </button>
   )
 }

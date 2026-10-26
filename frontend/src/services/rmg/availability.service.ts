@@ -4,6 +4,7 @@ import { httpClient } from '../httpClient'
 export interface EmployeeAvailabilityDTO {
   id: number
   employeeId: string
+  employeeName?: string
   availabilityStatus: string
   expectedReturnDate?: string
   reason?: string

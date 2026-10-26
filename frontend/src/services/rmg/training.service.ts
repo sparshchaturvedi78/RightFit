@@ -11,6 +11,10 @@ export interface TrainingProgramDTO {
   cost?: number
   requiredCertifications?: string
   isActive: boolean
+  /** Seats in the program; absent for programs created before seats were set. */
+  maxParticipants?: number
+  /** People holding a seat right now. */
+  seatsTaken?: number
 }
 
 export interface CreateTrainingProgramRequest {
@@ -21,6 +25,8 @@ export interface CreateTrainingProgramRequest {
   provider?: string
   cost?: number
   requiredCertifications?: string
+  /** How many people the program can take. Required. */
+  maxParticipants: number
 }
 
 export type UpdateTrainingProgramRequest = Partial<CreateTrainingProgramRequest>
@@ -99,6 +105,19 @@ async function updateAssignment(
   return data
 }
 
+export interface InterestDecisionRequest {
+  approve: boolean
+  comment?: string
+  startDate?: string
+  expectedEndDate?: string
+}
+
+/** RMG answers an associate's request to join a program. */
+async function decideInterest(assignmentId: string, payload: InterestDecisionRequest): Promise<TrainingAssignmentDTO> {
+  const { data } = await httpClient.put<TrainingAssignmentDTO>(TRAINING_API.interestDecision(assignmentId), payload)
+  return data
+}
+
 // Associate side
 async function myAssignments(): Promise<TrainingAssignmentDTO[]> {
   const { data } = await httpClient.get<TrainingAssignmentDTO[]>(TRAINING_API.associateAssignments)
@@ -113,5 +132,6 @@ export const trainingService = {
   assign,
   listAssignments,
   updateAssignment,
+  decideInterest,
   myAssignments,
 }
