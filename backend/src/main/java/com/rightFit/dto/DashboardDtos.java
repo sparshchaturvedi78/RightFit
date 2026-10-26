@@ -239,5 +239,7 @@ public final class DashboardDtos {
         private long totalOpportunityHistory;
         private long activeTrainingAssignments;
         private long unreadNotifications;
+        /** When the associate entered the resource pool (null when not in the pool). */
+        private LocalDateTime inPoolSince;
     }
 }

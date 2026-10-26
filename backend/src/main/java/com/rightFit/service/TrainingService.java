@@ -206,6 +206,8 @@ public class TrainingService {
                     .requiredCertifications(p.getRequiredCertifications())
                     .myAssignmentId(a != null ? a.getAssignmentId() : null)
                     .myStatus(a != null ? a.getAssignmentStatus() : null)
+                    .maxParticipants(p.getMaxParticipants())
+                    .seatsTaken((int) seatsTaken(p))
                     .build();
         }).toList();
     }

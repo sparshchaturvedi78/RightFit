@@ -140,6 +140,10 @@ public final class TrainingDtos {
         private String requiredCertifications;
         private String myAssignmentId;
         private String myStatus;
+        /** Seats in the program; null when it has no limit. */
+        private Integer maxParticipants;
+        /** People holding a seat right now. */
+        private Integer seatsTaken;
     }
 
     /** The RMG's answer to an associate's request to join a training. */
