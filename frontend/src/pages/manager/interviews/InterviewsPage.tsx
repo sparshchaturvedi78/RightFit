@@ -101,7 +101,7 @@ export default function InterviewsPage({ scope = 'manager' }: { scope?: 'manager
     const past = parseServerDate(i.scheduledAt) < now
     const open = OPEN.includes(i.status)
     if (show === 'upcoming') return open && !past
-    if (show === 'feedback') return open && past
+    if (show === 'feedback') return open && (past || Boolean(i.heldAt))
     if (show === 'past') return past && !open && !DEAD.includes(i.status)
     return DEAD.includes(i.status)
   }
@@ -256,7 +256,8 @@ export default function InterviewsPage({ scope = 'manager' }: { scope?: 'manager
               key={selected}
               interviewId={selected}
               now={now}
-              canCancel={scope === 'manager'}
+              canCancel
+              canShareLink={scope === 'manager'}
               requirementPath={requirementPath}
               onChanged={() => {
                 dispatch(invalidateQueries('managerInterviews'))
@@ -278,12 +279,15 @@ function InterviewDetail({
   interviewId,
   now,
   canCancel,
+  canShareLink,
   requirementPath,
   onChanged,
 }: {
   interviewId: string
   now: Date
   canCancel: boolean
+  /** Only the people who book interviews share the meeting link; the interviewer joins it. */
+  canShareLink: boolean
   requirementPath: (id: string) => string
   onChanged: () => void
 }) {
@@ -309,7 +313,7 @@ function InterviewDetail({
   const open = OPEN.includes(i.status)
   const past = parseServerDate(i.scheduledAt) < now
   const fb = i.feedback
-  const feedbackDue = open && past && !fb
+  const feedbackDue = open && (past || Boolean(i.heldAt)) && !fb
 
   async function run(action: () => Promise<unknown>, done: string) {
     setBusy(true)
@@ -339,7 +343,7 @@ function InterviewDetail({
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_TONE[i.status] ?? STATUS_TONE.DECLINED}`}>{humanize(i.status)}</span>
       </div>
 
-      <LinkEditor key={i.interviewId} interviewId={i.interviewId} current={i.locationOrLink ?? ''} open={open} onChanged={onChanged} />
+      {canShareLink && <LinkEditor key={i.interviewId} interviewId={i.interviewId} current={i.locationOrLink ?? ''} open={open} onChanged={onChanged} />}
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <Fact label="Requirement">
@@ -399,6 +403,10 @@ function InterviewDetail({
           )}
         </div>
       )}
+
+      {open && past && !i.heldAt && <MarkHeldButton interviewId={i.interviewId} onChanged={onChanged} />}
+
+      {open && !past && <RescheduleForm key={i.interviewId} interviewId={i.interviewId} current={i.scheduledAt} duration={i.durationMinutes ?? 60} mode={i.mode ?? 'ONLINE'} onChanged={onChanged} />}
 
       <section className="grid gap-3 rounded-2xl border border-dashed border-slate-200 p-4 dark:border-white/10" aria-label="Feedback">
         <div className="flex items-center justify-between">
@@ -477,7 +485,7 @@ function InterviewDetail({
             </Button>
           </>
         ) : (
-          <p className="text-xs text-ink-500 dark:text-slate-400">Feedback opens after the interview starts.</p>
+          <p className="text-xs text-ink-500 dark:text-slate-400">Feedback opens once the interview has started or been marked as held.</p>
         )}
       </section>
 
@@ -567,6 +575,117 @@ function LinkEditor({ interviewId, current, open, onChanged }: { interviewId: st
           Share link
         </Button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Move an open interview to a new time. The candidate and the interviewer are told. An interviewer can do this only
+ * more than an hour before it starts; the server enforces that and says so if it is too late.
+ */
+function RescheduleForm({
+  interviewId,
+  current,
+  duration,
+  mode,
+  onChanged,
+}: {
+  interviewId: string
+  current: string
+  duration: number
+  mode: string
+  onChanged: () => void
+}) {
+  const toast = useToast()
+  const [when, setWhen] = useState(current.slice(0, 16))
+  const [minutes, setMinutes] = useState(duration)
+  const [kind, setKind] = useState(mode)
+  const [busy, setBusy] = useState(false)
+
+  async function move() {
+    setBusy(true)
+    try {
+      await interviewService.reschedule(interviewId, {
+        scheduledAt: when,
+        durationMinutes: minutes,
+        mode: kind as 'ONLINE' | 'IN_PERSON' | 'PHONE',
+      })
+      toast.success('Interview moved', 'The candidate has been told.')
+      onChanged()
+    } catch (err) {
+      toast.error('Could not move the interview', getApiErrorMessage(err, 'Pick another time.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="grid gap-3 rounded-2xl border border-slate-200 p-4 dark:border-white/10" aria-label="Reschedule">
+      <b className="text-sm text-ink-900 dark:text-white">Reschedule</b>
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_110px_120px]">
+        <input
+          type="datetime-local"
+          value={when}
+          onChange={(e) => setWhen(e.target.value)}
+          aria-label="New date and time"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
+        />
+        <select
+          value={minutes}
+          onChange={(e) => setMinutes(Number(e.target.value))}
+          aria-label="Length"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
+        >
+          {[30, 45, 60, 90].map((d) => (
+            <option key={d} value={d}>
+              {d} min
+            </option>
+          ))}
+        </select>
+        <select
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+          aria-label="Mode"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
+        >
+          <option value="ONLINE">Online</option>
+          <option value="IN_PERSON">In person</option>
+          <option value="PHONE">Phone</option>
+        </select>
+      </div>
+      <div className="flex justify-end">
+        <Button variant="secondary" loading={busy} disabled={!when} onClick={() => void move()}>
+          Move interview
+        </Button>
+      </div>
+    </section>
+  )
+}
+
+/** Closes an interview that has taken place, so its feedback can be given. The interviewer or a coordinator does this. */
+function MarkHeldButton({ interviewId, onChanged }: { interviewId: string; onChanged: () => void }) {
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+
+  async function markHeld() {
+    setBusy(true)
+    try {
+      await interviewService.markHeld(interviewId)
+      toast.success('Marked as held', 'Feedback is now open.')
+      onChanged()
+    } catch (err) {
+      toast.error('Could not mark it as held', getApiErrorMessage(err, 'Try again.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-amber-500/10 p-4 text-sm">
+      <span className="text-ink-700 dark:text-slate-300">The interview has taken place? Mark it as held to give feedback.</span>
+      <Button variant="secondary" loading={busy} onClick={() => void markHeld()}>
+        Mark as held
+      </Button>
     </div>
   )
 }

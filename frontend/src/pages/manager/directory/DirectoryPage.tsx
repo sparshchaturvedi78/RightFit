@@ -71,6 +71,7 @@ export default function DirectoryPage({ source = 'manager' }: { source?: 'manage
     domain: params.get('domain') || undefined,
     certification: params.get('cert') || undefined,
     excludeMyTeam: true,
+    forSourcing: source === 'sourcer' ? true : undefined,
     sortBy: sort as CandidateSearchFilters['sortBy'],
     sortDirection: direction,
     page: 0,

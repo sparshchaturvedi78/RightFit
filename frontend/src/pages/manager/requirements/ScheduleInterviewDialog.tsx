@@ -6,6 +6,7 @@ import { useToast } from '../../../hooks/useToast'
 import { getApiErrorMessage } from '../../../services/httpClient'
 import type { CandidateDTO } from '../../../services/manager/candidate.service'
 import { interviewService } from '../../../services/interview.service'
+import { managerRequirementAssignmentService } from '../../../services/manager/requirementAssignment.service'
 
 const DURATIONS = [30, 45, 60, 90]
 
@@ -20,8 +21,9 @@ function whenLabel(iso: string): string {
 }
 
 /**
- * Book an interview for an accepted candidate. If the time clashes with the interviewer's or the candidate's
- * other interviews, the clashes are shown with free times to choose from, instead of a bare error.
+ * Book an interview for an accepted candidate. The person interviewing is chosen from the requirement's interviewers
+ * (or the project manager). If the time clashes with the interviewer's or the candidate's other interviews, the clashes
+ * are shown with free times to choose from, instead of a bare error.
  */
 export default function ScheduleInterviewDialog({
   candidate,
@@ -37,17 +39,35 @@ export default function ScheduleInterviewDialog({
   const [minutes, setMinutes] = useState(60)
   const [mode, setMode] = useState<'ONLINE' | 'IN_PERSON' | 'PHONE'>('ONLINE')
   const [place, setPlace] = useState('')
+  const [interviewer, setInterviewer] = useState('')
+  const [interviewers, setInterviewers] = useState<{ employeeId: string; name: string }[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [clash, setClash] = useState<ClashBody | null>(null)
   const [suggested, setSuggested] = useState<string[] | null>(null)
   const name = candidate.employeeName ?? candidate.employeeId
 
-  // Free times are worked out before the manager picks one, so a booking does not clash by default.
+  // The people with the INTERVIEWER responsibility on this requirement.
+  useEffect(() => {
+    let live = true
+    managerRequirementAssignmentService
+      .list(candidate.requirementId, 'INTERVIEWER')
+      .then((rows) => {
+        if (live) setInterviewers(rows.map((r) => ({ employeeId: r.employeeId, name: r.employeeName ?? r.employeeId })))
+      })
+      .catch(() => {
+        if (live) setInterviewers([])
+      })
+    return () => {
+      live = false
+    }
+  }, [candidate.requirementId])
+
+  // Free times are worked out for the chosen interviewer before one is picked, so a booking does not clash by default.
   useEffect(() => {
     let live = true
     interviewService
-      .suggestSlots(candidate.applicationId, minutes)
+      .suggestSlots(candidate.applicationId, minutes, interviewer || undefined)
       .then((slots) => {
         if (live) setSuggested(slots)
       })
@@ -57,7 +77,7 @@ export default function ScheduleInterviewDialog({
     return () => {
       live = false
     }
-  }, [candidate.applicationId, minutes])
+  }, [candidate.applicationId, minutes, interviewer])
 
   async function book() {
     if (!when) {
@@ -73,6 +93,7 @@ export default function ScheduleInterviewDialog({
         durationMinutes: minutes,
         mode,
         locationOrLink: place.trim() || undefined,
+        interviewerEmployeeId: interviewer || undefined,
       })
       toast.success(`Interview booked with ${name}`, whenLabel(when))
       onDone()
@@ -107,6 +128,25 @@ export default function ScheduleInterviewDialog({
     >
       <div className="grid gap-4">
         <label className="grid gap-1.5 text-sm">
+          <span className="font-semibold text-ink-900 dark:text-white">Interviewer</span>
+          <select
+            value={interviewer}
+            onChange={(e) => {
+              setInterviewer(e.target.value)
+              setClash(null)
+            }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
+          >
+            <option value="">Project manager</option>
+            {interviewers.map((i) => (
+              <option key={i.employeeId} value={i.employeeId}>
+                {i.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-1.5 text-sm">
           <span className="font-semibold text-ink-900 dark:text-white">Date and time</span>
           <input
             type="datetime-local"
@@ -139,10 +179,11 @@ export default function ScheduleInterviewDialog({
           </label>
         </div>
         <label className="grid gap-1.5 text-sm">
-          <span className="font-semibold text-ink-900 dark:text-white">Room or meeting link (optional)</span>
+          <span className="font-semibold text-ink-900 dark:text-white">{mode === 'IN_PERSON' ? 'Room' : 'Meeting link'} (optional)</span>
           <input
             value={place}
             onChange={(e) => setPlace(e.target.value)}
+            placeholder={mode === 'IN_PERSON' ? 'For example, Room B2' : 'https://meet.example.com/...'}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
           />
         </label>
@@ -185,28 +226,6 @@ export default function ScheduleInterviewDialog({
                 <li key={c}>{c}</li>
               ))}
             </ul>
-            {clash.suggestions && clash.suggestions.length > 0 ? (
-              <div className="grid gap-2">
-                <span className="text-xs font-semibold text-ink-700 dark:text-slate-300">Free times that work for both</span>
-                <div className="flex flex-wrap gap-2">
-                  {clash.suggestions.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => {
-                        setWhen(s.slice(0, 16))
-                        setClash(null)
-                      }}
-                      className="rounded-xl border border-amber-500/40 bg-white px-3 py-1.5 text-xs font-semibold text-ink-900 hover:bg-amber-500/10 dark:bg-white/5 dark:text-white"
-                    >
-                      {whenLabel(s)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-ink-700 dark:text-slate-300">No free time in the next two weeks. Try a later date.</p>
-            )}
           </div>
         )}
         {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}

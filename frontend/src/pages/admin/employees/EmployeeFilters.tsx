@@ -30,8 +30,10 @@ export default function EmployeeFilters({
 
   return (
     <div className="flex flex-col gap-3 p-4 sm:p-5 xl:flex-row xl:items-center">
-      <SearchInput value={values.q} onSearch={(q) => onChange({ q })} placeholder="Search name, ID or email…" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:flex xl:shrink-0">
+      <div className="w-full xl:w-72 xl:shrink-0">
+        <SearchInput value={values.q} onSearch={(q) => onChange({ q })} placeholder="Search name, ID or email…" />
+      </div>
+      <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:flex xl:flex-1 xl:flex-wrap">
         <div className="xl:w-36">
           <Dropdown
             ariaLabel="Status"
