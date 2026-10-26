@@ -43,6 +43,18 @@ public final class InterviewDtos {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    public static class RescheduleInterviewRequest {
+        @NotNull(message = "New time is required")
+        private LocalDateTime scheduledAt;
+        private Integer durationMinutes;
+        private String mode;
+        private String locationOrLink;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class SetLinkRequest {
         /** Meeting room or video link. Blank removes it. */
         private String locationOrLink;
@@ -123,6 +135,7 @@ public final class InterviewDtos {
         private LocalDateTime candidateResponseAt;
         private String candidateResponseComment;
         private LocalDateTime completedAt;
+        private LocalDateTime heldAt;
         private String cancelledReason;
         private FeedbackDTO feedback;
     }

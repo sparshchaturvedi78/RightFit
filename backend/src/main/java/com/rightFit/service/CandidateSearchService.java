@@ -52,7 +52,7 @@ public class CandidateSearchService {
                            String grade, String domain, String technology, String availabilityStatus,
                            String poolStatus, String allocationStatus, boolean availableOnly,
                            String preferredTechnology, String preferredDomain, String preferredWorkMode,
-                           String preferredLocation, boolean excludeMyTeam) {
+                           String preferredLocation, boolean excludeMyTeam, boolean forSourcing) {
     }
 
     private final EmployeeRepository employeeRepository;
@@ -70,8 +70,8 @@ public class CandidateSearchService {
      */
     public Page<EmployeeCandidateDTO> search(Criteria criteria, Pageable pageable) {
         assertMaySearch();
-        Employee caller = criteria.excludeMyTeam() ? accessGuard.currentEmployee() : null;
-        Set<Long> myTeam = caller != null ? peopleOnMyProjects(caller) : Set.of();
+        Employee caller = criteria.excludeMyTeam() || criteria.forSourcing() ? accessGuard.currentEmployee() : null;
+        Set<Long> myTeam = criteria.excludeMyTeam() && caller != null ? peopleOnMyProjects(caller) : Set.of();
         return employeeRepository.findAll(toSpecification(criteria, myTeam, caller), pageable).map(this::toDTO);
     }
 
@@ -153,6 +153,19 @@ public class CandidateSearchService {
             predicates.add(cb.equal(root.get("employmentStatus"), "ACTIVE"));
             if (!myTeam.isEmpty()) {
                 predicates.add(cb.not(root.get("id").in(myTeam)));
+            }
+            if (c.forSourcing() && caller != null) {
+                // Someone sourcing adds people from the company, never themselves, managers or anyone already allocated.
+                predicates.add(cb.notEqual(root.get("id"), caller.getId()));
+                Subquery<Long> busy = query.subquery(Long.class);
+                Root<Allocation> a = busy.from(Allocation.class);
+                busy.select(a.<Long>get("id")).where(cb.equal(a.get("employee"), root), cb.equal(a.get("status"), "ACTIVE"));
+                predicates.add(cb.not(cb.exists(busy)));
+                Subquery<Long> managerRole = query.subquery(Long.class);
+                Root<UserRole> mr = managerRole.from(UserRole.class);
+                managerRole.select(mr.<Long>get("id")).where(cb.equal(mr.get("user"), root.get("user")),
+                        cb.isTrue(mr.<Boolean>get("isActive")), cb.equal(mr.get("role").get("code"), RequirementAccessGuard.MANAGER));
+                predicates.add(cb.not(cb.exists(managerRole)));
             }
             if (caller != null) {
                 predicates.add(cb.not(cb.exists(liveInMyPipeline(query, cb, root, caller))));

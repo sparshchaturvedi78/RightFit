@@ -41,6 +41,7 @@ public class CandidateService {
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
     private final com.rightFit.repository.AllocationRepository allocationRepository;
+    private final com.rightFit.repository.RequirementAssignmentRepository assignmentRepository;
 
     /**
      * An unallocated associate applies to a published requirement. They join its pipeline as IDENTIFIED, like
@@ -66,6 +67,15 @@ public class CandidateService {
         notifyManagerIfOther(requirement, me, "CANDIDATE_APPLIED",
                 CandidateWorkflowService.name(me) + " applied for " + requirementId,
                 requirement.getPositionTitle(), saved);
+        // Whoever sources for this requirement hears about the interest too, so they can shortlist it.
+        for (com.rightFit.entity.RequirementAssignment a : assignmentRepository.findByRequirementIdAndResponsibilityTypeAndIsActiveTrue(
+                requirement.getId(), com.rightFit.entity.RequirementAssignment.SOURCER)) {
+            notificationService.notify(a.getEmployee(), "CANDIDATE_APPLIED",
+                    CandidateWorkflowService.name(me) + " applied for " + requirementId,
+                    requirement.getPositionTitle() + " on " + requirement.getProject().getProjectName()
+                            + ". Shortlist them from your duties.",
+                    "DUTY", requirementId);
+        }
         return workflow.toDTO(saved);
     }
 
