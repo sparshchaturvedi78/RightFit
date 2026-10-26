@@ -35,8 +35,9 @@ public class ManagerInterviewController {
     @GetMapping("/api/manager/candidates/{applicationId}/interview-slots")
     @PreAuthorize("hasPermission(null, 'INTERVIEW_SCHEDULE')")
     public ResponseEntity<List<java.time.LocalDateTime>> suggestSlots(@PathVariable String applicationId,
-                                                                     @RequestParam(defaultValue = "60") int durationMinutes) {
-        return ResponseEntity.ok(interviewService.suggestSlotsFor(applicationId, durationMinutes));
+                                                                     @RequestParam(defaultValue = "60") int durationMinutes,
+                                                                     @RequestParam(required = false) String interviewerEmployeeId) {
+        return ResponseEntity.ok(interviewService.suggestSlotsFor(applicationId, durationMinutes, interviewerEmployeeId));
     }
 
     @GetMapping("/api/manager/candidates/{applicationId}/interviews")
@@ -50,6 +51,20 @@ public class ManagerInterviewController {
     @PreAuthorize("hasPermission(null, 'INTERVIEW_READ')")
     public ResponseEntity<List<InterviewDTO>> dutyInterviews() {
         return ResponseEntity.ok(interviewService.dutyInterviews());
+    }
+
+    /** Moves an open interview. The coordinator, the manager or the interviewer (within the time rule) can do it. */
+    @PutMapping("/api/manager/interviews/{interviewId}/held")
+    @PreAuthorize("hasPermission(null, 'INTERVIEW_READ')")
+    public ResponseEntity<InterviewDTO> markHeld(@PathVariable String interviewId) {
+        return ResponseEntity.ok(interviewService.markHeld(interviewId));
+    }
+
+    @PutMapping("/api/manager/interviews/{interviewId}/reschedule")
+    @PreAuthorize("hasPermission(null, 'INTERVIEW_READ')")
+    public ResponseEntity<InterviewDTO> reschedule(@PathVariable String interviewId,
+                                                  @Valid @RequestBody InterviewDtos.RescheduleInterviewRequest request) {
+        return ResponseEntity.ok(interviewService.reschedule(interviewId, request));
     }
 
     /** Sets or clears the meeting link on an open interview; the candidate is told. */

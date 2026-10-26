@@ -3,6 +3,7 @@ package com.rightFit.service;
 import com.rightFit.dto.InterviewDtos.FeedbackDTO;
 import com.rightFit.dto.InterviewDtos.InterviewDTO;
 import com.rightFit.dto.InterviewDtos.InterviewResponseRequest;
+import com.rightFit.dto.InterviewDtos.RescheduleInterviewRequest;
 import com.rightFit.dto.InterviewDtos.ScheduleInterviewRequest;
 import com.rightFit.dto.InterviewDtos.SubmitFeedbackRequest;
 import com.rightFit.entity.CandidateApplication;
@@ -165,10 +166,8 @@ public class InterviewService {
     public InterviewDTO setLink(String interviewId, String link) {
         Interview interview = find(interviewId);
         Employee me = accessGuard.currentEmployee();
-        boolean mine = interview.getInterviewer() != null && interview.getInterviewer().getId().equals(me.getId());
-        if (!mine) {
-            accessGuard.assertCanCoordinate(interview.getRequirement());
-        }
+        // Only the people who book interviews share the meeting link; the interviewer joins it.
+        accessGuard.assertCanCoordinate(interview.getRequirement());
         if (!OPEN.contains(interview.getStatus())) {
             throw new BusinessRuleException("Only an open interview can get a link (status " + interview.getStatus() + ")");
         }
@@ -184,9 +183,77 @@ public class InterviewService {
         return toDTO(interview, true);
     }
 
+    /** Coordinators and the manager can change any open interview; the interviewer only their own, more than an hour before it starts. */
+    private void assertCanChangeInterview(Interview interview) {
+        Employee me = accessGuard.currentEmployee();
+        boolean mine = interview.getInterviewer() != null && interview.getInterviewer().getId().equals(me.getId());
+        if (!mine) {
+            accessGuard.assertCanCoordinate(interview.getRequirement());
+            return;
+        }
+        if (!interview.getScheduledAt().isAfter(LocalDateTime.now().plusHours(1))) {
+            throw new BusinessRuleException("An interviewer can change an interview only more than an hour before it starts");
+        }
+    }
+
+    /** The interviewer (or a coordinator) marks an open interview as held once it has started. Feedback opens then. */
+    public InterviewDTO markHeld(String interviewId) {
+        Interview interview = find(interviewId);
+        assertCanChangeInterview(interview);
+        if (!OPEN.contains(interview.getStatus())) {
+            throw new BusinessRuleException("Only an open interview can be marked as held (status " + interview.getStatus() + ")");
+        }
+        if (interview.getScheduledAt().isAfter(LocalDateTime.now())) {
+            throw new BusinessRuleException("The interview has not started yet");
+        }
+        interview.setHeldAt(LocalDateTime.now());
+        interviewRepository.save(interview);
+        return toDTO(interview, true);
+    }
+
+    /** Moves an open interview to a new time, mode or room. The candidate and the interviewer are told. */
+    public InterviewDTO reschedule(String interviewId, RescheduleInterviewRequest request) {
+        Interview interview = find(interviewId);
+        assertCanChangeInterview(interview);
+        if (!OPEN.contains(interview.getStatus())) {
+            throw new BusinessRuleException("Only an open interview can be rescheduled (status " + interview.getStatus() + ")");
+        }
+        int minutes = request.getDurationMinutes() != null ? request.getDurationMinutes()
+                : interview.getDurationMinutes() != null ? interview.getDurationMinutes() : 60;
+        Employee candidate = interview.getEmployee();
+        Employee interviewer = interview.getInterviewer();
+        List<String> clashes = clashesFor(interviewer, candidate, request.getScheduledAt(), minutes, interview.getId());
+        if (!clashes.isEmpty()) {
+            throw new InterviewConflictException(clashes, suggestSlots(interviewer, candidate, request.getScheduledAt(), minutes));
+        }
+        LocalDateTime previous = interview.getScheduledAt();
+        interview.setScheduledAt(request.getScheduledAt());
+        interview.setDurationMinutes(minutes);
+        if (request.getMode() != null) {
+            interview.setMode(request.getMode());
+        }
+        if (request.getLocationOrLink() != null) {
+            interview.setLocationOrLink(request.getLocationOrLink().isBlank() ? null : request.getLocationOrLink().trim());
+        }
+        interviewRepository.save(interview);
+
+        String when = request.getScheduledAt().format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM, HH:mm"));
+        String was = previous.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM, HH:mm"));
+        notificationService.notify(candidate, "INTERVIEW_RESCHEDULED", "Interview moved to " + when,
+                interview.getRequirement().getPositionTitle() + ". It was " + was + ".", "INTERVIEW", interview.getInterviewId());
+        Employee me = accessGuard.currentEmployee();
+        if (!interviewer.getId().equals(me.getId())) {
+            notificationService.notify(interviewer, "INTERVIEW_RESCHEDULED", "Interview moved to " + when,
+                    CandidateWorkflowService.name(candidate) + ". It was " + was + ".", "INTERVIEW", interview.getInterviewId());
+        }
+        auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "INTERVIEW_RESCHEDULED", "INTERVIEW",
+                interview.getId(), was, when, interview.getInterviewId() + " moved by " + me.getEmployeeId());
+        return toDTO(interview, true);
+    }
+
     public InterviewDTO cancel(String interviewId, String reason) {
         Interview interview = find(interviewId);
-        accessGuard.assertCanCoordinate(interview.getRequirement());
+        assertCanChangeInterview(interview);
         if (!OPEN.contains(interview.getStatus())) {
             throw new BusinessRuleException("Only a scheduled interview can be cancelled (status " + interview.getStatus() + ")");
         }
@@ -331,30 +398,39 @@ public class InterviewService {
 
     /** Free times from now for the candidate's next interview, with the manager as interviewer. Booking nothing. */
     @Transactional(readOnly = true)
-    public List<LocalDateTime> suggestSlotsFor(String applicationId, int minutes) {
+    public List<LocalDateTime> suggestSlotsFor(String applicationId, int minutes, String interviewerEmployeeId) {
         if (minutes < 15 || minutes > 480) {
             throw new BusinessRuleException("Duration must be between 15 and 480 minutes");
         }
         CandidateApplication candidate = workflow.find(applicationId);
         ProjectRequirement requirement = candidate.getRequirement();
         accessGuard.assertCanCoordinate(requirement);
-        Employee interviewer = requirement.getProject().getManager();
-        if (interviewer == null) {
-            throw new BusinessRuleException("The project has no manager to interview");
-        }
+        // The chosen interviewer (validated as eligible), or the project manager when none is chosen.
+        Employee interviewer = resolveInterviewer(requirement, interviewerEmployeeId);
         return suggestSlots(interviewer, candidate.getEmployee(), LocalDateTime.now(), minutes);
     }
 
     /** Interviews of the interviewer, or of the candidate in any requirement, that overlap the requested slot. */
     private List<String> clashesFor(Employee interviewer, Employee candidate, LocalDateTime start, int minutes) {
+        return clashesFor(interviewer, candidate, start, minutes, null);
+    }
+
+    /** As above, but ignoring one interview (the one being moved). */
+    private List<String> clashesFor(Employee interviewer, Employee candidate, LocalDateTime start, int minutes, Long exclude) {
         List<String> clashes = new ArrayList<>();
         for (Interview i : interviewRepository.findByInterviewerIdOrderByScheduledAtDesc(interviewer.getId())) {
+            if (exclude != null && i.getId().equals(exclude)) {
+                continue;
+            }
             if (overlaps(i, start, minutes)) {
                 clashes.add(CandidateWorkflowService.name(interviewer) + " is already interviewing at "
                         + i.getScheduledAt().format(WHEN) + " (" + i.getInterviewId() + ")");
             }
         }
         for (Interview i : interviewRepository.findByEmployeeIdOrderByScheduledAtDesc(candidate.getId())) {
+            if (exclude != null && i.getId().equals(exclude)) {
+                continue;
+            }
             if (overlaps(i, start, minutes)) {
                 clashes.add(CandidateWorkflowService.name(candidate) + " already has an interview at "
                         + i.getScheduledAt().format(WHEN) + " (" + i.getInterviewId() + ")");
@@ -458,6 +534,7 @@ public class InterviewService {
                 .candidateResponseAt(i.getCandidateResponseAt())
                 .candidateResponseComment(i.getCandidateResponseComment())
                 .completedAt(i.getCompletedAt())
+                .heldAt(i.getHeldAt())
                 .cancelledReason(i.getCancelledReason())
                 .feedback(feedback)
                 .build();

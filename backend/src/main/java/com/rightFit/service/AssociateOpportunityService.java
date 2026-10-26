@@ -68,15 +68,26 @@ public class AssociateOpportunityService {
 
         ProjectRequirement r = invitation.getRequirement();
         Project p = r.getProject();
-        List<TeamMemberInfo> team = projectMemberRepository.findByProjectIdAndIsActiveTrueOrderByJoinedAtAsc(p.getId())
-                .stream()
-                .map(m -> TeamMemberInfo.builder()
+        // The current manager first, then the active members who are not managers. Former managers are left out.
+        List<TeamMemberInfo> team = new java.util.ArrayList<>();
+        if (p.getManager() != null) {
+            team.add(TeamMemberInfo.builder()
+                    .employeeId(p.getManager().getEmployeeId())
+                    .name(CandidateWorkflowService.name(p.getManager()))
+                    .designation(p.getManager().getDesignation())
+                    .role("MANAGER")
+                    .build());
+        }
+        projectMemberRepository.findByProjectIdAndIsActiveTrueOrderByJoinedAtAsc(p.getId()).stream()
+                .filter(m -> "ACTIVE".equals(m.getEmployee().getEmploymentStatus()))
+                .filter(m -> !"PROJECT_MANAGER".equals(m.getRole()) && !"MANAGER".equals(m.getRole()))
+                .filter(m -> p.getManager() == null || !m.getEmployee().getId().equals(p.getManager().getId()))
+                .forEach(m -> team.add(TeamMemberInfo.builder()
                         .employeeId(m.getEmployee().getEmployeeId())
                         .name(CandidateWorkflowService.name(m.getEmployee()))
                         .designation(m.getEmployee().getDesignation())
                         .role(m.getRole())
-                        .build())
-                .toList();
+                        .build()));
 
         return OpportunityDetailsDTO.builder()
                 .invitation(invitationService.toDTO(invitation))

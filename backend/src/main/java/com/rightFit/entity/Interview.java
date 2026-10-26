@@ -77,6 +77,10 @@ public class Interview {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    /** When the interview was marked as held, which opens its feedback. */
+    @Column(name = "held_at")
+    private LocalDateTime heldAt;
+
     @Column(name = "cancelled_reason", columnDefinition = "TEXT")
     private String cancelledReason;
 
