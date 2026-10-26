@@ -13,6 +13,7 @@ import { managerEmployeeService, type CandidateSearchFilters } from '../services
 import { managerRequirementService } from '../services/manager/requirement.service'
 import { managerRequirementAssignmentService } from '../services/manager/requirementAssignment.service'
 import { allocationService } from '../services/allocation.service'
+import { notificationService } from '../services/notification.service'
 import { associateDashboardService } from '../services/associate/dashboard.service'
 import { associateOpportunityService } from '../services/associate/opportunity.service'
 import { associateProfileService } from '../services/associate/profile.service'
@@ -97,6 +98,9 @@ export const QUERY_FETCHERS = {
   associateTrainingAssignments: (_params: Record<string, never>) => associateWorkService.trainingAssignments(),
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   associateProfile: (_params: Record<string, never>) => associateProfileService.getProfile(),
+  /** The latest few notifications, shown as recent activity on the associate dashboard. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  latestNotifications: (_params: Record<string, never>) => notificationService.list(false, 0, 4),
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   associateSkills: (_params: Record<string, never>) => associateProfileService.listSkills(),
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

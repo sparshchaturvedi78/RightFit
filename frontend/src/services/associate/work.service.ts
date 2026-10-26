@@ -75,6 +75,9 @@ export interface OpenTrainingDTO {
   requiredCertifications?: string
   myAssignmentId?: string
   myStatus?: string
+  /** Seats in the program; absent when it has no limit. */
+  maxParticipants?: number
+  seatsTaken?: number
 }
 
 export interface TrainingAssignmentDTO {
