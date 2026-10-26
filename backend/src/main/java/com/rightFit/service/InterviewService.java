@@ -196,10 +196,22 @@ public class InterviewService {
         }
     }
 
+    /**
+     * Running an interview (marking it held) is the interviewer's own job at any time, even after it has started;
+     * anyone else needs to be a coordinator or the project's manager.
+     */
+    private void assertCanRunInterview(Interview interview) {
+        Employee me = accessGuard.currentEmployee();
+        boolean mine = interview.getInterviewer() != null && interview.getInterviewer().getId().equals(me.getId());
+        if (!mine) {
+            accessGuard.assertCanCoordinate(interview.getRequirement());
+        }
+    }
+
     /** The interviewer (or a coordinator) marks an open interview as held once it has started. Feedback opens then. */
     public InterviewDTO markHeld(String interviewId) {
         Interview interview = find(interviewId);
-        assertCanChangeInterview(interview);
+        assertCanRunInterview(interview);
         if (!OPEN.contains(interview.getStatus())) {
             throw new BusinessRuleException("Only an open interview can be marked as held (status " + interview.getStatus() + ")");
         }

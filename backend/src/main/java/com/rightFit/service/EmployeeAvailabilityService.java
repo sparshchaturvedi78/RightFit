@@ -212,6 +212,7 @@ public class EmployeeAvailabilityService {
         return EmployeeAvailabilityDTO.builder()
                 .id(a.getId())
                 .employeeId(a.getEmployee().getEmployeeId())
+                .employeeName(CandidateWorkflowService.name(a.getEmployee()))
                 .availabilityStatus(a.getAvailabilityStatus())
                 .expectedReturnDate(a.getAvailableFrom())
                 .reason(a.getReason())

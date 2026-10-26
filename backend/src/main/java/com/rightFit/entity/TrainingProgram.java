@@ -44,6 +44,10 @@ public class TrainingProgram {
     @Column(name = "required_certifications", columnDefinition = "TEXT")
     private String requiredCertifications;
 
+    /** How many people the program can take at once. Null for programs created before seats were set. */
+    @Column(name = "max_participants")
+    private Integer maxParticipants;
+
     @Column(name = "is_active")
     private Boolean isActive;
 

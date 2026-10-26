@@ -205,7 +205,10 @@ public class AssociateOpportunityService {
             notificationService.notify(candidate.getRequirement().getProject().getManager(), "OPPORTUNITY_CONFIRMED",
                     CandidateWorkflowService.name(me) + " accepted the opportunity for "
                             + candidate.getRequirement().getRequirementId(),
-                    "You can now submit an allocation request.", "CANDIDATE", applicationId);
+                    request.getComment() != null && !request.getComment().isBlank()
+                            ? "Their note: " + request.getComment().trim()
+                            : "You can now submit an allocation request.",
+                    "CANDIDATE", applicationId);
         } else {
             workflow.transition(candidate, CandidateStatus.DECLINED, me,
                     request.getComment() != null ? request.getComment() : "Declined after selection");

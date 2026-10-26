@@ -142,6 +142,7 @@ public final class AssociateProfileDtos {
     public static class EmployeeAvailabilityDTO {
         private Long id;
         private String employeeId;
+        private String employeeName;
         private String availabilityStatus;
         private LocalDate expectedReturnDate;
         private String reason;

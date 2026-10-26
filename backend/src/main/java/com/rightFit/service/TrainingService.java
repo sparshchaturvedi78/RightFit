@@ -41,6 +41,9 @@ import java.util.List;
 @Transactional
 public class TrainingService {
 
+    /** Assignments that hold a seat. */
+    private static final List<String> SEAT_STATUSES = List.of("ASSIGNED", "IN_PROGRESS");
+
     private final TrainingProgramRepository programRepository;
     private final TrainingAssignmentRepository assignmentRepository;
     private final AllocationRepository allocationRepository;
@@ -69,6 +72,7 @@ public class TrainingService {
                 .provider(request.getProvider())
                 .cost(request.getCost())
                 .requiredCertifications(request.getRequiredCertifications())
+                .maxParticipants(request.getMaxParticipants())
                 .isActive(true)
                 .build());
         auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "TRAINING_PROGRAM_CREATED",
@@ -101,6 +105,14 @@ public class TrainingService {
         if (request.getRequiredCertifications() != null) {
             program.setRequiredCertifications(request.getRequiredCertifications());
         }
+        if (request.getMaxParticipants() != null) {
+            long taken = seatsTaken(program);
+            if (request.getMaxParticipants() < taken) {
+                throw new BusinessRuleException("'" + program.getProgramName() + "' already has " + taken
+                        + " people, so it can't be cut down to " + request.getMaxParticipants() + " seats");
+            }
+            program.setMaxParticipants(request.getMaxParticipants());
+        }
         TrainingProgram saved = programRepository.save(program);
         auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "TRAINING_PROGRAM_UPDATED",
                 "TRAINING_PROGRAM", saved.getId(), null, null,
@@ -125,6 +137,7 @@ public class TrainingService {
         if (!Boolean.TRUE.equals(program.getIsActive())) {
             throw new BusinessRuleException("'" + program.getProgramName() + "' has been retired and cannot take new assignments");
         }
+        assertSeatsFor(program, request.getEmployeeIds().size());
         Rejection rejection = request.getRejectionId() == null ? null : findRejection(request.getRejectionId());
 
         List<TrainingAssignmentDTO> created = new java.util.ArrayList<>();
@@ -245,6 +258,7 @@ public class TrainingService {
         }
         String program = a.getTrainingProgram().getProgramName();
         if (decision.isApprove()) {
+            assertSeatsFor(a.getTrainingProgram(), 1);
             a.setAssignmentStatus("ASSIGNED");
             a.setAssignedBy(rmg);
             a.setAssignedAt(LocalDateTime.now());
@@ -318,7 +332,27 @@ public class TrainingService {
                 .cost(program.getCost())
                 .requiredCertifications(program.getRequiredCertifications())
                 .isActive(program.getIsActive())
+                .maxParticipants(program.getMaxParticipants())
+                .seatsTaken((int) seatsTaken(program))
                 .build();
+    }
+
+    /** People holding a seat on the program right now. Requests that are still waiting do not hold one. */
+    private long seatsTaken(TrainingProgram program) {
+        return assignmentRepository.countSeatsTaken(program.getId(), SEAT_STATUSES);
+    }
+
+    /** Refuses to put more people on a program than it has seats for. */
+    private void assertSeatsFor(TrainingProgram program, int people) {
+        if (program.getMaxParticipants() == null) {
+            return;
+        }
+        long left = program.getMaxParticipants() - seatsTaken(program);
+        if (people > left) {
+            throw new BusinessRuleException(left <= 0
+                    ? "'" + program.getProgramName() + "' is full (" + program.getMaxParticipants() + " of " + program.getMaxParticipants() + " seats taken)"
+                    : "Only " + left + " seat" + (left == 1 ? "" : "s") + " left on '" + program.getProgramName() + "', so " + people + " can't be added");
+        }
     }
 
     private TrainingAssignmentDTO toAssignmentDTO(TrainingAssignment assignment) {
