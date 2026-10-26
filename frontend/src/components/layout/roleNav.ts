@@ -87,13 +87,38 @@ export const MANAGER_NAV: NavGroup[] = [
   },
 ]
 
-/** RMG sidebar. The dashboard is still a placeholder, so it shows as "Soon". */
+/** RMG sidebar: the resource work first, then hiring and learning, with reports last. */
 export const RMG_NAV: NavGroup[] = [
   {
     title: 'Overview',
+    items: [{ label: 'Dashboard', to: '/rmg/dashboard', icon: LayoutDashboard, ready: true }],
+  },
+  {
+    title: 'Resource',
     items: [
-      { label: 'Dashboard', to: '/rmg/dashboard', icon: LayoutDashboard, ready: false },
-      { label: 'Reports', to: '/rmg/reports', icon: BarChart3, ready: true },
+      { label: 'Resource pool', to: '/rmg/pool', icon: UsersRound, ready: true },
+      { label: 'Bench tracking', to: '/rmg/bench', icon: Clock, ready: true },
+      { label: 'Availability checks', to: '/rmg/availability', icon: CalendarClock, ready: true },
+      { label: 'Allocation requests', to: '/rmg/allocation-requests', icon: ClipboardCheck, ready: true },
     ],
+  },
+  {
+    title: 'Hiring',
+    items: [
+      { label: 'Recommendations', to: '/rmg/recommendations', icon: UserRound, ready: true },
+      { label: 'Demand & supply', to: '/rmg/demand-supply', icon: BarChart3, ready: true },
+    ],
+  },
+  {
+    title: 'Governance',
+    items: [{ label: 'Rejections', to: '/rmg/rejections', icon: Gavel, ready: true }],
+  },
+  {
+    title: 'Learning',
+    items: [{ label: 'Training programs', to: '/rmg/training', icon: GraduationCap, ready: true }],
+  },
+  {
+    title: 'Insights',
+    items: [{ label: 'Reports', to: '/rmg/reports', icon: FolderKanban, ready: true }],
   },
 ]

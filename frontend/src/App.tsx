@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/auth/ProtectedRoute'
-import DashboardPlaceholderPage from './pages/DashboardPlaceholderPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
@@ -16,6 +15,15 @@ import ReportsPage from './pages/admin/reports/ReportsPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AppShell from './components/layout/AppShell'
 import { RMG_NAV } from './components/layout/roleNav'
+import RmgDashboardPage from './pages/rmg/RmgDashboardPage'
+import ResourcePoolPage from './pages/rmg/ResourcePoolPage'
+import BenchPage from './pages/rmg/BenchPage'
+import RmgAvailabilityPage from './pages/rmg/AvailabilityPage'
+import AllocationRequestsPage from './pages/rmg/AllocationRequestsPage'
+import RecommendationsPage from './pages/rmg/RecommendationsPage'
+import DemandSupplyPage from './pages/rmg/DemandSupplyPage'
+import RejectionsPage from './pages/rmg/RejectionsPage'
+import TrainingProgramsPage from './pages/rmg/TrainingProgramsPage'
 import ManagerLayout from './pages/manager/ManagerLayout'
 import ManagerDashboardPage from './pages/manager/dashboard/ManagerDashboardPage'
 import ManagerProjectsPage from './pages/manager/projects/ProjectsPage'
@@ -85,13 +93,14 @@ function App() {
         <Route path="candidates/:applicationId" element={<CandidateRedirectPage />} />
         <Route path="interviews" element={<ManagerInterviewsPage />} />
         <Route path="interviews/:interviewId" element={<ManagerInterviewsPage />} />
+        <Route path="interviews/:interviewId/feedback" element={<ManagerInterviewsPage />} />
         <Route path="allocation-requests" element={<ManagerAllocationRequestsPage />} />
         <Route path="allocation-requests/:requestId" element={<ManagerAllocationRequestsPage />} />
         <Route path="requirements" element={<ManagerRequirementsPage />} />
         <Route path="requirements/:requirementId" element={<ManagerRequirementPage />} />
         <Route path="reports" element={<ReportsPage narrowed />} />
       </Route>
-      {/* RMG: reports only for now (narrowed to their own associates by the server). */}
+      {/* RMG: resource, hiring, learning and reports (reports narrowed to their own associates by the server). */}
       <Route
         path="/rmg"
         element={
@@ -100,16 +109,18 @@ function App() {
           </ProtectedRoute>
         }
       >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<RmgDashboardPage />} />
+        <Route path="pool" element={<ResourcePoolPage />} />
+        <Route path="bench" element={<BenchPage />} />
+        <Route path="availability" element={<RmgAvailabilityPage />} />
+        <Route path="allocation-requests" element={<AllocationRequestsPage />} />
+        <Route path="recommendations" element={<RecommendationsPage />} />
+        <Route path="demand-supply" element={<DemandSupplyPage />} />
+        <Route path="rejections" element={<RejectionsPage />} />
+        <Route path="training" element={<TrainingProgramsPage />} />
         <Route path="reports" element={<ReportsPage narrowed />} />
       </Route>
-      <Route
-        path="/rmg/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={['RMG']}>
-            <DashboardPlaceholderPage role="RMG" />
-          </ProtectedRoute>
-        }
-      />
       {/* Associate: the same shell; the sidebar follows their allocation and hiring duties. */}
       <Route
         path="/associate"
@@ -134,6 +145,7 @@ function App() {
         <Route path="duties/:requirementId" element={<DutyRequirementPage />} />
         <Route path="interviews-to-take" element={<ManagerInterviewsPage scope="mine" />} />
         <Route path="interviews-to-take/:interviewId" element={<ManagerInterviewsPage scope="mine" />} />
+        <Route path="interviews-to-take/:interviewId/feedback" element={<ManagerInterviewsPage scope="mine" />} />
       </Route>
     </Routes>
   )

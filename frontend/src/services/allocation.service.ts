@@ -4,7 +4,8 @@ import { httpClient } from './httpClient'
 export interface CreateAllocationRequestRequest {
   startDate?: string
   endDate?: string
-  hoursPerDay: number
+  /** Not used any more: every allocation is the full working day. Kept optional for older callers. */
+  hoursPerDay?: number
 }
 
 export interface ReviewRequest {
@@ -71,7 +72,8 @@ async function rmgApprove(requestId: string, payload: ReviewRequest): Promise<Al
   return data
 }
 
-async function rmgReject(requestId: string, payload: ReviewRequest): Promise<AllocationRequestDTO> {
+/** The server asks for a reason on reject (it is shown to the manager). */
+async function rmgReject(requestId: string, payload: { reason: string }): Promise<AllocationRequestDTO> {
   const { data } = await httpClient.put<AllocationRequestDTO>(ALLOCATION_API.rmgReject(requestId), payload)
   return data
 }

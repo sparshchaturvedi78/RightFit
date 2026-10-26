@@ -18,6 +18,14 @@ import { associateOpportunityService } from '../services/associate/opportunity.s
 import { associateProfileService } from '../services/associate/profile.service'
 import { associateWorkService } from '../services/associate/work.service'
 import { interviewService } from '../services/interview.service'
+import { rmgAvailabilityService } from '../services/rmg/availability.service'
+import { rmgBenchService } from '../services/rmg/bench.service'
+import { rmgDashboardService } from '../services/rmg/dashboard.service'
+import { rmgDemandSupplyService } from '../services/rmg/demandSupply.service'
+import { rmgPoolService } from '../services/rmg/pool.service'
+import { rmgRecommendationService } from '../services/rmg/recommendation.service'
+import { rmgRejectionService } from '../services/rmg/rejection.service'
+import { trainingService } from '../services/rmg/training.service'
 
 /**
  * Parameterised page data (lists with search / filters / paging) kept in the Redux store, one entry per distinct
@@ -118,6 +126,46 @@ export const QUERY_FETCHERS = {
   /** One page of the associates reporting to an RMG, optionally one workforce bucket — shown in the RMG's details. */
   rmgTeam: (params: { rmgId: string; workforce?: string; page: number; size: number }) =>
     adminRmgService.team(params.rmgId, params.workforce, params.page, params.size),
+  /** RMG: the dashboard counts and the lists behind its "needs your decision" and "longest on bench" panels. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rmgDashboard: (_params: Record<string, never>) => rmgDashboardService.get(),
+  /** RMG: one page of the resource pool, optionally searched or filtered by grade. */
+  rmgPool: (params: { q: string; grade: string; page: number }) =>
+    rmgPoolService.list({ q: params.q || undefined, grade: params.grade || undefined, page: params.page, size: 10 }),
+  /** RMG: bench entries, optionally one bench status (GREEN / AMBER / RED). */
+  rmgBench: (params: { benchStatus: string }) => rmgBenchService.list(params.benchStatus || undefined),
+  /** RMG: availability requests waiting for verification. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rmgAvailability: (_params: Record<string, never>) => rmgAvailabilityService.pending(),
+  /** RMG: allocation requests waiting for review. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rmgAllocationRequests: (_params: Record<string, never>) => allocationService.rmgList(),
+  /** RMG: every rejection, newest first. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rmgRejections: (_params: Record<string, never>) => rmgRejectionService.list(),
+  /** RMG: one person's rejection history, with counts by reason. */
+  rmgRejectionHistory: (params: { employeeId: string }) => rmgRejectionService.employeeHistory(params.employeeId),
+  /** RMG: demand against available people, by skill. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rmgDemandSupply: (_params: Record<string, never>) => rmgDemandSupplyService.get(),
+  /** RMG: pool people who can still be recommended to one requirement (not already in its pipeline). */
+  rmgPoolCandidates: (params: { requirementId: string; q: string; grade: string }) =>
+    rmgRecommendationService.poolCandidates(params.requirementId, { q: params.q || undefined, grade: params.grade || undefined }),
+  /** RMG: published requirements that people can be recommended to. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rmgOpenRequirements: (_params: Record<string, never>) => rmgRecommendationService.openRequirements(),
+  /** RMG: one person's pool history: when they joined and left the pool, and why. */
+  rmgPoolDetail: (params: { employeeId: string }) => rmgPoolService.detail(params.employeeId),
+  /** RMG: one person's bench history. */
+  rmgBenchDetail: (params: { employeeId: string }) => rmgBenchService.detail(params.employeeId),
+  /** RMG: one person's selection history across requirements. */
+  rmgSelections: (params: { employeeId: string }) => rmgPoolService.selections(params.employeeId),
+  /** RMG: training programs, active and retired. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rmgTrainingPrograms: (_params: Record<string, never>) => trainingService.listPrograms(),
+  /** RMG: every training assignment and interest request. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rmgTrainingAssignments: (_params: Record<string, never>) => trainingService.listAssignments(),
 } as const
 
 export type QueryNamespace = keyof typeof QUERY_FETCHERS

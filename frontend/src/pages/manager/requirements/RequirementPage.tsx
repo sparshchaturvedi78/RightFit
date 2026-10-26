@@ -1,8 +1,8 @@
 import { motion } from 'motion/react'
-import { ChevronLeft, ClipboardList, Pencil } from 'lucide-react'
+import { ChevronLeft, Pencil } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { EmptyState, PanelError, Skeleton, TILE_SURFACE } from '../../../components/dashboard/Panel'
+import { PanelError, Skeleton, TILE_SURFACE } from '../../../components/dashboard/Panel'
 import { Button } from '../../../components/ui/form'
 import RefreshButton from '../../../components/ui/RefreshButton'
 import { useQuery } from '../../../hooks/useQuery'
@@ -18,7 +18,7 @@ import ManagerLink from '../ManagerLink'
 import NewRequirementPanel from '../projects/NewRequirementPanel'
 import ResponsibilityBoard from '../projects/ResponsibilityBoard'
 import { type PickedPerson } from '../projects/ResponsibilityPicker'
-import { PRIORITY_TAG, STAGES, STATUS_PILL } from '../managerUi'
+import { PRIORITY_TAG, STATUS_PILL } from '../managerUi'
 import CandidatesPanel from './CandidatesPanel'
 import StatusDialog from './StatusDialog'
 import { actionsFor, STATUS_ACTIONS, type StatusAction } from './statusActions'
@@ -85,9 +85,6 @@ export default function RequirementPage() {
   const actions = actionsFor(r.status)
   const main = actions.find((a) => a === 'publish' || a === 'resume')
   const others = actions.filter((a) => a !== main)
-  const stages = card.data?.stages
-  const total = stages ? STAGES.reduce((n, s) => n + (stages[s.key] ?? 0), 0) : 0
-  const widest = stages ? Math.max(1, ...STAGES.map((s) => stages[s.key] ?? 0)) : 1
 
   const held = (type: string): PickedPerson[] =>
     (assigns.data ?? []).filter((a) => a.isActive && a.responsibilityType === type).map((a) => ({ employeeId: a.employeeId, name: a.employeeName ?? a.employeeId }))
@@ -213,31 +210,6 @@ export default function RequirementPage() {
           </section>
         </div>
 
-        <aside className="grid min-w-0 content-start gap-4 lg:gap-5">
-          <section className={`${TILE_SURFACE} grid gap-4 p-6`} aria-label="Candidates">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-[15px] font-semibold text-ink-900 dark:text-white">Candidates</h2>
-              {stages && <span className="text-xs text-ink-500 tabular-nums dark:text-slate-400">{total} in process</span>}
-            </div>
-            {!stages ? (
-              <Skeleton className="h-40 rounded-2xl" />
-            ) : r.status === 'DRAFT' ? (
-              <EmptyState icon={<ClipboardList className="h-5 w-5" />}>Publish this requirement to start adding candidates.</EmptyState>
-            ) : (
-              <div className="grid gap-3">
-                {STAGES.map((s) => (
-                  <div key={s.key} className="grid grid-cols-[92px_minmax(0,1fr)_28px] items-center gap-2.5 text-[13px]">
-                    <span className="text-ink-500 dark:text-slate-400">{s.label}</span>
-                    <span className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/6">
-                      <i className={`block h-full rounded-full ${s.bar}`} style={{ width: `${((stages[s.key] ?? 0) / widest) * 100}%` }} />
-                    </span>
-                    <b className="text-right font-semibold tabular-nums">{stages[s.key] ?? 0}</b>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </aside>
       </div>
 
       <CandidatesPanel requirementId={r.requirementId} status={r.status} />

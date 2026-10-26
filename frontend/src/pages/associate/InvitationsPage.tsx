@@ -85,7 +85,7 @@ export default function InvitationsPage() {
         </div>
       ) : (
         <>
-          <Card title="Waiting for your answer" note={`${open.length}`}>
+          {open.length > 0 && <Card title="Waiting for your answer" note={`${open.length}`}>
             {open.length === 0 ? (
               <p className="text-sm text-ink-500 dark:text-slate-400">You have answered every invitation.</p>
             ) : (
@@ -112,7 +112,7 @@ export default function InvitationsPage() {
                 />
               ))
             )}
-          </Card>
+          </Card>}
 
           {answered.length > 0 && (
             <Card title="Answered" note={`${answered.length}`}>
@@ -251,10 +251,13 @@ function AnswerDialog({ answer, onClose }: { answer: Answer; onClose: () => void
         </>
       }
     >
-      <label className="grid gap-1.5 text-sm">
-        <span className="font-semibold text-ink-900 dark:text-white">{positive ? 'Note (optional)' : 'Reason'}</span>
-        <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5" />
-      </label>
+      {/* Only a decline asks for words: the manager needs the reason. Accepting needs none, and there is no message thread to read a note in. */}
+      {!positive && (
+        <label className="grid gap-1.5 text-sm">
+          <span className="font-semibold text-ink-900 dark:text-white">Reason</span>
+          <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5" />
+        </label>
+      )}
       {error && <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
     </Modal>
   )

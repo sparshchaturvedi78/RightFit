@@ -428,9 +428,6 @@ export default function ReportsPage({ narrowed = false }: { narrowed?: boolean }
                 : `Download includes the ${rows.length.toLocaleString()} rows for these filters: ${filterText}.`}
             </p>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" icon={<Download className="h-4 w-4" />} loading={downloading === 'csv'} onClick={() => void download('csv')} disabled={downloading !== null || downloadTooLong || !rowsQuery.data || rows.length === 0}>
-                Download CSV
-              </Button>
               <Button variant="primary" icon={<Download className="h-4 w-4" />} loading={downloading === 'xlsx'} onClick={() => void download('xlsx')} disabled={downloading !== null || downloadTooLong || !rowsQuery.data || rows.length === 0}>
                 Download Excel
               </Button>

@@ -381,6 +381,7 @@ export const ALLOCATION_API = {
 export const RMG_POOL_API = {
   list: '/api/rmg/pool',
   byId: (employeeId: string) => `/api/rmg/pool/${employeeId}`,
+  selections: (employeeId: string) => `/api/rmg/pool/${employeeId}/selections`,
 }
 
 // ---------------------------------------------------------------------------
@@ -407,6 +408,8 @@ export const RMG_AVAILABILITY_API = {
 // ---------------------------------------------------------------------------
 export const RMG_RECOMMENDATION_API = {
   recommend: (requirementId: string) => `/api/rmg/requirements/${requirementId}/recommendations`,
+  openRequirements: '/api/rmg/requirements/open',
+  poolCandidates: (requirementId: string) => `/api/rmg/requirements/${requirementId}/pool-candidates`,
 }
 
 // ---------------------------------------------------------------------------
@@ -428,6 +431,7 @@ export const TRAINING_API = {
   assign: (programId: string | number) => `/api/rmg/training-programs/${programId}/assign`,
   listAssignments: '/api/rmg/training-assignments',
   updateAssignment: (assignmentId: string | number) => `/api/rmg/training-assignments/${assignmentId}`,
+  interestDecision: (assignmentId: string | number) => `/api/rmg/training-assignments/${assignmentId}/interest-decision`,
   associateAssignments: '/api/associate/training-assignments',
 }
 

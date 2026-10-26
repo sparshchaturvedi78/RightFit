@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useEffect, useState } from 'react'
+import { Dropdown } from '../../../components/ui/Dropdown'
 import { Button } from '../../../components/ui/form'
 import { Modal } from '../../../components/ui/Overlay'
 import { useToast } from '../../../hooks/useToast'
@@ -53,7 +54,10 @@ export default function ScheduleInterviewDialog({
     managerRequirementAssignmentService
       .list(candidate.requirementId, 'INTERVIEWER')
       .then((rows) => {
-        if (live) setInterviewers(rows.map((r) => ({ employeeId: r.employeeId, name: r.employeeName ?? r.employeeId })))
+        if (!live) return
+        setInterviewers(rows.map((r) => ({ employeeId: r.employeeId, name: r.employeeName ?? r.employeeId })))
+        // When the requirement already names an interviewer, that is who the interview is with unless someone else is picked.
+        if (rows.length > 0) setInterviewer((current) => current || rows[0].employeeId)
       })
       .catch(() => {
         if (live) setInterviewers([])
@@ -129,21 +133,18 @@ export default function ScheduleInterviewDialog({
       <div className="grid gap-4">
         <label className="grid gap-1.5 text-sm">
           <span className="font-semibold text-ink-900 dark:text-white">Interviewer</span>
-          <select
+          <Dropdown
+            ariaLabel="Interviewer"
             value={interviewer}
-            onChange={(e) => {
-              setInterviewer(e.target.value)
+            onChange={(v) => {
+              setInterviewer(v)
               setClash(null)
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
-          >
-            <option value="">Project manager</option>
-            {interviewers.map((i) => (
-              <option key={i.employeeId} value={i.employeeId}>
-                {i.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              ...interviewers.map((i) => ({ value: i.employeeId, label: i.name })),
+              { value: '', label: 'Project manager' },
+            ]}
+          />
         </label>
 
         <label className="grid gap-1.5 text-sm">
@@ -161,21 +162,25 @@ export default function ScheduleInterviewDialog({
         <div className="grid grid-cols-2 gap-3">
           <label className="grid gap-1.5 text-sm">
             <span className="font-semibold text-ink-900 dark:text-white">Length</span>
-            <select value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5">
-              {DURATIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d} minutes
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              ariaLabel="Length"
+              value={String(minutes)}
+              onChange={(v) => setMinutes(Number(v))}
+              options={DURATIONS.map((d) => ({ value: String(d), label: `${d} minutes` }))}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-semibold text-ink-900 dark:text-white">Mode</span>
-            <select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5">
-              <option value="ONLINE">Online</option>
-              <option value="IN_PERSON">In person</option>
-              <option value="PHONE">Phone</option>
-            </select>
+            <Dropdown
+              ariaLabel="Mode"
+              value={mode}
+              onChange={(v) => setMode(v as typeof mode)}
+              options={[
+                { value: 'ONLINE', label: 'Online' },
+                { value: 'IN_PERSON', label: 'In person' },
+                { value: 'PHONE', label: 'Phone' },
+              ]}
+            />
           </label>
         </div>
         <label className="grid gap-1.5 text-sm">

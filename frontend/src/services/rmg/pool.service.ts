@@ -8,6 +8,7 @@ export interface PoolEntryDTO {
   designation?: string
   grade?: string
   departmentName?: string
+  locationName?: string
   inPoolSince?: string
   entryReason?: string
 }
@@ -34,9 +35,26 @@ async function list(
   return data
 }
 
+/** One candidacy of the person: where they stand in a selection, newest first. */
+export interface SelectionDTO {
+  applicationId: string
+  requirementId: string
+  positionTitle?: string
+  projectName?: string
+  status: string
+  createdAt?: string
+  updatedAt?: string
+  confirmedAt?: string
+}
+
 async function detail(employeeId: string): Promise<PoolDetailDTO> {
   const { data } = await httpClient.get<PoolDetailDTO>(RMG_POOL_API.byId(employeeId))
   return data
 }
 
-export const rmgPoolService = { list, detail }
+async function selections(employeeId: string): Promise<SelectionDTO[]> {
+  const { data } = await httpClient.get<SelectionDTO[]>(RMG_POOL_API.selections(employeeId))
+  return data
+}
+
+export const rmgPoolService = { list, detail, selections }

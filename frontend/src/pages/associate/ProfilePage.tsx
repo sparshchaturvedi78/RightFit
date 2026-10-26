@@ -1,6 +1,7 @@
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { PanelError, Skeleton, TILE_SURFACE } from '../../components/dashboard/Panel'
+import { Dropdown } from '../../components/ui/Dropdown'
 import { Button, Input } from '../../components/ui/form'
 import RefreshButton from '../../components/ui/RefreshButton'
 import { useQuery } from '../../hooks/useQuery'
@@ -143,13 +144,7 @@ function SkillsCard() {
         </label>
         <label className="grid gap-1 text-xs font-semibold text-ink-500 dark:text-slate-400">
           Level (1 to 10)
-          <select value={level} onChange={(e) => setLevel(Number(e.target.value))} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/5">
-            {LEVELS.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
+          <Dropdown ariaLabel="Level" value={String(level)} onChange={(v) => setLevel(Number(v))} options={LEVELS.map((l) => ({ value: String(l), label: String(l) }))} />
         </label>
         <label className="grid gap-1 text-xs font-semibold text-ink-500 dark:text-slate-400">
           Years
@@ -187,19 +182,14 @@ function SkillsCard() {
             detail={[s.category ? humanize(s.category) : null, s.yearsOfExperience != null ? `${s.yearsOfExperience} yrs` : null].filter(Boolean).join(' · ')}
             aside={
               <div className="flex items-center gap-2">
-                <select
-                  aria-label={`Level for ${s.skillName}`}
-                  value={s.proficiencyLevel}
+                <Dropdown
+                  ariaLabel={`Level for ${s.skillName}`}
+                  size="sm"
+                  value={String(s.proficiencyLevel)}
                   disabled={busy === s.skillName}
-                  onChange={(e) => void run(s.skillName, () => associateProfileService.updateSkill(s.skillName, { proficiencyLevel: Number(e.target.value) }), 'Level saved')}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs dark:border-white/10 dark:bg-white/5"
-                >
-                  {LEVELS.map((l) => (
-                    <option key={l} value={l}>
-                      {l}/10
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => void run(s.skillName, () => associateProfileService.updateSkill(s.skillName, { proficiencyLevel: Number(v) }), 'Level saved')}
+                  options={LEVELS.map((l) => ({ value: String(l), label: `${l}/10` }))}
+                />
                 <button
                   type="button"
                   aria-label={`Remove ${s.skillName}`}
