@@ -29,6 +29,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class AllocationRequestService {
+    private final EventMailer eventMailer;
 
     private final AllocationRequestRepository requestRepository;
     private final CandidateWorkflowService workflow;
@@ -95,6 +96,7 @@ public class AllocationRequestService {
                 requirement.getProject().getProjectName() + " / " + requirement.getRequirementId() + ": "
                         + hours.stripTrailingZeros().toPlainString() + "h/day from " + start,
                 "ALLOCATION_REQUEST", saved.getRequestId());
+        eventMailer.allocationRequested(saved);
         auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "ALLOCATION_REQUESTED", "ALLOCATION_REQUEST",
                 saved.getId(), null, "SUBMITTED",
                 saved.getRequestId() + " for " + employee.getEmployeeId() + " on " + requirement.getRequirementId());

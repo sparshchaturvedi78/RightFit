@@ -26,6 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class InvitationService {
+    private final EventMailer eventMailer;
 
     private final InvitationRepository invitationRepository;
     private final ProjectRequirementRepository requirementRepository;
@@ -75,6 +76,7 @@ public class InvitationService {
                 CandidateWorkflowService.name(actor) + " invited you to "
                         + candidate.getRequirement().getProject().getProjectName(),
                 "INVITATION", invitation.getInvitationId());
+        eventMailer.invitationReceived(invitation);
         auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "INVITATION_SENT", "INVITATION",
                 invitation.getId(), null, "SENT",
                 invitation.getInvitationId() + " sent to " + employee.getEmployeeId() + " for "

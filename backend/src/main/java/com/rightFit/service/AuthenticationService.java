@@ -23,6 +23,7 @@ import java.security.NoSuchAlgorithmException;
 @RequiredArgsConstructor
 @Transactional
 public class AuthenticationService {
+    private final EventMailer eventMailer;
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -67,7 +68,7 @@ public class AuthenticationService {
 
         // Generate OTP for login verification
         String otp = otpService.generateOtp(user, user.getEmail(), "LOGIN_VERIFICATION");
-        emailService.sendOtpEmail(user.getEmail(), otp, "LOGIN_VERIFICATION");
+        emailService.sendOtpEmail(user.getEmail(), firstNameOf(user), otp, "LOGIN_VERIFICATION");
 
         log.info("Login OTP sent to: {}", user.getEmail());
 
@@ -245,6 +246,11 @@ public class AuthenticationService {
         failedLoginAttemptRepository.save(failedAttempt);
     }
 
+    /** First name for greetings in emails; the account may not be linked to an employee yet. */
+    private static String firstNameOf(User user) {
+        return user.getEmployee() != null ? user.getEmployee().getFirstName() : null;
+    }
+
     public void requestEmailVerificationOtp(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
@@ -254,7 +260,7 @@ public class AuthenticationService {
         }
 
         String otp = otpService.generateOtp(user, email, "EMAIL_VERIFICATION");
-        emailService.sendOtpEmail(email, otp, "EMAIL_VERIFICATION");
+        emailService.sendOtpEmail(email, firstNameOf(user), otp, "EMAIL_VERIFICATION");
 
         log.info("Email verification OTP sent to: {}", email);
     }
@@ -282,7 +288,7 @@ public class AuthenticationService {
                 .orElseThrow(() -> new RuntimeException("No account found with this email"));
 
         String otp = otpService.generateOtp(user, email, "FORGOT_PASSWORD");
-        emailService.sendOtpEmail(email, otp, "FORGOT_PASSWORD");
+        emailService.sendOtpEmail(email, firstNameOf(user), otp, "FORGOT_PASSWORD");
 
         log.info("Forgot password OTP sent to: {}", email);
     }
@@ -319,6 +325,7 @@ public class AuthenticationService {
         userRepository.save(user);
 
         log.info("Password reset successfully via forgot password for user: {}", email);
+        eventMailer.passwordChanged(user);
     }
 
     // ============================================================
@@ -351,6 +358,7 @@ public class AuthenticationService {
         userRepository.save(user);
 
         log.info("Password reset successfully for user: {}", user.getEmail());
+        eventMailer.passwordChanged(user);
     }
 
     private void checkPasswordHistory(User user, String newPassword) {

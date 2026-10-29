@@ -380,8 +380,10 @@ public class AdminReportService {
             bench.put(b.getEmployeeId(), b);
         }
         LocalDate today = LocalDate.now();
+        List<Employee> people = workforce();
+        Map<String, String> accounts = accountLabels(people);
         List<Map<String, Object>> rows = new java.util.ArrayList<>();
-        for (Employee e : workforce()) {
+        for (Employee e : people) {
             String bucket = buckets.getOrDefault(e.getId(), WorkforceBucketService.UNASSIGNED);
             String status;
             LocalDate since = null;
@@ -408,10 +410,30 @@ public class AdminReportService {
             row.put("since", since);
             row.put("days", since != null ? ChronoUnit.DAYS.between(since, today) : null);
             row.put("designation", e.getDesignation());
+            row.put("account", accounts.get(e.getEmployeeId()));
             row.put("rmg", e.getRmgManager() != null ? CandidateWorkflowService.name(e.getRmgManager()) : null);
             rows.add(row);
         }
         return rows;
+    }
+
+    /** Account roles of each employee as a readable label, e.g. "Manager" or "Associate, Manager". */
+    private Map<String, String> accountLabels(List<Employee> employees) {
+        Map<Long, String> employeeByUser = new java.util.HashMap<>();
+        for (Employee e : employees) {
+            if (e.getUser() != null) employeeByUser.put(e.getUser().getId(), e.getEmployeeId());
+        }
+        Map<String, java.util.Set<String>> codes = new java.util.HashMap<>();
+        if (!employeeByUser.isEmpty()) {
+            for (Object[] row : userRoleRepository.findActiveRoleCodesByUserIds(employeeByUser.keySet())) {
+                codes.computeIfAbsent(employeeByUser.get((Long) row[0]), k -> new java.util.TreeSet<>()).add((String) row[1]);
+            }
+        }
+        Map<String, String> labels = new java.util.HashMap<>();
+        codes.forEach((employeeId, roles) -> labels.put(employeeId, roles.stream()
+                .map(c -> c.charAt(0) + c.substring(1).toLowerCase())
+                .collect(java.util.stream.Collectors.joining(", "))));
+        return labels;
     }
 
     private List<Map<String, Object>> benchRows(String statusFilter) {

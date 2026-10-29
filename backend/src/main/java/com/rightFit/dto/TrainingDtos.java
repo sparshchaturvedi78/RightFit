@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -122,6 +123,8 @@ public final class TrainingDtos {
         private String certificateId;
         private String assignedByName;
         private LocalDateTime assignedAt;
+        /** The RMG's reason for approving or declining an interest request. */
+        private String decisionComment;
     }
 
     /** A training an associate can see, with where they stand on it (none, REQUESTED, ASSIGNED, ...). */
@@ -153,6 +156,7 @@ public final class TrainingDtos {
     @Builder
     public static class InterestDecisionRequest {
         private boolean approve;
+        @Size(max = 1000, message = "The reason can be at most 1000 characters")
         private String comment;
         private LocalDate startDate;
         private LocalDate expectedEndDate;

@@ -43,6 +43,7 @@ public class EmployeeManagementService {
     private final ResourcePoolService resourcePoolService;
     private final com.rightFit.repository.UserRoleRepository userRoleRepository;
     private final com.rightFit.repository.RoleRepository roleRepository;
+    private final EmailService emailService;
     private final com.rightFit.repository.ProjectRepository projectRepository;
     private final com.rightFit.repository.AllocationRepository allocationRepository;
     private final com.rightFit.repository.ProjectMemberRepository projectMemberRepository;
@@ -120,7 +121,24 @@ public class EmployeeManagementService {
             }
         }
 
+        sendWelcomeEmail(savedEmployee, request.getPassword(), request.getOptionalRoleId());
+
         return mapToDTO(savedEmployee);
+    }
+
+    /**
+     * Emails the new employee their ID and temporary password with the sign-in link. A mail failure is logged and
+     * does not undo the account: the admin can share the details another way.
+     */
+    private void sendWelcomeEmail(Employee employee, String temporaryPassword, Long roleId) {
+        String roleLabel = roleId == null ? "a team member"
+                : roleRepository.findById(roleId).map(r -> r.getName()).orElse("a team member");
+        try {
+            emailService.sendAccountCreated(employee.getEmail(), employee.getFirstName(), employee.getEmployeeId(),
+                    temporaryPassword, roleLabel);
+        } catch (RuntimeException e) {
+            log.warn("Welcome email not sent to {} ({}): {}", employee.getEmployeeId(), employee.getEmail(), e.getMessage());
+        }
     }
 
     public EmployeeDTO updateEmployee(String employeeId, UpdateEmployeeRequest request) {

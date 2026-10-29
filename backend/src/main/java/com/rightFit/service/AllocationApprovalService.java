@@ -29,6 +29,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class AllocationApprovalService {
+    private final EventMailer eventMailer;
 
     private final AllocationRequestRepository requestRepository;
     private final AllocationRequestService requestService;
@@ -109,6 +110,7 @@ public class AllocationApprovalService {
                 "You are allocated to " + request.getProject().getProjectName(),
                 allocation.getHoursPerDay().stripTrailingZeros().toPlainString() + "h/day from "
                         + allocation.getStartDate(), "ALLOCATION", allocation.getAllocationId());
+        eventMailer.allocationApproved(request, allocation);
         return requestService.toDTO(request);
     }
 
@@ -142,6 +144,7 @@ public class AllocationApprovalService {
         notificationService.notify(request.getSubmittedBy(), "ALLOCATION_REJECTED",
                 "Allocation rejected for " + CandidateWorkflowService.name(request.getEmployee()),
                 reason, "ALLOCATION_REQUEST", requestId);
+        eventMailer.allocationRejected(request, reason);
         return requestService.toDTO(request);
     }
 

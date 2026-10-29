@@ -62,6 +62,9 @@ public class TrainingAssignment {
     @Column(name = "assigned_at", nullable = false)
     private LocalDateTime assignedAt;
 
+    @Column(name = "decision_comment", length = 1000)
+    private String decisionComment;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

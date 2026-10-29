@@ -29,6 +29,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class ProjectManagementService {
+    private final EventMailer eventMailer;
 
     private final ProjectRepository projectRepository;
     private final EmployeeRepository employeeRepository;
@@ -312,7 +313,9 @@ public class ProjectManagementService {
         project.setManagerClaimed(true);
         project.setClaimedAt(LocalDateTime.now());
         project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedBy(actorLabel());
         Project saved = projectRepository.save(project);
+        eventMailer.projectClaimed(saved, caller);
 
         auditLogService.logAction(getCurrentUserId(), "PROJECT_CLAIMED", "PROJECT", saved.getId(),
                 false, true, "Manager " + caller.getEmployeeId() + " claimed project " + projectId);
