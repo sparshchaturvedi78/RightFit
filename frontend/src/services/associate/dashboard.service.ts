@@ -21,6 +21,8 @@ export interface AssociateDashboardDTO {
   totalOpportunityHistory: number
   activeTrainingAssignments: number
   unreadNotifications: number
+  /** When the associate entered the resource pool; absent when not in the pool. */
+  inPoolSince?: string
 }
 
 async function get(): Promise<AssociateDashboardDTO> {

@@ -195,10 +195,18 @@ function InterestList({ rows, onChanged }: { rows: TrainingAssignmentDTO[]; onCh
   const [declining, setDeclining] = useState<TrainingAssignmentDTO | null>(null)
   const dispatch = useAppDispatch()
   const toast = useToast()
-  const [busy, setBusy] = useState<string | null>(null)
+  // One loader per request: each Approve shows its own spinner, so approving several at once keeps every one busy.
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
+  const setBusyFor = (id: string, on: boolean) =>
+    setBusy((current) => {
+      const next = new Set(current)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
 
   async function approve(a: TrainingAssignmentDTO) {
-    setBusy(a.assignmentId)
+    setBusyFor(a.assignmentId, true)
     try {
       await trainingService.decideInterest(a.assignmentId, { approve: true })
       toast.success('Approved', `${a.employeeName ?? a.employeeId} joins ${a.programName ?? 'the program'}`)
@@ -207,7 +215,7 @@ function InterestList({ rows, onChanged }: { rows: TrainingAssignmentDTO[]; onCh
     } catch (err) {
       toast.error('Could not approve', getApiErrorMessage(err, 'Try again.'))
     } finally {
-      setBusy(null)
+      setBusyFor(a.assignmentId, false)
     }
   }
 
@@ -227,10 +235,10 @@ function InterestList({ rows, onChanged }: { rows: TrainingAssignmentDTO[]; onCh
             title={<Who name={a.employeeName ?? a.employeeId} detail={a.programName} />}
             aside={
               <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => setDeclining(a)} disabled={busy === a.assignmentId}>
+                <Button variant="secondary" onClick={() => setDeclining(a)} disabled={busy.has(a.assignmentId)}>
                   Decline
                 </Button>
-                <Button variant="primary" onClick={() => void approve(a)} loading={busy === a.assignmentId}>
+                <Button variant="primary" onClick={() => void approve(a)} loading={busy.has(a.assignmentId)}>
                   Approve
                 </Button>
               </div>
@@ -287,8 +295,9 @@ function DeclineDialog({ assignment: a, onClose, onDone }: { assignment: Trainin
       }
     >
       <Labeled label="Reason">
-        <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} />
+        <Textarea value={comment} maxLength={1000} onChange={(e) => setComment(e.target.value)} rows={3} />
       </Labeled>
+      <p className="mt-1 text-right text-[11px] text-ink-500 tabular-nums dark:text-slate-400">{comment.length} / 1000</p>
       {error && <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
     </Modal>
   )

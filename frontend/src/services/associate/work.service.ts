@@ -75,6 +75,9 @@ export interface OpenTrainingDTO {
   requiredCertifications?: string
   myAssignmentId?: string
   myStatus?: string
+  /** Seats in the program; absent when it has no limit. */
+  maxParticipants?: number
+  seatsTaken?: number
 }
 
 export interface TrainingAssignmentDTO {
@@ -89,6 +92,8 @@ export interface TrainingAssignmentDTO {
   score?: number
   assignedByName?: string
   assignedAt?: string
+  /** The RMG's reason for approving or declining an interest request. */
+  decisionComment?: string
 }
 
 async function openRequirements(): Promise<OpenRequirementDTO[]> {

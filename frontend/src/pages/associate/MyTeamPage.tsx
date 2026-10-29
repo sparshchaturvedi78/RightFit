@@ -61,7 +61,8 @@ export default function MyTeamPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-5">
           <Card title={`Team · ${current.projectName}`} note={`${current.team.length} people`}>
-            <ul className="grid">
+            {/* A large team scrolls inside this card, so the page keeps its size however many people are on it. */}
+            <ul className="grid max-h-140 overflow-y-auto pr-1">
               {current.team.map((m) => {
                 const [first = '', ...rest] = m.name.split(' ')
                 return (

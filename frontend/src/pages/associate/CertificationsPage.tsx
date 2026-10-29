@@ -69,7 +69,7 @@ export default function CertificationsPage() {
       <PageHeader eyebrow="Me" title="Certifications" sub="Add each certification with its dates. A document is optional." actions={<RefreshButton onClick={list.refresh} loading={list.loading} />} />
 
       <Card title="Add a certification">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_150px_150px_minmax(0,1fr)_auto] lg:items-end">
+        <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(10.5rem,11rem)_minmax(10.5rem,11rem)_minmax(0,1fr)_auto] lg:items-end">
           <label className="grid gap-1 text-xs font-semibold text-ink-500 dark:text-slate-400">
             Name
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="For example, AWS Developer Associate" />
@@ -84,7 +84,11 @@ export default function CertificationsPage() {
           </label>
           <label className="grid gap-1 text-xs font-semibold text-ink-500 dark:text-slate-400">
             Document (optional)
-            <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-xs text-ink-700 dark:text-slate-300" />
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="w-full min-w-0 text-xs text-ink-700 file:mr-2 file:rounded-lg file:border-0 file:bg-slate-100 file:px-2.5 file:py-1.5 file:font-semibold file:text-ink-900 dark:text-slate-300 dark:file:bg-white/10 dark:file:text-white"
+            />
           </label>
           <Button variant="primary" loading={busy === 'add'} disabled={!name.trim() || !obtained} onClick={() => void add()}>
             Add

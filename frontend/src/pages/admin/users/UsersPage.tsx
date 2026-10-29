@@ -13,6 +13,7 @@ import { loadResource } from '../../../store/resourcesSlice'
 import AccountDialog from './AccountDialog'
 import SignInChart from './SignInChart'
 import UserLane from './UserLane'
+import UserSearchResults from './UserSearchResults'
 import { ROLE_LANES, STATE_OPTIONS } from './usersUi'
 
 const VALID_STATES: AccountState[] = ['ALL', 'BLOCKED', 'LOCKED', 'NEVER']
@@ -187,17 +188,21 @@ export default function UsersPage() {
         </div>
       </motion.div>
 
-      {/* Board: four fixed-size lanes, filling the width; each one scrolls inside itself */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.15 }}
-        className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
-      >
-        {ROLE_LANES.map((r) => (
-          <UserLane key={r.key} lane={r.key} q={q} state={state} selectedId={selected?.userId ?? null} onOpen={setSelected} />
-        ))}
-      </motion.div>
+      {/* Board: four fixed-size lanes, filling the width; each one scrolls inside itself. A search shows one list instead. */}
+      {q ? (
+        <UserSearchResults q={q} state={state} selectedId={selected?.userId ?? null} onOpen={setSelected} />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        >
+          {ROLE_LANES.map((r) => (
+            <UserLane key={r.key} lane={r.key} q="" state={state} selectedId={selected?.userId ?? null} onOpen={setSelected} />
+          ))}
+        </motion.div>
+      )}
 
       {/* Attention */}
       <motion.section

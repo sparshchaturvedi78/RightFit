@@ -1,6 +1,7 @@
 import { GraduationCap } from 'lucide-react'
 import { useState } from 'react'
 import { EmptyState, PanelError, Skeleton, TILE_SURFACE } from '../../components/dashboard/Panel'
+import ExpandableText from '../../components/ui/ExpandableText'
 import { Button } from '../../components/ui/form'
 import RefreshButton from '../../components/ui/RefreshButton'
 import { useQuery } from '../../hooks/useQuery'
@@ -101,12 +102,23 @@ export default function TrainingPage() {
             {done.length > 0 && (
               <Card title="Earlier" note={`${done.length}`}>
                 {done.map((a) => (
-                  <Row
-                    key={a.assignmentId}
-                    title={a.programName}
-                    detail={[a.completionStatus ? humanize(a.completionStatus) : null, a.score != null ? `score ${a.score}` : null, a.actualEndDate ? formatDay(a.actualEndDate) : null].filter(Boolean).join(' · ')}
-                    aside={<Tag tone={a.assignmentStatus === 'COMPLETED' ? 'ok' : 'muted'}>{humanize(a.assignmentStatus)}</Tag>}
-                  />
+                  <div key={a.assignmentId} className="border-b border-slate-100 last:border-b-0 dark:border-white/6">
+                    <Row
+                      title={a.programName}
+                      detail={
+                        a.assignmentStatus === 'DECLINED'
+                          ? 'Your RMG declined this request'
+                          : [a.completionStatus ? humanize(a.completionStatus) : null, a.score != null ? `score ${a.score}` : null, a.actualEndDate ? formatDay(a.actualEndDate) : null].filter(Boolean).join(' · ')
+                      }
+                      aside={<Tag tone={a.assignmentStatus === 'COMPLETED' ? 'ok' : 'muted'}>{humanize(a.assignmentStatus)}</Tag>}
+                    />
+                    {a.decisionComment && (
+                      <div className="-mt-1.5 pb-2.5 text-xs text-ink-700 dark:text-slate-300">
+                        <span className="mb-0.5 block text-[11px] font-bold tracking-widest text-ink-500 uppercase dark:text-slate-500">RMG's reason</span>
+                        <ExpandableText text={a.decisionComment} lines={3} />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </Card>
             )}
