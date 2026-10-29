@@ -10,6 +10,7 @@ import com.rightFit.repository.CandidateApplicationRepository;
 import com.rightFit.repository.InterviewRepository;
 import com.rightFit.repository.InvitationRepository;
 import com.rightFit.repository.NotificationRepository;
+import com.rightFit.repository.ResourcePoolEntryRepository;
 import com.rightFit.repository.TrainingAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class AssociateDashboardService {
     private final AllocationRepository allocationRepository;
     private final TrainingAssignmentRepository trainingAssignmentRepository;
     private final NotificationRepository notificationRepository;
+    private final ResourcePoolEntryRepository poolEntryRepository;
     private final RequirementAccessGuard accessGuard;
 
     public AssociateDashboardDTO dashboard() {
@@ -67,6 +69,7 @@ public class AssociateDashboardService {
                 .totalOpportunityHistory(candidateApplicationRepository.countByEmployeeId(me.getId()))
                 .activeTrainingAssignments(activeTraining)
                 .unreadNotifications(notificationRepository.countByRecipientIdAndIsReadFalse(me.getId()))
+                .inPoolSince(poolEntryRepository.findByEmployeeIdAndIsCurrentTrue(me.getId()).map(e -> e.getEntryDate()).orElse(null))
                 .build();
     }
 }

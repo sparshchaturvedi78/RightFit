@@ -40,6 +40,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class InterviewService {
+    private final EventMailer eventMailer;
 
     private static final List<String> OPEN = List.of("SCHEDULED", "ACCEPTED");
     private static final LocalTime DAY_START = LocalTime.of(9, 0);
@@ -97,6 +98,7 @@ public class InterviewService {
                 "Interview scheduled for " + requirement.getPositionTitle(),
                 "Round " + interview.getRoundNumber() + " on " + when + " with " + CandidateWorkflowService.name(interviewer),
                 "INTERVIEW", interview.getInterviewId());
+        eventMailer.interviewScheduled(interview);
         if (!interviewer.getId().equals(actor.getId())) {
             notificationService.notify(interviewer, "INTERVIEW_ASSIGNED",
                     "You are interviewing " + CandidateWorkflowService.name(candidate.getEmployee()),

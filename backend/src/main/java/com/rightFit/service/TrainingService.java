@@ -40,6 +40,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class TrainingService {
+    private final EventMailer eventMailer;
 
     /** Assignments that hold a seat. */
     private static final List<String> SEAT_STATUSES = List.of("ASSIGNED", "IN_PROGRESS");
@@ -162,6 +163,7 @@ public class TrainingService {
                     "Scheduled" + (request.getStartDate() != null ? " from " + request.getStartDate() : "")
                             + ". Reach out to your RMG with questions.",
                     "TRAINING_ASSIGNMENT", assignment.getAssignmentId());
+            eventMailer.trainingAssigned(assignment);
             created.add(toAssignmentDTO(assignment));
         }
         auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "TRAINING_ASSIGNED", "TRAINING_PROGRAM",
@@ -206,6 +208,8 @@ public class TrainingService {
                     .requiredCertifications(p.getRequiredCertifications())
                     .myAssignmentId(a != null ? a.getAssignmentId() : null)
                     .myStatus(a != null ? a.getAssignmentStatus() : null)
+                    .maxParticipants(p.getMaxParticipants())
+                    .seatsTaken((int) seatsTaken(p))
                     .build();
         }).toList();
     }
@@ -267,6 +271,8 @@ public class TrainingService {
         } else {
             a.setAssignmentStatus("DECLINED");
         }
+        String reason = decision.getComment() == null || decision.getComment().isBlank() ? null : decision.getComment().trim();
+        a.setDecisionComment(reason);
         TrainingAssignment saved = assignmentRepository.save(a);
         notificationService.notify(a.getEmployee(), "TRAINING_INTEREST_" + (decision.isApprove() ? "APPROVED" : "DECLINED"),
                 decision.isApprove() ? "You are in " + program : "Your request for " + program + " was declined",
@@ -274,6 +280,7 @@ public class TrainingService {
                 "TRAINING_ASSIGNMENT", saved.getAssignmentId());
         auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "TRAINING_INTEREST_DECIDED", "TRAINING_ASSIGNMENT",
                 saved.getId(), "REQUESTED", saved.getAssignmentStatus(), decision.getComment());
+        eventMailer.trainingDecision(saved, decision.isApprove(), reason);
         return toAssignmentDTO(saved);
     }
 
@@ -372,6 +379,7 @@ public class TrainingService {
                 .certificateId(assignment.getCertificateId())
                 .assignedByName(assignment.getAssignedBy() != null ? CandidateWorkflowService.name(assignment.getAssignedBy()) : null)
                 .assignedAt(assignment.getAssignedAt())
+                .decisionComment(assignment.getDecisionComment())
                 .build();
     }
 }

@@ -24,6 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class CandidateDecisionService {
+    private final EventMailer eventMailer;
 
     private static final List<String> REVIEWABLE = List.of(
             CandidateStatus.ACCEPTED, CandidateStatus.INTERVIEW_COMPLETED, CandidateStatus.RECOMMENDED);
@@ -66,6 +67,7 @@ public class CandidateDecisionService {
                         "You were selected for " + requirement.getPositionTitle(),
                         "Please confirm or decline the opportunity for " + requirement.getProject().getProjectName(),
                         "CANDIDATE", candidate.getApplicationId());
+                eventMailer.selected(candidate, manager);
             }
             case "REJECT" -> {
                 String code = request.getReasonCode() == null ? null : request.getReasonCode().toUpperCase();
@@ -86,6 +88,7 @@ public class CandidateDecisionService {
                         "You were not selected for " + requirement.getRequirementId()
                                 + ". This does not affect other opportunities.",
                         "CANDIDATE", candidate.getApplicationId());
+                eventMailer.notSelected(candidate);
             }
             default -> {
                 workflow.transition(candidate, CandidateStatus.ON_HOLD, manager, request.getComment());

@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class TeamManagementService {
+    private final EventMailer eventMailer;
 
     private final ProjectRepository projectRepository;
     private final EmployeeRepository employeeRepository;
@@ -131,6 +132,7 @@ public class TeamManagementService {
         notificationService.notify(employee, "TEAM_MEMBER_ADDED", "You were added to " + project.getProjectName(),
                 request.getHoursPerDay().stripTrailingZeros().toPlainString() + "h/day from " + start,
                 "ALLOCATION", allocation.getAllocationId());
+        eventMailer.teamMemberAdded(employee, project, allocation);
         auditLogService.logAction(SecurityContextUtil.getCurrentUserId(), "TEAM_MEMBER_ADDED", "PROJECT",
                 project.getId(), null, employee.getEmployeeId(),
                 employee.getEmployeeId() + " added to " + projectId + " (" + allocation.getAllocationId() + ")");
