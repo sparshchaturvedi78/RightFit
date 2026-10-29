@@ -49,3 +49,6 @@ build/
 .DS_Store
 Thumbs.db
 .neon
+
+# Claude Code local settings (not part of the project)
+.claude/
