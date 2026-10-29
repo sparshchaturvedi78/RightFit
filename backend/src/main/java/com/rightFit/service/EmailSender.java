@@ -51,6 +51,12 @@ public class EmailSender {
     @Value("${app.mail.resend.api-key:}")
     private String resendApiKey;
 
+    @Value("${app.mail.brevo.api-key:}")
+    private String brevoApiKey;
+
+    @Value("${app.mail.brevo.sender-name:RightFit}")
+    private String brevoSenderName;
+
     /** Sends now and throws if the provider fails. Used where the caller needs to know, such as sign-in codes. */
     public void sendNow(MailMessage m) {
         if (!mailEnabled) {
@@ -63,6 +69,8 @@ public class EmailSender {
         }
         if ("resend".equalsIgnoreCase(provider)) {
             sendViaResend(m);
+        } else if ("brevo".equalsIgnoreCase(provider)) {
+            sendViaBrevo(m);
         } else {
             sendViaSmtp(m);
         }
@@ -75,6 +83,44 @@ public class EmailSender {
             sendNow(m);
         } catch (RuntimeException e) {
             log.warn("Background email {} to {} not sent: {}", m.kind(), m.to(), e.getMessage());
+        }
+    }
+
+    /**
+     * Brevo's transactional API. Works on hosts that block SMTP, and needs only a verified sender email address,
+     * not a domain. The sender is {@code app.mail.from}, which must be verified in Brevo.
+     */
+    private void sendViaBrevo(MailMessage m) {
+        if (brevoApiKey == null || brevoApiKey.isBlank()) {
+            log.error("Email not sent ({}): BREVO_API_KEY is not set", m.kind());
+            throw new RuntimeException("Failed to send email");
+        }
+        try {
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "sender", Map.of("email", fromEmail, "name", brevoSenderName),
+                    "to", List.of(Map.of("email", m.to())),
+                    "subject", m.subject(),
+                    "htmlContent", m.html(),
+                    "textContent", m.text()));
+            HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.brevo.com/v3/smtp/email"))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("api-key", brevoApiKey)
+                    .header("accept", "application/json")
+                    .header("content-type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) {
+                log.error("Brevo rejected {} email to {}: HTTP {} {}", m.kind(), m.to(), response.statusCode(), response.body());
+                throw new RuntimeException("Failed to send email");
+            }
+            log.info("Sent {} email to: {} (Brevo)", m.kind(), m.to());
+        } catch (IOException e) {
+            log.error("Failed to reach Brevo for {} email to {}: {}", m.kind(), m.to(), e.getMessage());
+            throw new RuntimeException("Failed to send email");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Failed to send email");
         }
     }
 
