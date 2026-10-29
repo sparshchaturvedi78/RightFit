@@ -1,9 +1,11 @@
 import { motion } from 'motion/react'
-import { ArrowRight, LogIn, Sprout } from 'lucide-react'
+import { ArrowRight, LayoutDashboard, LogIn, Sprout } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useDashboardLink } from '../../hooks/useDashboardLink'
 import Reveal from '../ui/Reveal'
 
 export default function CtaBanner() {
+  const { checking, loggedIn, to: ctaTo } = useDashboardLink()
   return (
     <section id="contact" className="relative px-6 py-24 sm:py-32">
       <Reveal className="mx-auto max-w-6xl">
@@ -32,11 +34,14 @@ export default function CtaBanner() {
 
             <div className="relative mt-10 flex flex-wrap items-center justify-center gap-4">
               <Link
-                to="/login"
-                className="shimmer group flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-brand-700 shadow-xl shadow-black/20 transition-transform hover:scale-105"
+                to={ctaTo}
+                aria-busy={checking}
+                className={`shimmer group flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-brand-700 shadow-xl shadow-black/20 transition-all hover:scale-105 ${
+                  checking ? 'pointer-events-none opacity-60' : ''
+                }`}
               >
-                <LogIn className="h-4 w-4" />
-                Login to RightFit
+                {loggedIn ? <LayoutDashboard className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+                {loggedIn ? 'Open your dashboard' : 'Login to RightFit'}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
               <a

@@ -17,6 +17,9 @@
   --color-brand-900: #14532d;
 
   --color-ink-950: #060a08;
+  /* Dark-mode surface for the sidebar, menus, dropdowns and drawers: the same near-black as the top bar's
+     buttons (white/5 over ink-950), but solid so nothing shows through. */
+  --color-ink-925: #121614;
   --color-ink-900: #0b1220;
   --color-ink-800: #111827;
   --color-ink-700: #334155;
@@ -33,8 +36,26 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Tailwind v4's reset leaves buttons with the default arrow cursor; restore the pointer.
+   Disabled buttons are excluded so `disabled:cursor-not-allowed` still applies. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 body {
   @apply bg-white text-ink-900 antialiased transition-colors dark:bg-ink-950 dark:text-white;
+}
+
+/* Slim, theme-aware scrollbars (page and every scrollable panel). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(100 116 139 / 0.4) transparent;
+}
+.dark * {
+  scrollbar-color: rgb(34 197 94 / 0.35) transparent;
 }
 
 /* ---------- keyframes ---------- */
@@ -168,6 +189,26 @@ body {
 }
 .glow-border::after { filter: blur(24px); opacity: 0.6; }
 
+/* Border line only: masked to a 2px ring so nothing shows through the card, and no blurred glow. */
+.glow-border-line::after { content: none; }
+.glow-border-line::before {
+  inset: 0;
+  z-index: 1;
+  padding: 2px;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+/* ---------- auth screens ---------- */
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.animate-pulse-ring { animation: pulse-ring 2.4s ease-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -175,4 +216,15 @@ body {
     transition-duration: 0.01ms !important;
   }
   html { scroll-behavior: auto; }
+}
+
+/* Dark theme: native pickers and option lists follow the palette, so their text stays readable. */
+.dark select option {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark select {
+  color-scheme: dark;
 }
