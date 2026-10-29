@@ -50,10 +50,10 @@ public class EventMailer {
     private final EmailSender emailSender;
     private final MailTemplateRenderer renderer;
 
-    @Value("${app.frontend.url:http://localhost:5173}")
+    @Value("${app.frontend.url:https://rightfitapplication.vercel.app}")
     private String frontendUrl;
 
-    @Value("${app.mail.login-url:http://localhost:5173/login}")
+    @Value("${app.mail.login-url:https://rightfitapplication.vercel.app/login}")
     private String loginUrl;
 
     // ---------------------------------------------------------------- associate: opportunities

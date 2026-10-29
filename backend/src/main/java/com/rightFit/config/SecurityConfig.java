@@ -22,7 +22,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @EnableWebSecurity
@@ -32,6 +35,10 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RbacPermissionEvaluator rbacPermissionEvaluator;
+
+    /** Deployed frontend origins, comma-separated (APP_CORS_ALLOWED_ORIGINS). Empty when there are none. */
+    @Value("${app.cors.allowed-origins:}")
+    private String allowedOrigins;
 
     @Bean
     public ObjectMapper objectMapper() {
@@ -64,11 +71,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*"
-                // TODO: add the deployed frontend origin, e.g. "https://rightfit-frontend.onrender.com"
-        ));
+        List<String> origins = new ArrayList<>(List.of("http://localhost:*", "http://127.0.0.1:*"));
+        Arrays.stream(allowedOrigins.split(",")).map(String::trim).filter(o -> !o.isEmpty()).forEach(origins::add);
+        configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(false);

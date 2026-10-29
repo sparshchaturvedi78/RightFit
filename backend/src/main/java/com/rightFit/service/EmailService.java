@@ -29,7 +29,7 @@ public class EmailService {
     private int otpExpiryMinutes;
 
     /** Where a new employee signs in. A placeholder until the deployed address is known. */
-    @Value("${app.mail.login-url:http://localhost:5173/login}")
+    @Value("${app.mail.login-url:https://rightfitapplication.vercel.app/login}")
     private String loginUrl;
 
     /** Sends a one-time code. Each purpose has its own layout. */
