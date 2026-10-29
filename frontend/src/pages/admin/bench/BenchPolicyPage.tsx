@@ -238,7 +238,8 @@ function HistoryList({ rows }: { rows: BenchConfigurationDTO[] }) {
     return <p className="text-sm text-ink-500 dark:text-slate-400">No bench policy has been set yet.</p>
   }
   return (
-    <ol className="space-y-0">
+    // Long history scrolls inside the panel instead of stretching the page.
+    <ol className="max-h-105 space-y-0 overflow-y-auto pr-2">
       {sorted.map((r) => (
         <li key={r.id} className="relative border-l-2 border-slate-200 pb-5 pl-5 last:border-l-transparent last:pb-0 dark:border-white/10">
           <span

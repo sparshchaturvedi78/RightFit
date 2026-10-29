@@ -202,9 +202,9 @@ const TONE = {
 
 export type Tone = keyof typeof TONE
 
-export function Kpi({ label, icon: Icon, tone, value, text, caption, progress }: { label: string; icon: LucideIcon; tone: Tone; value?: number; text?: string; caption: string; progress: number }) {
-  return (
-    <div className={`${TILE} px-5 py-4.5`}>
+export function Kpi({ label, icon: Icon, tone, value, text, caption, progress, to }: { label: string; icon: LucideIcon; tone: Tone; value?: number; text?: string; caption: string; progress: number; to?: string }) {
+  const body = (
+    <>
       <div className="flex items-center justify-between gap-2 text-[13px] font-medium text-ink-500 dark:text-slate-400">
         <span className="truncate">{label}</span>
         <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-[10px] ring-1 ring-inset ${TONE[tone].box}`}>
@@ -223,8 +223,16 @@ export function Kpi({ label, icon: Icon, tone, value, text, caption, progress }:
           transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
         />
       </div>
-    </div>
+    </>
   )
+  if (to) {
+    return (
+      <Link to={to} aria-label={`${label}: open`} className={`${TILE} block px-5 py-4.5 transition-all hover:-translate-y-px hover:shadow-md`}>
+        {body}
+      </Link>
+    )
+  }
+  return <div className={`${TILE} px-5 py-4.5`}>{body}</div>
 }
 
 /** A thin progress bar with one of the tone gradients. */

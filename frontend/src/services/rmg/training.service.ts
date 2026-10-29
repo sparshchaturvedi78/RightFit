@@ -53,6 +53,7 @@ export interface TrainingAssignmentDTO {
   employeeName?: string
   programId: string
   programName?: string
+  decisionComment?: string
   rejectionId?: string
   assignmentStatus: string
   startDate?: string

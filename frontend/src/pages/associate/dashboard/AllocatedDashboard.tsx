@@ -277,7 +277,7 @@ export default function AllocatedDashboard() {
       {/* team · duties · activity */}
       <div className="grid gap-5 lg:grid-cols-3">
         <section className={TILE} aria-label="My team">
-          <TileHead icon={UsersRound} title="My team" sub={list[0]?.projectName ?? 'Your project'} />
+          <TileHead icon={UsersRound} title="My team" sub={list[0]?.projectName ?? 'Your project'} more={{ to: '/associate/team', label: 'See all' }} />
           {!projects.data ? (
             <Skeleton className="h-40 rounded-2xl" />
           ) : (list[0]?.team.filter((t) => !t.me).length ?? 0) === 0 ? (

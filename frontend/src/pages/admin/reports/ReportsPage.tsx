@@ -3,6 +3,7 @@ import { Download, Loader2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PanelError, Skeleton, TILE_SURFACE } from '../../../components/dashboard/Panel'
+import { Dropdown } from '../../../components/ui/Dropdown'
 import { Button, FormError } from '../../../components/ui/form'
 import { useQuery } from '../../../hooks/useQuery'
 import { useResource } from '../../../hooks/useResource'
@@ -439,62 +440,32 @@ export default function ReportsPage({ narrowed = false }: { narrowed?: boolean }
   )
 }
 
-/** Type to choose a department; a few matches are shown with how many people each has. */
+/** Choose a department from the app's shared dropdown (searchable, same colours as every other list). */
 function DepartmentSearch({ value, options, onPick }: { value: string; options: ReportDepartment[]; onPick: (d: string) => void }) {
-  const [text, setText] = useState('')
-  const [open, setOpen] = useState(false)
-  const q = text.trim().toLowerCase()
-  const matches = (q ? options.filter((o) => o.name.toLowerCase().includes(q)) : options).slice(0, 6)
-
-  if (value) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-ink-500 dark:text-slate-400">Department</span>
-        <span className="inline-flex items-center gap-2 rounded-xl border border-brand-500/30 bg-brand-500/8 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-400">
-          {value}
-          <button type="button" aria-label="Remove department filter" onClick={() => onPick('')}><X className="h-3.5 w-3.5" /></button>
-        </span>
-      </div>
-    )
-  }
   return (
-    <div className="relative max-w-sm">
-      <input
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Department · type to choose"
-        aria-label="Department (required)"
-        autoComplete="off"
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500/40 dark:border-white/10 dark:bg-white/5 dark:text-white"
-      />
-      {open && (
-        <ul className="absolute top-full right-0 left-0 z-10 mt-1.5 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg dark:border-white/10 dark:bg-ink-900">
-          {matches.length === 0 && <li className="px-2.5 py-2 text-xs text-ink-500 dark:text-slate-400">No department matches “{text}”.</li>}
-          {matches.map((d) => (
-            <li key={d.name}>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-white/5"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setOpen(false)
-                  setText('')
-                  onPick(d.name)
-                }}
-              >
-                <span>{d.name}</span>
-                <span className="text-xs text-ink-500 dark:text-slate-400">{d.people.toLocaleString()} {d.people === 1 ? 'person' : 'people'}</span>
-              </button>
-            </li>
-          ))}
-          {options.length > matches.length && (
-            <li className="px-2.5 pt-2 text-[11px] text-ink-500 dark:text-slate-500">
-              Showing {matches.length} of {options.length} departments. Keep typing to narrow it down.
-            </li>
-          )}
-        </ul>
+    <div className="flex w-full max-w-sm items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <Dropdown
+          ariaLabel="Department"
+          placeholder="Department · type to choose"
+          value={value}
+          onChange={(v) => onPick(v)}
+          options={options.map((d) => ({
+            value: d.name,
+            label: d.name,
+            hint: `${d.people.toLocaleString()} ${d.people === 1 ? 'person' : 'people'}`,
+          }))}
+        />
+      </div>
+      {value && (
+        <button
+          type="button"
+          aria-label="Remove department filter"
+          onClick={() => onPick('')}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-ink-500 transition-colors hover:bg-slate-100 hover:text-ink-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
       )}
     </div>
   )

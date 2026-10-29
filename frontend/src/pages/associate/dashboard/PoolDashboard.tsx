@@ -1,5 +1,6 @@
 import { Activity, ArrowRight, CalendarClock, Clock, GraduationCap, Mail, RefreshCw, Sparkles, Target, TriangleAlert, UserRound } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Skeleton } from '../../../components/dashboard/Panel'
 import { useQuery } from '../../../hooks/useQuery'
 import { useToast } from '../../../hooks/useToast'
@@ -60,13 +61,18 @@ export default function PoolDashboard() {
 
   // Profile completeness: a phone number, three skills, a certification and work preferences.
   const prefs = preferences.data
+  const skillCount = skills.data?.length ?? 0
   const checks = [
-    Boolean(profile.data?.phone),
-    (skills.data?.length ?? 0) >= 3,
-    (certifications.data?.length ?? 0) >= 1,
-    Boolean(prefs && (prefs.preferredTechnology || prefs.preferredLocation || prefs.preferredWorkMode || prefs.preferredDomain)),
+    { done: Boolean(profile.data?.phone), missing: 'a phone number' },
+    { done: skillCount >= 3, missing: `${3 - skillCount} more skill${3 - skillCount === 1 ? '' : 's'}` },
+    { done: (certifications.data?.length ?? 0) >= 1, missing: 'a certification' },
+    {
+      done: Boolean(prefs && (prefs.preferredTechnology || prefs.preferredLocation || prefs.preferredWorkMode || prefs.preferredDomain)),
+      missing: 'work preferences',
+    },
   ]
-  const profilePct = Math.round((checks.filter(Boolean).length / checks.length) * 100)
+  const profilePct = Math.round((checks.filter((c) => c.done).length / checks.length) * 100)
+  const profileMissing = checks.filter((c) => !c.done).map((c) => c.missing)
   const poolDays = d?.inPoolSince ? daysBetween(parseServerDate(d.inPoolSince), now) : null
 
   // The selection in progress: the newest candidacy that has not ended.
@@ -162,7 +168,9 @@ export default function PoolDashboard() {
                 Reply by {parseServerDate(firstDeadline).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
               </Chip>
             )}
-            <Chip icon={UserRound}>Profile {profilePct}% complete</Chip>
+            <Link to="/associate/profile" title={profileMissing.length ? `Still to add: ${profileMissing.join(', ')}` : 'Profile complete'} className="inline-flex">
+              <Chip icon={UserRound}>Profile {profilePct}% complete</Chip>
+            </Link>
             {poolDays !== null && <Chip icon={Clock}>In the pool {poolDays} day{poolDays === 1 ? '' : 's'}</Chip>}
           </Chips>
           <HeroBox title="Your week · interviews and deadlines" note={`${weekCount} thing${weekCount === 1 ? '' : 's'} this week`}>
@@ -204,6 +212,7 @@ export default function PoolDashboard() {
           icon={CalendarClock}
           tone="brand"
           value={today.length}
+          to="/associate/interviews"
           caption={today[0] ? `${timeOf(today[0].scheduledAt)} · ${humanize(today[0].mode ?? 'ONLINE').toLowerCase()}` : 'nothing booked today'}
           progress={today.length > 0 ? 100 : 0}
         />
@@ -212,6 +221,7 @@ export default function PoolDashboard() {
           icon={Mail}
           tone="amber"
           value={openInvites.length}
+          to="/associate/invitations"
           caption={firstDeadline ? `reply by ${parseServerDate(firstDeadline).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}` : 'none waiting'}
           progress={openInvites.length > 0 ? 55 : 0}
         />
@@ -220,6 +230,7 @@ export default function PoolDashboard() {
           icon={Target}
           tone="sky"
           value={matching.length}
+          to="/associate/projects"
           caption={`of ${requirements.data?.length ?? 0} open match your skills`}
           progress={requirements.data?.length ? (matching.length / requirements.data.length) * 100 : 0}
         />
@@ -228,6 +239,7 @@ export default function PoolDashboard() {
           icon={GraduationCap}
           tone="violet"
           text={training ? `${trainingPct}%` : '0'}
+          to="/associate/training"
           caption={training ? `${training.programName} · ends ${training.expectedEndDate ? dayWord(parseServerDate(training.expectedEndDate), now) : '—'}` : 'no training running'}
           progress={trainingPct}
         />

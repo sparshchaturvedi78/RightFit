@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { Bell, CheckCheck, Inbox, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import ExpandableText from '../ui/ExpandableText'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/auth'
 import { notificationTarget } from '../../utils/notificationTarget'
@@ -90,7 +91,7 @@ function NotificationList({ onOpen }: { onOpen: () => void }) {
                 >
                   {n.title}
                 </span>
-                <span className="mt-0.5 line-clamp-2 block text-xs text-ink-500 dark:text-slate-400">{n.message}</span>
+                {n.message && <ExpandableText text={n.message} className="mt-0.5 text-xs text-ink-500 dark:text-slate-400" />}
                 <span className="mt-1 block text-[11px] text-ink-500/70 dark:text-slate-500">{timeAgo(n.createdAt)}</span>
               </span>
             </button>
