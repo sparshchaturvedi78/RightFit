@@ -30,7 +30,7 @@ public class Project {
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "manager_id", nullable = false)
+    @JoinColumn(name = "manager_id")
     private Employee manager;
 
     @Column(name = "status", nullable = false)

@@ -58,6 +58,8 @@ public class AssociateWorkService {
             mine.putIfAbsent(c.getRequirement().getId(), c);
         }
         return requirementRepository.findByStatusOrderByCreatedAtDesc("PUBLISHED").stream()
+                // A project without a manager is visible to admins only, so associates do not see its openings.
+                .filter(r -> r.getProject().getManager() != null)
                 .filter(r -> !accessGuard.isManagerOf(r.getProject(), me))
                 .map(r -> {
                     CandidateApplication c = mine.get(r.getId());

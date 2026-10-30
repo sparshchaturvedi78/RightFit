@@ -21,24 +21,30 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     Page<Project> findByManagerId(Long managerId, Pageable pageable);
 
+    List<Project> findByManagerIsNullAndStatus(String status);
+
     List<Project> findByManagerId(Long managerId);
 
     List<Project> findByStatusAndManagerId(String status, Long managerId);
 
-    @Query("SELECT p FROM Project p WHERE " +
+    @Query("SELECT p FROM Project p LEFT JOIN p.manager m WHERE " +
             // Free text: project ID, name, client, or the manager's name / employee ID (case-insensitive).
             "(:q IS NULL OR LOWER(p.projectId) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
             "   LOWER(p.projectName) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
             "   LOWER(COALESCE(p.clientName, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
-            "   LOWER(p.manager.employeeId) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
-            "   LOWER(CONCAT(p.manager.firstName, ' ', p.manager.lastName)) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))) AND " +
+            "   LOWER(COALESCE(m.employeeId, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')) OR " +
+            "   LOWER(CONCAT(COALESCE(m.firstName, ''), ' ', COALESCE(m.lastName, ''))) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))) AND " +
             "(:projectId IS NULL OR p.projectId LIKE CONCAT('%', CAST(:projectId AS string), '%')) AND " +
             "(:projectName IS NULL OR p.projectName LIKE CONCAT('%', CAST(:projectName AS string), '%')) AND " +
             "(:status IS NULL OR p.status = :status) AND " +
-            "(:managerId IS NULL OR p.manager.id = :managerId) AND " +
+            "(:managerId IS NULL OR m.id = :managerId) AND " +
             "(:clientName IS NULL OR p.clientName LIKE CONCAT('%', CAST(:clientName AS string), '%')) AND " +
             "(:claimed IS NULL OR p.managerClaimed = :claimed) AND " +
-            "(:managerStatus IS NULL OR p.manager.employmentStatus = CAST(:managerStatus AS string))")
+            "(:managerStatus IS NULL OR " +
+            // UNASSIGNED: no manager. VACANT: no manager or one who is not active (a project that can take a new manager).
+            "   (:managerStatus = 'UNASSIGNED' AND m IS NULL) OR " +
+            "   (:managerStatus = 'VACANT' AND (m IS NULL OR m.employmentStatus <> 'ACTIVE')) OR " +
+            "   (:managerStatus NOT IN ('UNASSIGNED', 'VACANT') AND m.employmentStatus = CAST(:managerStatus AS string)))")
     // The manager is shown on every row: load it in the same query (the database is remote and slow).
     @EntityGraph(attributePaths = {"manager"})
     Page<Project> searchProjects(

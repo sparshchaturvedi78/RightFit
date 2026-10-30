@@ -152,6 +152,10 @@ public class AssignmentReplacementService {
         return PendingHandoversDTO.builder()
                 .managers(pendingItems(projectRepository.countActiveProjectsOfInactiveManagers()))
                 .rmgs(pendingItems(employeeRepository.countActiveReportsOfInactiveRmgs()))
+                .unassignedProjects(projectRepository.findByManagerIsNullAndStatus("ACTIVE").stream()
+                        .map(p -> PendingHandoversDTO.UnassignedProjectDTO.builder()
+                                .projectId(p.getProjectId()).projectName(p.getProjectName()).clientName(p.getClientName()).build())
+                        .toList())
                 .build();
     }
 
@@ -307,6 +311,41 @@ public class AssignmentReplacementService {
     }
 
     @Transactional
+    /** Gives projects that have no manager a manager. The manager still has to claim each project. */
+    public ReplacementResultDTO assignManagerToUnassigned(ReplaceManagerRequest request) {
+        Employee newManager = resolveEmployee(request.getNewManagerId(), request.getNewManagerEmployeeId(),
+                "newManagerEmployeeId", "newManagerId");
+        String name = newManager.getFirstName() + " " + newManager.getLastName();
+        if (!"ACTIVE".equals(newManager.getEmploymentStatus())) {
+            throw new BusinessRuleException(name + " is inactive and can't be a Manager.");
+        }
+        boolean hasRole = newManager.getUser() != null && userRoleService.getUserRoles(newManager.getUser().getId())
+                .stream().anyMatch(ur -> "MANAGER".equals(ur.getRole().getCode()));
+        if (!hasRole) {
+            throw new BusinessRuleException(name + " doesn't have the Manager role. Give them the role first.");
+        }
+        List<Project> targets = resolveProjects(request.getSelectedProjectIds(), request.getSelectedProjectBusinessIds());
+        if (targets.isEmpty()) {
+            throw new BusinessRuleException("Select at least one project.");
+        }
+        for (Project project : targets) {
+            if (project.getManager() != null) {
+                throw new BusinessRuleException(project.getProjectId() + " already has a manager.");
+            }
+        }
+        for (Project project : targets) {
+            project.assignManager(newManager);
+            projectRepository.save(project);
+            auditLogService.logAction(getCurrentUserId(), "MANAGER_ASSIGNED_PROJECT", "PROJECT", project.getId(),
+                    null, newManager.getId(), "Project had no manager");
+            notificationService.notify(newManager, "PROJECT_ASSIGNED", "Claim your project: " + project.getProjectName(),
+                    "You have been named manager of " + project.getProjectId() + ". Open Projects to claim it.",
+                    "PROJECT", project.getProjectId());
+        }
+        return ReplacementResultDTO.builder().success(true).message("Manager assigned")
+                .affectedCounts(Map.of("projects", targets.size())).build();
+    }
+
     public ReplacementResultDTO replaceRmg(String departingRmgId, ReplaceRmgRequest request) {
         log.info("Executing RMG replacement - Departing: {}, New: {}", departingRmgId,
                 request.getNewRmgEmployeeId() != null ? request.getNewRmgEmployeeId() : request.getNewRmgId());
