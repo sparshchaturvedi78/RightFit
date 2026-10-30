@@ -144,6 +144,9 @@ export default function CandidatesPanel({
                     <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-900 dark:text-white">
                       <span className="truncate">{c.employeeName ?? c.employeeId}</span>
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-ink-700 dark:bg-white/8 dark:text-slate-300">{humanize(c.status)}</span>
+                      {c.interviewDeclined && (
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300">Interview declined: reschedule or withdraw</span>
+                      )}
                     </p>
                     <p className="truncate text-xs text-ink-500 dark:text-slate-400">
                       {[c.employeeId, c.designation, c.grade].filter(Boolean).join(' · ')}

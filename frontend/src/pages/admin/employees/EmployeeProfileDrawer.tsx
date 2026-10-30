@@ -107,6 +107,8 @@ export default function EmployeeProfileDrawer({
 }) {
   const e = employee
   const active = e?.employmentStatus === 'ACTIVE'
+  // Managers run projects and do not report to an RMG or sit in the resource pool.
+  const isManager = (e?.roles ?? []).some((r) => r.toLowerCase() === 'manager')
 
   return (
     <Drawer
@@ -117,9 +119,11 @@ export default function EmployeeProfileDrawer({
       footer={
         e && (
           <>
-            <Button variant="secondary" icon={<UserCog className="h-4 w-4" />} onClick={() => actions.onAssignRmg(e)}>
-              Assign RMG
-            </Button>
+            {!isManager && (
+              <Button variant="secondary" icon={<UserCog className="h-4 w-4" />} onClick={() => actions.onAssignRmg(e)}>
+                Assign RMG
+              </Button>
+            )}
             <Button variant="secondary" icon={<Pencil className="h-4 w-4" />} onClick={() => actions.onEdit(e)}>
               Edit
             </Button>
@@ -188,11 +192,13 @@ export default function EmployeeProfileDrawer({
           <Group title="Placement">
             <Item label="Department">{e.departmentName}</Item>
             <Item label="Location">{e.locationName}</Item>
-            <Item label="Reports to">
-              {e.rmgName}
-              {e.rmgEmployeeId && <span className="block text-xs text-ink-500 dark:text-slate-400">{e.rmgEmployeeId}</span>}
-            </Item>
-            <Item label="Pool">{e.poolStatus ? humanize(e.poolStatus) : undefined}</Item>
+            {!isManager && (
+              <Item label="Reports to">
+                {e.rmgName}
+                {e.rmgEmployeeId && <span className="block text-xs text-ink-500 dark:text-slate-400">{e.rmgEmployeeId}</span>}
+              </Item>
+            )}
+            {!isManager && <Item label="Pool">{e.poolStatus ? humanize(e.poolStatus) : undefined}</Item>}
             <Item label="Available from">
               {formatDay(e.availableFromDate) ?? (e.availabilityStatus === 'AVAILABLE' ? 'Available now' : 'Not set')}
             </Item>

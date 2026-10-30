@@ -4,6 +4,7 @@ import { Dropdown } from '../../../components/ui/Dropdown'
 import { Button } from '../../../components/ui/form'
 import { Modal } from '../../../components/ui/Overlay'
 import { useToast } from '../../../hooks/useToast'
+import { toLocalInput, toServerTime } from '../../../utils/format'
 import { getApiErrorMessage } from '../../../services/httpClient'
 import type { CandidateDTO } from '../../../services/manager/candidate.service'
 import { interviewService } from '../../../services/interview.service'
@@ -93,7 +94,7 @@ export default function ScheduleInterviewDialog({
     setClash(null)
     try {
       await interviewService.schedule(candidate.applicationId, {
-        scheduledAt: when,
+        scheduledAt: toServerTime(when),
         durationMinutes: minutes,
         mode,
         locationOrLink: place.trim() || undefined,
@@ -205,13 +206,13 @@ export default function ScheduleInterviewDialog({
                 <button
                   key={s}
                   type="button"
-                  aria-pressed={when === s.slice(0, 16)}
+                  aria-pressed={when === toLocalInput(s)}
                   onClick={() => {
-                    setWhen(s.slice(0, 16))
+                    setWhen(toLocalInput(s))
                     setClash(null)
                   }}
                   className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    when === s.slice(0, 16)
+                    when === toLocalInput(s)
                       ? 'border-brand-500 bg-brand-500 text-white'
                       : 'border-slate-200 text-ink-900 hover:border-brand-500/40 dark:border-white/10 dark:text-white'
                   }`}

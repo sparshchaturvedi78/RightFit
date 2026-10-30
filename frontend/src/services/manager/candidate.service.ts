@@ -11,6 +11,8 @@ export interface CandidateDTO {
   grade?: string
   designation?: string
   status: string
+  /** The last interview was declined and nothing is booked: reschedule or withdraw. */
+  interviewDeclined?: boolean
   previousStatus?: string
   source?: string
   notes?: string

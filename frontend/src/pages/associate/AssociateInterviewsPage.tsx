@@ -26,13 +26,23 @@ export default function AssociateInterviewsPage() {
   const [opened, setOpened] = useState<InterviewDTO | null>(null)
 
   // The row title opens the details drawer, so every interview can be read in full.
+  const all = list.data ?? []
+
+  // A later round says why it exists: an earlier round for the same role was declined or cancelled.
+  const roundOf = (i: InterviewDTO) => {
+    const round = i.roundNumber ?? 1
+    const earlier = all
+      .filter((x) => x.requirementId === i.requirementId && (x.roundNumber ?? 1) < round && ['DECLINED', 'CANCELLED'].includes(x.status))
+      .sort((a, b) => (b.roundNumber ?? 1) - (a.roundNumber ?? 1))[0]
+    return earlier ? `round ${round} · round ${earlier.roundNumber ?? 1} ${earlier.status === 'DECLINED' ? 'was declined' : 'was cancelled'}` : `round ${round}`
+  }
+
   const titleOf = (i: InterviewDTO) => (
     <button type="button" onClick={() => setOpened(i)} className="text-left hover:text-brand-600 dark:hover:text-brand-400">
-      {i.requirementId} · round {i.roundNumber ?? 1}
+      {i.requirementId} · {roundOf(i)}
     </button>
   )
 
-  const all = list.data ?? []
   const future = (i: InterviewDTO) => parseServerDate(i.scheduledAt) >= now
   const toAnswer = all.filter((i) => i.status === 'SCHEDULED' && future(i))
   const booked = all.filter((i) => i.status === 'ACCEPTED' && future(i))

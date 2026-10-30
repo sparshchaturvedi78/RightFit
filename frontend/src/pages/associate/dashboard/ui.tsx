@@ -108,12 +108,20 @@ export function Day({ label, side, today, compact, children }: { label: string; 
   )
 }
 
-export function Ev({ title, sub, amber }: { title: string; sub: string; amber?: boolean }) {
-  return (
-    <div className={`mt-1.5 rounded-[9px] px-1.75 py-1.25 text-[11px] ${amber ? 'bg-amber-100 text-amber-900' : 'bg-white/92 text-emerald-900'}`}>
+export function Ev({ title, sub, amber, to }: { title: string; sub: string; amber?: boolean; to?: string }) {
+  const body = (
+    <>
       <b className="block truncate text-[11px]">{title}</b>
       <small className={`block truncate text-[10px] ${amber ? 'text-amber-800' : 'text-teal-700'}`}>{sub}</small>
-    </div>
+    </>
+  )
+  const tone = `mt-1.5 block rounded-[9px] px-1.75 py-1.25 text-[11px] ${amber ? 'bg-amber-100 text-amber-900' : 'bg-white/92 text-emerald-900'}`
+  return to ? (
+    <Link to={to} className={`${tone} transition-transform hover:-translate-y-px hover:shadow-md`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={tone}>{body}</div>
   )
 }
 
