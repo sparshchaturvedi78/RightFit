@@ -75,6 +75,8 @@ export interface CreateEmployeeRequest {
   workingHoursPerDay?: number
   locationId?: number
   optionalRoleId?: number
+  /** Managers only: the project they are named to (business ID, e.g. PROJ004). */
+  projectId?: string
   employmentStatus?: string
   allocationStatus?: string
   availabilityStatus?: string

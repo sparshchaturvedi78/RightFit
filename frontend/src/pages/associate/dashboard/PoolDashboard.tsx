@@ -82,14 +82,14 @@ export default function PoolDashboard() {
 
   // The week strip: interviews, reply-by dates and training end dates, Monday to Friday.
   const week = workWeek(now).map((date) => {
-    const events: { title: string; sub: string; amber?: boolean }[] = []
+    const events: { title: string; sub: string; amber?: boolean; to?: string }[] = []
     booked
       .filter((i) => sameDay(parseServerDate(i.scheduledAt), date))
-      .forEach((i) => events.push({ title: `${clock(i.scheduledAt)} · Interview`, sub: `${i.requirementId ?? ''} · with ${(i.interviewerName ?? '').split(' ')[0]}` }))
+      .forEach((i) => events.push({ title: `${clock(i.scheduledAt)} · Interview`, sub: `${i.requirementId ?? ''} · with ${(i.interviewerName ?? '').split(' ')[0]}`, to: '/associate/interviews' }))
     openInvites
       .filter((i) => i.responseDeadline && sameDay(parseServerDate(i.responseDeadline), date))
-      .forEach((i) => events.push({ title: 'Reply by', sub: `Invitation · ${i.requirementId}`, amber: true }))
-    if (training?.expectedEndDate && sameDay(parseServerDate(training.expectedEndDate), date)) events.push({ title: 'Training ends', sub: training.programName })
+      .forEach((i) => events.push({ title: 'Reply by', sub: `Invitation · ${i.requirementId}`, amber: true, to: '/associate/invitations' }))
+    if (training?.expectedEndDate && sameDay(parseServerDate(training.expectedEndDate), date)) events.push({ title: 'Training ends', sub: training.programName, to: '/associate/training' })
     return { date, events }
   })
   const weekCount = week.reduce((n, d2) => n + d2.events.length, 0)
@@ -177,7 +177,7 @@ export default function PoolDashboard() {
             <div className="grid grid-cols-5 gap-2">
               {week.map(({ date, events }) => (
                 <Day key={date.toISOString()} label={sameDay(date, now) ? 'Today' : date.toLocaleDateString(undefined, { weekday: 'short' })} side={String(date.getDate())} today={sameDay(date, now)}>
-                  {events.length === 0 ? <Free /> : events.slice(0, 2).map((e, i) => <Ev key={i} title={e.title} sub={e.sub} amber={e.amber} />)}
+                  {events.length === 0 ? <Free /> : events.slice(0, 2).map((e, i) => <Ev key={i} title={e.title} sub={e.sub} amber={e.amber} to={e.to} />)}
                 </Day>
               ))}
             </div>

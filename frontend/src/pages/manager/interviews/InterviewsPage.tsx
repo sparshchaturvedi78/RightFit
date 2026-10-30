@@ -12,15 +12,15 @@ import { getApiErrorMessage } from '../../../services/httpClient'
 import { interviewService, type InterviewDTO, type SubmitFeedbackRequest } from '../../../services/interview.service'
 import { useAppDispatch } from '../../../store'
 import { invalidateQueries } from '../../../store/queriesSlice'
-import { humanize, parseServerDate } from '../../../utils/format'
+import { humanize, parseServerDate, toLocalInput, toServerTime } from '../../../utils/format'
 
-type Show = 'upcoming' | 'feedback' | 'past' | 'cancelled'
+type Show = 'upcoming' | 'feedback' | 'past' | 'declined' | 'cancelled'
 type Range = 'week' | 'fortnight' | 'all'
 
 const OPEN = ['SCHEDULED', 'ACCEPTED']
 const DEAD = ['CANCELLED', 'DECLINED']
 
-const SHOW_LABEL: Record<Show, string> = { upcoming: 'Upcoming', feedback: 'Feedback due', past: 'Past', cancelled: 'Cancelled' }
+const SHOW_LABEL: Record<Show, string> = { upcoming: 'Upcoming', feedback: 'Feedback due', past: 'Past', declined: 'Declined', cancelled: 'Cancelled' }
 const RANGE_LABEL: Record<Range, string> = { week: 'This week', fortnight: 'Next 2 weeks', all: 'All dates' }
 
 const STATUS_TONE: Record<string, string> = {
@@ -104,7 +104,8 @@ export default function InterviewsPage({ scope = 'manager' }: { scope?: 'manager
     if (show === 'upcoming') return open && !past
     if (show === 'feedback') return open && (past || Boolean(i.heldAt))
     if (show === 'past') return past && !open && !DEAD.includes(i.status)
-    return DEAD.includes(i.status)
+    if (show === 'declined') return i.status === 'DECLINED'
+    return i.status === 'CANCELLED'
   }
 
   const shown = all.filter(
@@ -599,7 +600,7 @@ function RescheduleForm({
   onChanged: () => void
 }) {
   const toast = useToast()
-  const [when, setWhen] = useState(current.slice(0, 16))
+  const [when, setWhen] = useState(toLocalInput(current))
   const [minutes, setMinutes] = useState(duration)
   const [kind, setKind] = useState(mode)
   const [busy, setBusy] = useState(false)
@@ -608,7 +609,7 @@ function RescheduleForm({
     setBusy(true)
     try {
       await interviewService.reschedule(interviewId, {
-        scheduledAt: when,
+        scheduledAt: toServerTime(when),
         durationMinutes: minutes,
         mode: kind as 'ONLINE' | 'IN_PERSON' | 'PHONE',
       })

@@ -6,6 +6,18 @@ export function parseServerDate(value: string): Date {
   return new Date(hasZone ? trimmed : `${trimmed}Z`)
 }
 
+/** A local date-time from a form ("2026-10-30T16:26", in this browser's time zone) as the UTC time the server stores. */
+export function toServerTime(local: string): string {
+  return new Date(local).toISOString().slice(0, 19)
+}
+
+/** A stored server time as a local date-time for a form input ("2026-10-30T16:26"). */
+export function toLocalInput(serverTime: string): string {
+  const d = parseServerDate(serverTime)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export function timeAgo(value: string, now: Date = new Date()): string {
   const seconds = Math.round((now.getTime() - parseServerDate(value).getTime()) / 1000)
   if (Number.isNaN(seconds)) return ''

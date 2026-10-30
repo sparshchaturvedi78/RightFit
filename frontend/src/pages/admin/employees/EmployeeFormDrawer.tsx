@@ -1,11 +1,12 @@
 import { Check, Copy, Eye, EyeOff, RefreshCw, UserPlus } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import PersonPicker from '../../../components/people/PersonPicker'
 import { Dropdown } from '../../../components/ui/Dropdown'
 import { Button, Field, FormError, FormSection, Input } from '../../../components/ui/form'
 import { Drawer } from '../../../components/ui/Overlay'
 import { useResource } from '../../../hooks/useResource'
 import { useToast } from '../../../hooks/useToast'
+import { adminProjectService, type ProjectDTO } from '../../../services/admin/project.service'
 import {
   adminEmployeeService,
   type CreateEmployeeRequest,
@@ -30,6 +31,7 @@ interface FormState {
   locationId: string
   rmgId: string
   roleId: string
+  projectId: string
   password: string
 }
 
@@ -51,6 +53,7 @@ const EMPTY: FormState = {
   locationId: '',
   rmgId: '',
   roleId: '',
+  projectId: '',
   password: '',
 }
 
@@ -71,6 +74,7 @@ function fromEmployee(e: EmployeeDTO): FormState {
     locationId: e.locationId != null ? String(e.locationId) : '',
     rmgId: e.rmgId != null ? String(e.rmgId) : '',
     roleId: '',
+    projectId: '',
     password: '',
   }
 }
@@ -223,6 +227,22 @@ function FormBody({
   const newAdmin = mode === 'create' && roleCode === 'ADMIN'
   // A new RMG reports to an Admin (RMGs sit at the top of the resource chain); everyone else reports to an RMG.
   const newRmg = mode === 'create' && roleCode === 'RMG'
+  // A new manager doesn't report to an RMG; they can be named to a project straight away.
+  const newManager = mode === 'create' && roleCode === 'MANAGER'
+  const [projectOptions, setProjectOptions] = useState<ProjectDTO[]>([])
+  useEffect(() => {
+    if (!newManager) return
+    let live = true
+    void adminProjectService
+      .list({ size: 500 })
+      .then((page) => {
+        if (live) setProjectOptions(page.content)
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [newManager])
   const [reportsTo, setReportsTo] = useState<EmployeeDTO | null>(null)
 
   // ---- Editing: change the person's main role (e.g. promote an Associate to Manager) -----------------------
@@ -252,7 +272,7 @@ function FormBody({
 
   async function submit(ev: FormEvent) {
     ev.preventDefault()
-    const found = validate(form, mode, !newAdmin && !newRmg)
+    const found = validate(form, mode, !newAdmin && !newRmg && !newManager)
     if (newRmg && !reportsTo) found.rmgId = 'Choose the Admin this RMG reports to'
     if (leadRequired && !reportsTo) found.rmgId = toCode === 'RMG' ? 'Choose the Admin this RMG reports to' : 'Choose the RMG they report to'
     setErrors(found)
@@ -299,7 +319,7 @@ function FormBody({
           designation: form.designation.trim(),
           departmentId: Number(form.departmentId),
           // A new Admin doesn't report to an RMG.
-          rmgId: newAdmin ? undefined : newRmg ? reportsTo!.id : Number(form.rmgId),
+          rmgId: newAdmin || newManager ? undefined : newRmg ? reportsTo!.id : Number(form.rmgId),
           phone: text(form.phone),
           grade: text(form.grade),
           domain: text(form.domain),
@@ -308,6 +328,7 @@ function FormBody({
           workingHoursPerDay: num(form.workingHoursPerDay),
           locationId: num(form.locationId),
           optionalRoleId: num(form.roleId),
+          projectId: newManager ? text(form.projectId) : undefined,
         }
         const saved = await adminEmployeeService.create(payload)
         toast.success('Employee created', `${saved.firstName} ${saved.lastName} (${saved.employeeId})`)
@@ -484,6 +505,25 @@ function FormBody({
                   RMGs report to an Admin, not to another RMG.
                 </p>
               </div>
+            ) : newManager ? (
+            <Field
+              label="Project (optional)"
+              htmlFor="emp-project"
+              hint="Name this manager to a project now. They claim it after signing in. Leave empty to add them without a project."
+            >
+              <Dropdown
+                id="emp-project"
+                value={form.projectId}
+                onChange={set('projectId')}
+                placeholder={projectOptions.length ? 'Search or choose a project…' : 'Loading projects…'}
+                emptyText="No projects yet"
+                options={projectOptions.map((p) => ({
+                  value: p.projectId,
+                  label: `${p.projectName} (${p.projectId})`,
+                  hint: p.managerName ? `Manager: ${p.managerName}` : 'No manager yet',
+                }))}
+              />
+            </Field>
             ) : (
             <Field
               label="RMG"
