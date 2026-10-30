@@ -59,6 +59,16 @@ public class NotificationService {
                 }));
     }
 
+    /** Every active Admin is notified. */
+    public void notifyAdmins(String type, String title, String message, String entityType, String entityRef) {
+        roleRepository.findByCode(RequirementAccessGuard.ADMIN).ifPresent(role ->
+                userRoleRepository.findByRoleIdAndActive(role.getId()).forEach(ur -> {
+                    if (ur.getUser() != null && ur.getUser().getEmployee() != null) {
+                        notify(ur.getUser().getEmployee(), type, title, message, entityType, entityRef);
+                    }
+                }));
+    }
+
     @Transactional(readOnly = true)
     public Page<NotificationDTO> myNotifications(boolean unreadOnly, Pageable pageable) {
         Long me = accessGuard.currentEmployee().getId();

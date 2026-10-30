@@ -35,7 +35,6 @@ import java.util.Map;
 public class EventMailer {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("d MMM yyyy");
-    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("EEE d MMM yyyy, h:mm a");
 
     private static final String BLUE = "#1d4ed8";
     private static final String VIOLET = "#6d28d9";
@@ -327,7 +326,7 @@ public class EventMailer {
 
     private static String when(Object t) {
         if (t == null) return "";
-        if (t instanceof LocalDateTime dt) return dt.format(WHEN);
+        if (t instanceof LocalDateTime dt) return IstTime.format(dt, "EEE d MMM yyyy, h:mm a") + " IST";
         if (t instanceof LocalDate d) return d.format(DAY);
         return t.toString();
     }

@@ -118,7 +118,10 @@ public class CandidateWorkflowService {
 
     public CandidateDTO toDTO(CandidateApplication c) {
         Employee employee = c.getEmployee();
+        boolean declined = CandidateStatus.ACCEPTED.equals(c.getStatus())
+                && !interviewRepository.findByCandidateApplicationIdAndStatusIn(c.getId(), List.of("DECLINED")).isEmpty();
         return CandidateDTO.builder()
+                .interviewDeclined(declined)
                 .id(c.getId())
                 .applicationId(c.getApplicationId())
                 .requirementId(c.getRequirement().getRequirementId())
