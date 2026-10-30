@@ -71,11 +71,11 @@ export default function RmgDashboardPage() {
       ) : (
         <Strip
           cells={[
-            { label: 'In resource pool', value: d.poolSize, sub: 'Free to be allocated' },
-            { label: 'On bench', value: d.greenBench + d.amberBench + d.redBench, sub: `${d.redBench} over the limit` },
-            { label: 'Allocation requests', value: requestList.length, sub: 'Waiting for review' },
-            { label: 'Availability checks', value: availabilityList.length, sub: 'Leave and unavailability' },
-            { label: 'Skills in shortage', value: d.topSkillShortages.length, sub: 'Demand above supply' },
+            { label: 'In resource pool', value: d.poolSize, sub: 'Free to be allocated', segments: [{ value: d.poolSize, className: 'bg-brand-500' }] },
+            { label: 'On bench', value: d.greenBench + d.amberBench + d.redBench, sub: `${d.redBench} over the limit`, segments: [{ value: d.greenBench, className: 'bg-brand-500' }, { value: d.amberBench, className: 'bg-amber-400' }, { value: d.redBench, className: 'bg-rose-400' }] },
+            { label: 'Allocation requests', value: requestList.length, sub: 'Waiting for review', segments: [{ value: requestList.length, className: 'bg-amber-400' }] },
+            { label: 'Availability checks', value: availabilityList.length, sub: 'Leave and unavailability', segments: [{ value: availabilityList.length, className: 'bg-sky-400' }] },
+            { label: 'Skills in shortage', value: d.topSkillShortages.length, sub: 'Demand above supply', segments: [{ value: d.topSkillShortages.length, className: 'bg-rose-400' }] },
           ]}
         />
       )}

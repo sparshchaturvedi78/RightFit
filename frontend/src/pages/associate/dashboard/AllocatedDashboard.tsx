@@ -104,7 +104,7 @@ export default function AllocatedDashboard() {
             actions={
               <>
                 <Ghost onClick={refreshAll}>
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className={`h-3.5 w-3.5 ${dashboard.loading ? "animate-spin" : ""}`} />
                   Refresh
                 </Ghost>
                 <Ghost solid to="/associate/team">

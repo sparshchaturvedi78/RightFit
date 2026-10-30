@@ -52,6 +52,7 @@ export const STATUS_OPTIONS = [
 export const MANAGER_OPTIONS = [
   { value: 'ACTIVE', label: 'Manager active' },
   { value: 'INACTIVE', label: 'Manager inactive' },
+  { value: 'UNASSIGNED', label: 'Not assigned' },
 ]
 
 export const CLAIM_OPTIONS = [

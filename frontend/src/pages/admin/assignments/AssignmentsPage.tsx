@@ -12,6 +12,7 @@ import type { ResourceKey } from '../../../store/resourceRegistry'
 import { loadResource } from '../../../store/resourcesSlice'
 import { fullName } from '../employees/employeeUi'
 import HandoverQueue from './HandoverQueue'
+import UnassignedProjects from './UnassignedProjects'
 import HandoverWorkspace from './HandoverWorkspace'
 
 /** Cached dashboard numbers that a handover changes. */
@@ -151,6 +152,10 @@ export default function AssignmentsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {kind === 'manager' && pending.data && pending.data.unassignedProjects?.length > 0 && (
+        <UnassignedProjects projects={pending.data.unassignedProjects} onAssigned={(text) => { setDone({ text }); refreshAll() }} />
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}

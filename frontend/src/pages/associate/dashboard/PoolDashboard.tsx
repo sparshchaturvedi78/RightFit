@@ -152,7 +152,7 @@ export default function PoolDashboard() {
             actions={
               <>
                 <Ghost onClick={refreshAll}>
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className={`h-3.5 w-3.5 ${dashboard.loading ? "animate-spin" : ""}`} />
                   Refresh
                 </Ghost>
                 <Ghost solid to={openInvites.length > 0 ? '/associate/invitations' : '/associate/projects'}>

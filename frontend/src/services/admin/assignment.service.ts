@@ -53,6 +53,8 @@ export interface PendingHandoverItem {
 export interface PendingHandovers {
   managers: PendingHandoverItem[]
   rmgs: PendingHandoverItem[]
+  /** Active projects with no manager. */
+  unassignedProjects: { projectId: string; projectName: string; clientName?: string }[]
 }
 
 export interface ResponsibilitySelectionDTO {
@@ -113,6 +115,11 @@ async function replaceManager(departingManagerId: string, payload: ReplaceManage
   return data
 }
 
+async function assignManager(payload: { newManagerEmployeeId: string; selectedProjectBusinessIds: string[] }): Promise<ReplacementResultDTO> {
+  const { data } = await httpClient.post<ReplacementResultDTO>(ADMIN_ASSIGNMENT_API.assignManager, payload)
+  return data
+}
+
 async function replaceRmg(departingRmgId: string, payload: ReplaceRmgRequest): Promise<ReplacementResultDTO> {
   const { data } = await httpClient.post<ReplacementResultDTO>(ADMIN_ASSIGNMENT_API.replaceRmg(departingRmgId), payload)
   return data
@@ -124,5 +131,6 @@ export const adminAssignmentService = {
   departingManagerAssignments,
   departingRmgAssignments,
   replaceManager,
+  assignManager,
   replaceRmg,
 }

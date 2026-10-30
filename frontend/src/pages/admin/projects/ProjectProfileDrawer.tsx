@@ -95,7 +95,7 @@ export default function ProjectProfileDrawer({
           <Group title="Overview">
             <Item label="Client">{p.clientName}</Item>
             <Item label="Manager">
-              <span className={managerInactive(p) ? 'text-rose-600 dark:text-rose-400' : undefined}>{p.managerName}</span>
+              <span className={managerInactive(p) ? 'text-rose-600 dark:text-rose-400' : undefined}>{p.managerName ?? 'Not assigned'}</span>
               {p.managerEmployeeId && (
                 <span className="block text-xs text-ink-500 dark:text-slate-400">
                   {p.managerEmployeeId}
