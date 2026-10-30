@@ -44,6 +44,7 @@ public class EmployeeManagementService {
     private final com.rightFit.repository.UserRoleRepository userRoleRepository;
     private final com.rightFit.repository.RoleRepository roleRepository;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final com.rightFit.repository.ProjectRepository projectRepository;
     private final com.rightFit.repository.AllocationRepository allocationRepository;
     private final com.rightFit.repository.ProjectMemberRepository projectMemberRepository;
@@ -56,13 +57,23 @@ public class EmployeeManagementService {
 
         validateEmployeeUniqueness(request.getEmployeeId(), request.getEmail());
 
-        boolean newAdmin = request.getOptionalRoleId() != null && roleRepository.findById(request.getOptionalRoleId())
-                .map(r -> "ADMIN".equalsIgnoreCase(r.getCode())).orElse(false);
-        if (request.getRmgId() == null && !newAdmin) {
-            throw new com.rightFit.exception.BusinessRuleException("An RMG is required for everyone except a new Admin");
+        String roleCode = request.getOptionalRoleId() == null ? null
+                : roleRepository.findById(request.getOptionalRoleId()).map(r -> r.getCode()).orElse(null);
+        boolean newAdmin = "ADMIN".equalsIgnoreCase(roleCode);
+        // A manager runs projects and does not report to an RMG, so they are never tagged to one and never go to the pool.
+        boolean manager = "MANAGER".equalsIgnoreCase(roleCode);
+        if (request.getRmgId() == null && !newAdmin && !manager) {
+            throw new com.rightFit.exception.BusinessRuleException("An RMG is required for everyone except a new Admin or Manager");
         }
-        Employee rmg = request.getRmgId() == null ? null : employeeRepository.findById(request.getRmgId())
+        Employee rmg = manager || request.getRmgId() == null ? null : employeeRepository.findById(request.getRmgId())
                 .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("RMG", String.valueOf(request.getRmgId())));
+        // Optional: the project this manager is named to. They still claim it themselves.
+        com.rightFit.entity.Project targetProject = request.getProjectId() == null || request.getProjectId().isBlank() ? null
+                : projectRepository.findByProjectId(request.getProjectId().trim())
+                        .orElseThrow(() -> new com.rightFit.exception.ResourceNotFoundException("Project", request.getProjectId()));
+        if (targetProject != null && !manager) {
+            throw new com.rightFit.exception.BusinessRuleException("Only a manager can be given a project when they are created");
+        }
         String actor = actorLabel();
         Department department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentId()));
@@ -109,7 +120,9 @@ public class EmployeeManagementService {
 
         // A new, active, available and unallocated employee is on the bench from day one: enter the pool through
         // the same path every other pool entry uses, so the pool and bench-aging rows exist too.
-        resourcePoolService.enterIfEligible(savedEmployee, "MANUAL_ENTRY");
+        if (!manager) {
+            resourcePoolService.enterIfEligible(savedEmployee, "MANUAL_ENTRY");
+        }
 
         if (request.getOptionalRoleId() != null) {
             try {
@@ -121,6 +134,9 @@ public class EmployeeManagementService {
             }
         }
 
+        if (targetProject != null) {
+            assignManagerToProject(targetProject, savedEmployee);
+        }
         sendWelcomeEmail(savedEmployee, request.getPassword(), request.getOptionalRoleId());
 
         return mapToDTO(savedEmployee);
@@ -139,6 +155,17 @@ public class EmployeeManagementService {
         } catch (RuntimeException e) {
             log.warn("Welcome email not sent to {} ({}): {}", employee.getEmployeeId(), employee.getEmail(), e.getMessage());
         }
+    }
+
+    /** The new manager is named to the project and asked to claim it; they become its manager once they claim it. */
+    private void assignManagerToProject(com.rightFit.entity.Project project, Employee manager) {
+        project.assignManager(manager);
+        project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedBy(actorLabel());
+        projectRepository.save(project);
+        notificationService.notify(manager, "PROJECT_ASSIGNED", "Claim your project: " + project.getProjectName(),
+                "You have been named manager of " + project.getProjectId() + ". Open Projects to claim it.",
+                "PROJECT", project.getProjectId());
     }
 
     public EmployeeDTO updateEmployee(String employeeId, UpdateEmployeeRequest request) {

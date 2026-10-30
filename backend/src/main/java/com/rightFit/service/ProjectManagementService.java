@@ -30,6 +30,7 @@ import java.util.List;
 @Transactional
 public class ProjectManagementService {
     private final EventMailer eventMailer;
+    private final NotificationService notificationService;
 
     private final ProjectRepository projectRepository;
     private final EmployeeRepository employeeRepository;
@@ -64,6 +65,9 @@ public class ProjectManagementService {
 
         Project savedProject = projectRepository.save(project);
         log.info("Project created successfully: {} (ID: {})", savedProject.getProjectId(), savedProject.getId());
+        notificationService.notify(manager, "PROJECT_ASSIGNED", "Claim your project: " + savedProject.getProjectName(),
+                "You have been named manager of " + savedProject.getProjectId() + ". Open Projects to claim it.",
+                "PROJECT", savedProject.getProjectId());
 
         return mapToDTO(savedProject);
     }
@@ -124,6 +128,9 @@ public class ProjectManagementService {
         project.setUpdatedAt(LocalDateTime.now());
         project.setUpdatedBy(actorLabel());
         Project updated = projectRepository.save(project);
+        notificationService.notify(newManager, "PROJECT_ASSIGNED", "Claim your project: " + updated.getProjectName(),
+                "You have been named manager of " + updated.getProjectId() + ". Open Projects to claim it.",
+                "PROJECT", updated.getProjectId());
 
         log.info("Manager changed for project {} to {}", projectId, newManager.getEmployeeId());
         auditLogService.logAction(getCurrentUserId(), "MANAGER_CHANGED", "PROJECT", project.getId(),
@@ -316,6 +323,8 @@ public class ProjectManagementService {
         project.setUpdatedBy(actorLabel());
         Project saved = projectRepository.save(project);
         eventMailer.projectClaimed(saved, caller);
+        notificationService.notifyAdmins("PROJECT_CLAIMED", "Project claimed: " + saved.getProjectName(),
+                CandidateWorkflowService.name(caller) + " claimed " + saved.getProjectId() + ".", "PROJECT", saved.getProjectId());
 
         auditLogService.logAction(getCurrentUserId(), "PROJECT_CLAIMED", "PROJECT", saved.getId(),
                 false, true, "Manager " + caller.getEmployeeId() + " claimed project " + projectId);

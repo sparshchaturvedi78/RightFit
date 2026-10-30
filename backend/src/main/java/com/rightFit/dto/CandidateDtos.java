@@ -78,6 +78,8 @@ public final class CandidateDtos {
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class CandidateDTO {
+        /** True when the candidate's last interview was declined and nothing is booked yet: reschedule or withdraw. */
+        private Boolean interviewDeclined;
         private Long id;
         private String applicationId;
         private String requirementId;

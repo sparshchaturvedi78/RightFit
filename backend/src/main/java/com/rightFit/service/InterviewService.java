@@ -46,7 +46,6 @@ public class InterviewService {
     private static final LocalTime DAY_START = LocalTime.of(9, 0);
     private static final LocalTime DAY_END = LocalTime.of(18, 0);
     private static final int SUGGESTIONS = 6;
-    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("EEE d MMM, HH:mm");
 
     private final InterviewRepository interviewRepository;
     private final InterviewFeedbackRepository feedbackRepository;
@@ -93,7 +92,7 @@ public class InterviewService {
                 .status("SCHEDULED")
                 .build());
 
-        String when = request.getScheduledAt().toString();
+        String when = IstTime.format(request.getScheduledAt(), "EEE d MMM yyyy, h:mm a") + " IST";
         notificationService.notify(candidate.getEmployee(), "INTERVIEW_SCHEDULED",
                 "Interview scheduled for " + requirement.getPositionTitle(),
                 "Round " + interview.getRoundNumber() + " on " + when + " with " + CandidateWorkflowService.name(interviewer),
@@ -251,8 +250,8 @@ public class InterviewService {
         }
         interviewRepository.save(interview);
 
-        String when = request.getScheduledAt().format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM, HH:mm"));
-        String was = previous.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM, HH:mm"));
+        String when = IstTime.format(request.getScheduledAt(), "EEE d MMM, h:mm a");
+        String was = IstTime.format(previous, "EEE d MMM, h:mm a");
         notificationService.notify(candidate, "INTERVIEW_RESCHEDULED", "Interview moved to " + when,
                 interview.getRequirement().getPositionTitle() + ". It was " + was + ".", "INTERVIEW", interview.getInterviewId());
         Employee me = accessGuard.currentEmployee();
@@ -438,7 +437,7 @@ public class InterviewService {
             }
             if (overlaps(i, start, minutes)) {
                 clashes.add(CandidateWorkflowService.name(interviewer) + " is already interviewing at "
-                        + i.getScheduledAt().format(WHEN) + " (" + i.getInterviewId() + ")");
+                        + IstTime.format(i.getScheduledAt(), "EEE d MMM, h:mm a") + " (" + i.getInterviewId() + ")");
             }
         }
         for (Interview i : interviewRepository.findByEmployeeIdOrderByScheduledAtDesc(candidate.getId())) {
@@ -447,7 +446,7 @@ public class InterviewService {
             }
             if (overlaps(i, start, minutes)) {
                 clashes.add(CandidateWorkflowService.name(candidate) + " already has an interview at "
-                        + i.getScheduledAt().format(WHEN) + " (" + i.getInterviewId() + ")");
+                        + IstTime.format(i.getScheduledAt(), "EEE d MMM, h:mm a") + " (" + i.getInterviewId() + ")");
             }
         }
         return clashes;
@@ -461,8 +460,10 @@ public class InterviewService {
         List<Interview> busy = new ArrayList<>(interviewRepository.findByInterviewerIdOrderByScheduledAtDesc(interviewer.getId()));
         busy.addAll(interviewRepository.findByEmployeeIdOrderByScheduledAtDesc(candidate.getId()));
 
+        // Business hours are India hours; the loop works in IST and each slot is returned as UTC like every other time.
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime t = roundUpToHalfHour(requested.isAfter(now) ? requested : now);
+        LocalDateTime start = requested.isAfter(now) ? requested : now;
+        LocalDateTime t = roundUpToHalfHour(IstTime.toIst(start));
         LocalDateTime limit = t.plusDays(14);
         List<LocalDateTime> out = new ArrayList<>();
         while (out.size() < SUGGESTIONS && t.isBefore(limit)) {
@@ -484,9 +485,9 @@ public class InterviewService {
                 t = t.toLocalDate().plusDays(1).atTime(DAY_START);
                 continue;
             }
-            LocalDateTime slot = t;
+            LocalDateTime slot = IstTime.toUtc(t);
             if (busy.stream().noneMatch(i -> overlaps(i, slot, minutes))) {
-                out.add(t);
+                out.add(slot);
             }
             t = t.plusMinutes(30);
         }

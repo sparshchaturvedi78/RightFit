@@ -56,6 +56,9 @@ public class CreateEmployeeRequest {
 
     private Long optionalRoleId;
 
+    /** Managers only: the project (business ID, e.g. PROJ004) they are named to. They claim it after signing in. */
+    private String projectId;
+
     private String employmentStatus;
 
     private String allocationStatus;
