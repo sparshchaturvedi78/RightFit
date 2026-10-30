@@ -23,7 +23,7 @@ public class CreateProjectRequest {
 
     private String description;
 
-    @NotNull(message = "Manager ID is required")
+    /** Optional: a project can be created without a manager and given one later. */
     private Long managerId;
 
     private String clientName;

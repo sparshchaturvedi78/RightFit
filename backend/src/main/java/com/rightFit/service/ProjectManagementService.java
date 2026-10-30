@@ -46,7 +46,7 @@ public class ProjectManagementService {
 
         validateProjectUniqueness(request.getProjectId());
 
-        Employee manager = employeeRepository.findById(request.getManagerId())
+        Employee manager = request.getManagerId() == null ? null : employeeRepository.findById(request.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Manager not found: " + request.getManagerId()));
 
         String actor = actorLabel();
@@ -65,9 +65,11 @@ public class ProjectManagementService {
 
         Project savedProject = projectRepository.save(project);
         log.info("Project created successfully: {} (ID: {})", savedProject.getProjectId(), savedProject.getId());
-        notificationService.notify(manager, "PROJECT_ASSIGNED", "Claim your project: " + savedProject.getProjectName(),
-                "You have been named manager of " + savedProject.getProjectId() + ". Open Projects to claim it.",
-                "PROJECT", savedProject.getProjectId());
+        if (manager != null) {
+            notificationService.notify(manager, "PROJECT_ASSIGNED", "Claim your project: " + savedProject.getProjectName(),
+                    "You have been named manager of " + savedProject.getProjectId() + ". Open Projects to claim it.",
+                    "PROJECT", savedProject.getProjectId());
+        }
 
         return mapToDTO(savedProject);
     }

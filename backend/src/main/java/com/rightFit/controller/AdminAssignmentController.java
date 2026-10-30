@@ -57,6 +57,12 @@ public class AdminAssignmentController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/assign-manager")
+    @PreAuthorize("hasPermission(null, 'ASSIGNMENT_REPLACE_MANAGER')")
+    public ResponseEntity<ReplacementResultDTO> assignManager(@Valid @RequestBody ReplaceManagerRequest request) {
+        return ResponseEntity.ok(assignmentReplacementService.assignManagerToUnassigned(request));
+    }
+
     @PostMapping("/replace-rmg/{departingRmgId}")
     @PreAuthorize("hasPermission(null, 'ASSIGNMENT_REPLACE_RMG')")
     public ResponseEntity<ReplacementResultDTO> replaceRmg(
