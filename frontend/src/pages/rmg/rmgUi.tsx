@@ -75,7 +75,7 @@ export function Who({ name, detail }: { name: string; detail?: ReactNode }) {
 }
 
 /** The counts strip at the top of a page: label, big value and a line of context per cell. */
-export function Strip({ cells }: { cells: { label: string; value: ReactNode; sub?: ReactNode }[] }) {
+export function Strip({ cells }: { cells: { label: string; value: ReactNode; sub?: ReactNode; segments?: { value: number; className: string }[] }[] }) {
   return (
     <div className={`${TILE_SURFACE} grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0 sm:divide-x xl:grid-cols-[repeat(auto-fit,minmax(0,1fr))] dark:divide-white/6`}>
       {cells.map((c) => (
@@ -83,6 +83,13 @@ export function Strip({ cells }: { cells: { label: string; value: ReactNode; sub
           <span className="text-xs text-ink-500 dark:text-slate-400">{c.label}</span>
           <b className="text-xl font-bold text-ink-900 dark:text-white">{c.value}</b>
           {c.sub && <small className="text-xs text-ink-500 dark:text-slate-400">{c.sub}</small>}
+          {c.segments && (
+            <span className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/6" aria-hidden>
+              {c.segments.map((s, i) => (
+                <i key={i} className={`block h-full ${s.className}`} style={{ flexGrow: s.value, flexBasis: 0 }} />
+              ))}
+            </span>
+          )}
         </div>
       ))}
     </div>

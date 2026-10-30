@@ -234,7 +234,7 @@ function FormBody({
     if (!newManager) return
     let live = true
     void adminProjectService
-      .list({ size: 500 })
+      .list({ size: 500, managerStatus: 'VACANT' })
       .then((page) => {
         if (live) setProjectOptions(page.content)
       })
@@ -509,19 +509,22 @@ function FormBody({
             <Field
               label="Project (optional)"
               htmlFor="emp-project"
-              hint="Name this manager to a project now. They claim it after signing in. Leave empty to add them without a project."
+              hint="Only projects with no manager, or an inactive one, are listed. A project that already has an active manager can't be taken over here; use Assignments for that."
             >
               <Dropdown
                 id="emp-project"
                 value={form.projectId}
                 onChange={set('projectId')}
                 placeholder={projectOptions.length ? 'Search or choose a project…' : 'Loading projects…'}
-                emptyText="No projects yet"
-                options={projectOptions.map((p) => ({
-                  value: p.projectId,
-                  label: `${p.projectName} (${p.projectId})`,
-                  hint: p.managerName ? `Manager: ${p.managerName}` : 'No manager yet',
-                }))}
+                emptyText="No project is waiting for a manager"
+                options={[
+                  { value: '', label: 'No project', hint: 'Add the manager without a project' },
+                  ...projectOptions.map((p) => ({
+                    value: p.projectId,
+                    label: `${p.projectName} (${p.projectId})`,
+                    hint: p.managerName ? `Inactive manager: ${p.managerName}` : 'No manager yet',
+                  })),
+                ]}
               />
             </Field>
             ) : (

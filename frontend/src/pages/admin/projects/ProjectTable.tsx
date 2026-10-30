@@ -178,7 +178,7 @@ export default function ProjectTable({
                 <td className="px-4 py-3 text-ink-900 dark:text-white">{p.clientName ?? '—'}</td>
                 <td className="px-4 py-3">
                   <p className={managerInactive(p) ? 'text-rose-600 dark:text-rose-400' : 'text-ink-900 dark:text-white'}>
-                    {p.managerName ?? '—'}
+                    {p.managerName ?? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300">Not assigned</span>}
                   </p>
                   {p.managerEmployeeId && (
                     <p className="text-xs text-ink-500 dark:text-slate-400">

@@ -37,11 +37,10 @@ function fromProject(p: ProjectDTO): FormState {
   }
 }
 
-function validate(form: FormState, mode: 'create' | 'edit', manager: EmployeeDTO | null): Errors {
+function validate(form: FormState, mode: 'create' | 'edit'): Errors {
   const errors: Errors = {}
   if (mode === 'create' && !form.projectId.trim()) errors.projectId = 'Project ID is required'
   if (!form.projectName.trim()) errors.projectName = 'Project name is required'
-  if (mode === 'create' && !manager) errors.manager = 'Choose the project’s manager'
   if (form.startDate && form.endDate && form.endDate < form.startDate) errors.endDate = 'End date can’t be before the start date'
   return errors
 }
@@ -88,7 +87,7 @@ function FormBody({
 
   async function submit(ev: FormEvent) {
     ev.preventDefault()
-    const found = validate(form, mode, manager)
+    const found = validate(form, mode)
     setErrors(found)
     if (Object.keys(found).length > 0) return
     setServerError(null)
@@ -109,7 +108,7 @@ function FormBody({
         const payload: CreateProjectRequest = {
           projectId: form.projectId.trim(),
           projectName: form.projectName.trim(),
-          managerId: manager!.id,
+          managerId: manager?.id,
           clientName: text(form.clientName),
           description: text(form.description),
           startDate: text(form.startDate),
@@ -161,7 +160,7 @@ function FormBody({
           <div className="sm:col-span-2">
             <PersonPicker
               id="proj-manager"
-              label="Project manager"
+              label="Project manager (optional)"
               role="MANAGER"
               roleLabel="Manager"
               value={manager}
@@ -175,7 +174,7 @@ function FormBody({
               error={errors.manager}
             />
             <p className="mt-3 text-xs text-ink-500 dark:text-slate-500">
-              The manager has to claim the project before they can work on it.
+              Optional. Without a manager the project is visible to admins only until one is assigned. The manager has to claim the project before they can work on it.
             </p>
           </div>
         </FormSection>

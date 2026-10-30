@@ -95,6 +95,7 @@ export const ADMIN_ASSIGNMENT_API = {
   departingManager: (managerId: string) => `/api/admin/assignments/departing/manager/${managerId}`,
   departingRmg: (rmgId: string) => `/api/admin/assignments/departing/rmg/${rmgId}`,
   replaceManager: (departingManagerId: string) => `/api/admin/assignments/replace-manager/${departingManagerId}`,
+  assignManager: '/api/admin/assignments/assign-manager',
   replaceRmg: (departingRmgId: string) => `/api/admin/assignments/replace-rmg/${departingRmgId}`,
 }
 

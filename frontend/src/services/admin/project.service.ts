@@ -7,7 +7,7 @@ export interface ProjectDTO {
   projectId: string
   projectName: string
   description?: string
-  managerId: number
+  managerId?: number
   managerName?: string
   /** Business ID of the manager, e.g. EMP003. */
   managerEmployeeId?: string
@@ -54,7 +54,8 @@ export interface CreateProjectRequest {
   projectId: string
   projectName: string
   description?: string
-  managerId: number
+  /** Optional: a project can be created without a manager. */
+  managerId?: number
   clientName?: string
   startDate?: string
   endDate?: string

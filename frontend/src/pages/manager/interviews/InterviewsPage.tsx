@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { CalendarClock, Star } from 'lucide-react'
 import { Dropdown } from '../../../components/ui/Dropdown'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { EmptyState, PanelError, Skeleton, TILE_SURFACE } from '../../../components/dashboard/Panel'
 import { Button } from '../../../components/ui/form'
@@ -13,6 +13,7 @@ import { interviewService, type InterviewDTO, type SubmitFeedbackRequest } from 
 import { useAppDispatch } from '../../../store'
 import { invalidateQueries } from '../../../store/queriesSlice'
 import { humanize, parseServerDate, toLocalInput, toServerTime } from '../../../utils/format'
+import { timeOf } from '../managerUi'
 
 type Show = 'upcoming' | 'feedback' | 'past' | 'declined' | 'cancelled'
 type Range = 'week' | 'fortnight' | 'all'
@@ -61,7 +62,12 @@ export default function InterviewsPage({ scope = 'manager' }: { scope?: 'manager
   const navigate = useNavigate()
   const { interviewId } = useParams()
   const list = useQuery(scope === 'mine' ? 'dutyInterviews' : 'managerInterviews', {})
-  const [now] = useState(() => new Date())
+  // The clock moves on, so an interview becomes "feedback due" when its time passes, without reloading the page.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(t)
+  }, [])
   const [show, setShow] = useState<Show>('upcoming')
   const [range, setRange] = useState<Range>('week')
   const [query, setQuery] = useState('')
@@ -488,7 +494,7 @@ function InterviewDetail({
             </Button>
           </>
         ) : (
-          <p className="text-xs text-ink-500 dark:text-slate-400">Feedback opens once the interview has started or been marked as held.</p>
+          <p className="text-xs text-ink-500 dark:text-slate-400">Feedback opens at {timeOf(i.scheduledAt)} on {parseServerDate(i.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}, or once it is marked as held.</p>
         )}
       </section>
 

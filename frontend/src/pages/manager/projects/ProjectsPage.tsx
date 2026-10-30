@@ -6,6 +6,7 @@ import { PanelError, Skeleton, TILE_SURFACE } from '../../../components/dashboar
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/form'
 import RefreshButton from '../../../components/ui/RefreshButton'
+import { useQuery } from '../../../hooks/useQuery'
 import { useResource } from '../../../hooks/useResource'
 import type { ProjectDTO } from '../../../services/admin/project.service'
 import type { InterviewDTO } from '../../../services/interview.service'
@@ -111,7 +112,8 @@ export default function ProjectsPage() {
   const [params, setParams] = useSearchParams()
   const projects = useResource('manager/projects')
   const dashboard = useResource('manager/dashboard')
-  const interviews = useResource('manager/interviews')
+  // The same stored list the Interviews page uses, so a newly booked interview shows up here straight away.
+  const interviews = useQuery('managerInterviews', {})
   const [now] = useState(() => new Date())
   const [claiming, setClaiming] = useState<ProjectDTO | null>(null)
 
@@ -143,7 +145,7 @@ export default function ProjectsPage() {
   function refreshAll() {
     projects.reload()
     dashboard.reload()
-    interviews.reload()
+    interviews.refresh()
   }
 
   function afterClaim(p: ProjectDTO) {
